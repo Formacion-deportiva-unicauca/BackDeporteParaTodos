@@ -10,6 +10,7 @@ import java.time.Instant;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -191,6 +192,44 @@ class InscripcionServicioTest {
         assertEquals("EN_ESPERA", resultado.getEstado());
         assertNull(resultado.getFechaDesvinculacion());
         verify(gateway, never()).guardarInscripcion(datos);
+    }
+
+    // fechaDesvinculacion llega del body de POST /inscripcion sin validar: al crear una fila
+    // NUEVA el servicio debe ignorarla (rama INSCRITO y rama EN_ESPERA).
+    @Test
+    void inscribir_filaNuevaConCupo_ignoraFechaDesvinculacionDelCliente() {
+        datos.setFechaDesvinculacion(Timestamp.from(Instant.now().plusSeconds(86400)));
+        when(cursoGateway.obtenerCurso("cat1", "cur1")).thenReturn(cursoAbierto);
+        when(grupoGateway.obtenerGrupoConLock("cat1", "cur1", 2026, 1)).thenReturn(grupoCon5Cupos);
+        when(gateway.contarInscripcionesActivasGrupo("cat1", "cur1", 2026, 1)).thenReturn(2L);
+        when(gateway.contarCursosActivosAlumno("alum1")).thenReturn(1L);
+        when(gateway.existeInscripcion("alum1", "cat1", "cur1", 2026, 1)).thenReturn(false);
+        when(gateway.guardarInscripcion(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        servicio.inscribir(datos);
+
+        ArgumentCaptor<Inscripcion> guardada = ArgumentCaptor.forClass(Inscripcion.class);
+        verify(gateway).guardarInscripcion(guardada.capture());
+        assertEquals("INSCRITO", guardada.getValue().getEstado());
+        assertNull(guardada.getValue().getFechaDesvinculacion());
+    }
+
+    @Test
+    void inscribir_filaNuevaSinCupo_ignoraFechaDesvinculacionDelCliente() {
+        datos.setFechaDesvinculacion(Timestamp.from(Instant.now().plusSeconds(86400)));
+        when(cursoGateway.obtenerCurso("cat1", "cur1")).thenReturn(cursoAbierto);
+        when(grupoGateway.obtenerGrupoConLock("cat1", "cur1", 2026, 1)).thenReturn(grupoCon5Cupos);
+        when(gateway.contarInscripcionesActivasGrupo("cat1", "cur1", 2026, 1)).thenReturn(5L);
+        when(gateway.existeEnEspera("alum1", "cat1", "cur1", 2026, 1)).thenReturn(false);
+        when(gateway.existeInscripcion("alum1", "cat1", "cur1", 2026, 1)).thenReturn(false);
+        when(gateway.guardarInscripcion(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        servicio.inscribir(datos);
+
+        ArgumentCaptor<Inscripcion> guardada = ArgumentCaptor.forClass(Inscripcion.class);
+        verify(gateway).guardarInscripcion(guardada.capture());
+        assertEquals("EN_ESPERA", guardada.getValue().getEstado());
+        assertNull(guardada.getValue().getFechaDesvinculacion());
     }
 
     // ── validarInscripcion ────────────────────────────────────────────────────
