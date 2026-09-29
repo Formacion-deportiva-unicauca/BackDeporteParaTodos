@@ -26,6 +26,7 @@ import co.edu.unicauca.deporteParaTodos.dominio.excepciones.NoExisteExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.YaExisteElementoExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Curso;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Disponibilidad;
+import co.edu.unicauca.deporteParaTodos.dominio.modelo.EstadoCurso;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.EstadoInscripciones;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Grupo;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Inscripcion;
@@ -58,6 +59,7 @@ class InscripcionServicioTest {
         datos = new Inscripcion("alum1", "cat1", "cur1", 2026, 1, null, null, null);
         cursoAbierto = new Curso();
         cursoAbierto.setEstadoInscripciones(EstadoInscripciones.ABIERTO);
+        cursoAbierto.setEstadoCurso(EstadoCurso.ACTIVO);
         grupoCon5Cupos = new Grupo();
         grupoCon5Cupos.setCupos(5);
     }
@@ -77,6 +79,19 @@ class InscripcionServicioTest {
     @Test
     void inscribir_cursoNoExiste_lanzaInscripcionesCerradasExcepcion() {
         when(cursoGateway.obtenerCurso("cat1", "cur1")).thenReturn(null);
+
+        assertThrows(InscripcionesCerradasExcepcion.class, () -> servicio.inscribir(datos));
+        verify(grupoGateway, never()).obtenerGrupoConLock(any(), any(), anyInt(), anyInt());
+    }
+
+    // SCRUM-178: un curso INACTIVO no debe aceptar nuevas inscripciones aunque las
+    // inscripciones esten formalmente ABIERTO y el grupo tenga cupos.
+    @Test
+    void inscribir_cursoInactivo_lanzaInscripcionesCerradasExcepcion() {
+        Curso cursoInactivo = new Curso();
+        cursoInactivo.setEstadoInscripciones(EstadoInscripciones.ABIERTO);
+        cursoInactivo.setEstadoCurso(EstadoCurso.INACTIVO);
+        when(cursoGateway.obtenerCurso("cat1", "cur1")).thenReturn(cursoInactivo);
 
         assertThrows(InscripcionesCerradasExcepcion.class, () -> servicio.inscribir(datos));
         verify(grupoGateway, never()).obtenerGrupoConLock(any(), any(), anyInt(), anyInt());
@@ -307,6 +322,7 @@ class InscripcionServicioTest {
 
     @Test
     void promoverManualmente_noEstaEnEspera_lanzaNoExisteExcepcion() {
+        when(cursoGateway.obtenerCurso("cat1", "cur1")).thenReturn(cursoAbierto);
         when(gateway.existeEnEspera("alum1", "cat1", "cur1", 2026, 1)).thenReturn(false);
 
         assertThrows(NoExisteExcepcion.class,
@@ -315,10 +331,25 @@ class InscripcionServicioTest {
         verify(grupoGateway, never()).obtenerGrupoConLock(any(), any(), anyInt(), anyInt());
     }
 
+    // SCRUM-178: mismo hueco que inscribir() -- promover no debe permitirse si el curso
+    // esta INACTIVO, aunque el alumno este legitimamente en espera.
+    @Test
+    void promoverManualmente_cursoInactivo_lanzaInscripcionesCerradasExcepcion() {
+        Curso cursoInactivo = new Curso();
+        cursoInactivo.setEstadoCurso(EstadoCurso.INACTIVO);
+        when(cursoGateway.obtenerCurso("cat1", "cur1")).thenReturn(cursoInactivo);
+
+        assertThrows(InscripcionesCerradasExcepcion.class,
+                () -> servicio.promoverManualmente("alum1", "cat1", "cur1", 2026, 1));
+        verify(gateway, never()).existeEnEspera(any(), any(), any(), anyInt(), anyInt());
+        verify(grupoGateway, never()).obtenerGrupoConLock(any(), any(), anyInt(), anyInt());
+    }
+
     @Test
     void promoverManualmente_conCupoDisponible_promueveExitosamente() {
         Inscripcion promovida = new Inscripcion("alum1", "cat1", "cur1", 2026, 1,
                 Timestamp.from(Instant.now()), null, "INSCRITO");
+        when(cursoGateway.obtenerCurso("cat1", "cur1")).thenReturn(cursoAbierto);
         when(gateway.existeEnEspera("alum1", "cat1", "cur1", 2026, 1)).thenReturn(true);
         when(grupoGateway.obtenerGrupoConLock("cat1", "cur1", 2026, 1)).thenReturn(grupoCon5Cupos);
         when(gateway.contarInscripcionesActivasGrupo("cat1", "cur1", 2026, 1)).thenReturn(2L);
@@ -334,6 +365,7 @@ class InscripcionServicioTest {
     void promoverManualmente_grupoSinCuposConfigurados_lanzaCuposAgotadosExcepcion() {
         Grupo grupoSinCupos = new Grupo();
         grupoSinCupos.setCupos(null);
+        when(cursoGateway.obtenerCurso("cat1", "cur1")).thenReturn(cursoAbierto);
         when(gateway.existeEnEspera("alum1", "cat1", "cur1", 2026, 1)).thenReturn(true);
         when(grupoGateway.obtenerGrupoConLock("cat1", "cur1", 2026, 1)).thenReturn(grupoSinCupos);
 
@@ -347,6 +379,7 @@ class InscripcionServicioTest {
     // inscribir() cuando el grupo ya esta lleno (mismo tipo de excepcion -> HTTP 409).
     @Test
     void promoverManualmente_sinCupoDisponible_lanzaCuposAgotadosExcepcion() {
+        when(cursoGateway.obtenerCurso("cat1", "cur1")).thenReturn(cursoAbierto);
         when(gateway.existeEnEspera("alum1", "cat1", "cur1", 2026, 1)).thenReturn(true);
         when(grupoGateway.obtenerGrupoConLock("cat1", "cur1", 2026, 1)).thenReturn(grupoCon5Cupos);
         when(gateway.contarInscripcionesActivasGrupo("cat1", "cur1", 2026, 1)).thenReturn(5L);
@@ -363,6 +396,7 @@ class InscripcionServicioTest {
     void promoverManualmente_tomaLockDelGrupoAntesDeContarCupos() {
         Inscripcion promovida = new Inscripcion("alum1", "cat1", "cur1", 2026, 1,
                 Timestamp.from(Instant.now()), null, "INSCRITO");
+        when(cursoGateway.obtenerCurso("cat1", "cur1")).thenReturn(cursoAbierto);
         when(gateway.existeEnEspera("alum1", "cat1", "cur1", 2026, 1)).thenReturn(true);
         when(grupoGateway.obtenerGrupoConLock("cat1", "cur1", 2026, 1)).thenReturn(grupoCon5Cupos);
         when(gateway.contarInscripcionesActivasGrupo("cat1", "cur1", 2026, 1)).thenReturn(2L);

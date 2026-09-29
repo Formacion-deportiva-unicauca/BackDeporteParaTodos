@@ -19,6 +19,7 @@ import co.edu.unicauca.deporteParaTodos.dominio.excepciones.NoExisteExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.YaExisteElementoExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Curso;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Disponibilidad;
+import co.edu.unicauca.deporteParaTodos.dominio.modelo.EstadoCurso;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.EstadoInscripciones;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Grupo;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Inscripcion;
@@ -57,6 +58,12 @@ public class InscripcionServicio implements IInscripcionServicio {
         if (curso == null || !EstadoInscripciones.ABIERTO.equals(curso.getEstadoInscripciones())) {
             throw new InscripcionesCerradasExcepcion(
                     "Las inscripciones para el curso " + datos.getCurso() + " estan cerradas");
+        }
+        // SCRUM-178: un curso INACTIVO se oculta del catalogo pero nada impedia inscribirse
+        // igual llamando directo al endpoint -- confirmado contra MySQL real (InscripcionEstadoCursoIT).
+        if (!EstadoCurso.ACTIVO.equals(curso.getEstadoCurso())) {
+            throw new InscripcionesCerradasExcepcion(
+                    "El curso " + datos.getCurso() + " no esta disponible para inscripciones");
         }
 
         Grupo grupo = grupoGateway.obtenerGrupoConLock(
@@ -138,6 +145,13 @@ public class InscripcionServicio implements IInscripcionServicio {
     // grupo, y el conteo de cupos posterior seguia leyendo ese snapshot obsoleto.
     @Transactional(isolation = Isolation.READ_COMMITTED)
     public Inscripcion promoverManualmente(String alumnoId, String categoria, String curso, int anio, int iterable) {
+        // SCRUM-178: mismo hueco que inscribir() -- promover a un alumno tampoco debia
+        // permitirse si el curso esta INACTIVO, aunque haya cupo libre y espera legitima.
+        Curso infoCurso = cursoGateway.obtenerCurso(categoria, curso);
+        if (infoCurso == null || !EstadoCurso.ACTIVO.equals(infoCurso.getEstadoCurso())) {
+            throw new InscripcionesCerradasExcepcion(
+                    "El curso " + curso + " no esta disponible para inscripciones");
+        }
         if (!gateway.existeEnEspera(alumnoId, categoria, curso, anio, iterable)) {
             throw new NoExisteExcepcion("El alumno no está en la lista de espera para este grupo");
         }

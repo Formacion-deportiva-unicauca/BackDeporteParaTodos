@@ -193,9 +193,10 @@
 						<artifactId>maven-failsafe-plugin</artifactId>
 						<configuration>
 							<excludes>
-								<!-- InscripcionConcurrenciaIT y GrupoIT requieren BD MySQL real. -->
+								<!-- InscripcionConcurrenciaIT, GrupoIT e InscripcionEstadoCursoIT requieren BD MySQL real. -->
 								<exclude>**/InscripcionConcurrenciaIT.java</exclude>
 								<exclude>**/GrupoIT.java</exclude>
+								<exclude>**/InscripcionEstadoCursoIT.java</exclude>
 							</excludes>
 						</configuration>
 					</plugin>
