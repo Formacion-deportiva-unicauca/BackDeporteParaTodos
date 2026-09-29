@@ -1,5 +1,6 @@
 package co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresSecundarios.persistenciaSQL.gateway;
 
+import co.edu.unicauca.deporteParaTodos.dominio.excepciones.DependenciaFallida;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.NoExisteExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Grupo;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresSecundarios.persistenciaSQL.entidades.GrupoEntidad;
@@ -140,5 +141,154 @@ class GrupoGatewayTest {
 
         assertThrows(NoExisteExcepcion.class,
                 () -> grupoGateway.obtenerGrupoConLock(CATEGORIA, CURSO, 2026, 1));
+    }
+
+    // ── actualizarGrupo ──────────────────────────────────────────────────────
+
+    private GrupoEntidad entidadExistente(Integer imagenActual, String instructorActual) {
+        GrupoEntidad e = new GrupoEntidad();
+        e.setCategoria(CATEGORIA);
+        e.setCurso(CURSO);
+        e.setAnio(2026);
+        e.setIterable(1);
+        e.setImagenGrupo(imagenActual);
+        e.setCupos(10);
+        e.setIdInstructor(instructorActual);
+        e.setPeriodo(1);
+        e.setEliminado(0);
+        return e;
+    }
+
+    @Test
+    void actualizarGrupo_conInstructorValido_actualizaCorrectamente() {
+        when(repoImagen.existsById(2)).thenReturn(true);
+        when(repoInstructor.existsById("ins-nuevo")).thenReturn(true);
+        when(repoGrupo.findById(any(GrupoId.class))).thenReturn(java.util.Optional.of(entidadExistente(1, null)));
+        when(repoGrupo.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        Grupo datos = new Grupo();
+        datos.setImagenGrupo(2);
+        datos.setCupos(15);
+        datos.setIdInstructor("ins-nuevo");
+        datos.setFechaCreacion(LocalDate.now());
+
+        Grupo resultado = grupoGateway.actualizarGrupo(CATEGORIA, CURSO, 2026, 1, datos);
+
+        assertEquals("ins-nuevo", resultado.getIdInstructor());
+        assertEquals(2, resultado.getImagenGrupo());
+        assertEquals(15, resultado.getCupos());
+        verify(repoGrupo).save(any());
+    }
+
+    // idInstructor null en el PUT => se quita el instructor del grupo (PERF_ID -> NULL),
+    // igual que insertarGrupo() ya tolera instructor null. No debe validarse contra
+    // repoInstructor cuando no se esta asignando ninguno.
+    @Test
+    void actualizarGrupo_instructorNull_quitaInstructor() {
+        when(repoImagen.existsById(1)).thenReturn(true);
+        when(repoGrupo.findById(any(GrupoId.class))).thenReturn(java.util.Optional.of(entidadExistente(1, "ins-actual")));
+        when(repoGrupo.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        Grupo datos = new Grupo();
+        datos.setImagenGrupo(1);
+        datos.setCupos(10);
+        datos.setIdInstructor(null);
+
+        Grupo resultado = grupoGateway.actualizarGrupo(CATEGORIA, CURSO, 2026, 1, datos);
+
+        assertNull(resultado.getIdInstructor());
+        verify(repoInstructor, never()).existsById(any());
+    }
+
+    @Test
+    void actualizarGrupo_instructorInexistente_lanzaDependenciaFallida() {
+        when(repoImagen.existsById(1)).thenReturn(true);
+        when(repoInstructor.existsById("no-existe")).thenReturn(false);
+
+        Grupo datos = new Grupo();
+        datos.setImagenGrupo(1);
+        datos.setIdInstructor("no-existe");
+
+        assertThrows(DependenciaFallida.class,
+                () -> grupoGateway.actualizarGrupo(CATEGORIA, CURSO, 2026, 1, datos));
+        verify(repoGrupo, never()).save(any());
+    }
+
+    // imagenGrupo no enviada (null) en el PUT => se conserva la imagen ya asignada al
+    // grupo, no se valida contra repoImagen ni se sobreescribe con null.
+    @Test
+    void actualizarGrupo_sinImagen_conservaImagenActual() {
+        when(repoInstructor.existsById("ins-actual")).thenReturn(true);
+        when(repoGrupo.findById(any(GrupoId.class))).thenReturn(java.util.Optional.of(entidadExistente(7, "ins-actual")));
+        when(repoGrupo.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        Grupo datos = new Grupo();
+        datos.setImagenGrupo(null);
+        datos.setCupos(10);
+        datos.setIdInstructor("ins-actual");
+
+        Grupo resultado = grupoGateway.actualizarGrupo(CATEGORIA, CURSO, 2026, 1, datos);
+
+        assertEquals(7, resultado.getImagenGrupo());
+        verify(repoImagen, never()).existsById(any());
+    }
+
+    // cupos/fechaCreacion/fechaFinalizacion no enviados (null) en el PUT => se conserva
+    // el valor ya asignado al grupo, igual que imagenGrupo. Antes se sobreescribian con
+    // null incondicionalmente.
+
+    @Test
+    void actualizarGrupo_sinCupos_conservaCuposActuales() {
+        when(repoImagen.existsById(1)).thenReturn(true);
+        when(repoInstructor.existsById("ins-actual")).thenReturn(true);
+        when(repoGrupo.findById(any(GrupoId.class))).thenReturn(java.util.Optional.of(entidadExistente(1, "ins-actual")));
+        when(repoGrupo.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        Grupo datos = new Grupo();
+        datos.setImagenGrupo(1);
+        datos.setIdInstructor("ins-actual");
+        datos.setCupos(null);
+
+        Grupo resultado = grupoGateway.actualizarGrupo(CATEGORIA, CURSO, 2026, 1, datos);
+
+        assertEquals(10, resultado.getCupos());
+    }
+
+    @Test
+    void actualizarGrupo_sinFechaCreacion_conservaFechaCreacionActual() {
+        when(repoImagen.existsById(1)).thenReturn(true);
+        when(repoInstructor.existsById("ins-actual")).thenReturn(true);
+        GrupoEntidad existente = entidadExistente(1, "ins-actual");
+        existente.setFechaCreacion(LocalDate.of(2020, 1, 1));
+        when(repoGrupo.findById(any(GrupoId.class))).thenReturn(java.util.Optional.of(existente));
+        when(repoGrupo.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        Grupo datos = new Grupo();
+        datos.setImagenGrupo(1);
+        datos.setIdInstructor("ins-actual");
+        datos.setFechaCreacion(null);
+
+        Grupo resultado = grupoGateway.actualizarGrupo(CATEGORIA, CURSO, 2026, 1, datos);
+
+        assertEquals(LocalDate.of(2020, 1, 1), resultado.getFechaCreacion());
+    }
+
+    @Test
+    void actualizarGrupo_sinFechaFinalizacion_conservaFechaFinalizacionActual() {
+        when(repoImagen.existsById(1)).thenReturn(true);
+        when(repoInstructor.existsById("ins-actual")).thenReturn(true);
+        GrupoEntidad existente = entidadExistente(1, "ins-actual");
+        existente.setFechaFinalizacion(LocalDate.of(2026, 12, 31));
+        when(repoGrupo.findById(any(GrupoId.class))).thenReturn(java.util.Optional.of(existente));
+        when(repoGrupo.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        Grupo datos = new Grupo();
+        datos.setImagenGrupo(1);
+        datos.setIdInstructor("ins-actual");
+        datos.setFechaFinalizacion(null);
+
+        Grupo resultado = grupoGateway.actualizarGrupo(CATEGORIA, CURSO, 2026, 1, datos);
+
+        assertEquals(LocalDate.of(2026, 12, 31), resultado.getFechaFinalizacion());
     }
 }
