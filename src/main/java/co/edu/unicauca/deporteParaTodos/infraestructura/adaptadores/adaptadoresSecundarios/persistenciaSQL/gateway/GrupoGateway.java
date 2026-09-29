@@ -125,20 +125,32 @@ public class GrupoGateway implements IGrupoGateway {
 
     public Grupo actualizarGrupo(String categoria, String curso, Integer anio, Integer iterable, Grupo datosGrupo) {
         GrupoId id = new GrupoId(categoria, curso, anio, iterable);
-        if (!repoImagen.existsById(datosGrupo.getImagenGrupo())) {
+        // imagenGrupo no enviada (null) => se conserva la imagen ya asignada al grupo.
+        if (datosGrupo.getImagenGrupo() != null && !repoImagen.existsById(datosGrupo.getImagenGrupo())) {
             throw new DependenciaFallida("la imagen identificado con " + datosGrupo.getImagenGrupo() + " no existe en el sistema");
         }
-        if (!repoInstructor.existsById(datosGrupo.getIdInstructor())) {
+        // idInstructor null => se quita el instructor del grupo (mismo criterio que insertarGrupo()).
+        if (datosGrupo.getIdInstructor() != null && !repoInstructor.existsById(datosGrupo.getIdInstructor())) {
             throw new DependenciaFallida("el instructor identificado con " + datosGrupo.getIdInstructor() + " no existe en el sistema");
         }
         GrupoEntidad entidad = repoGrupo.findById(id)
                 .orElseThrow(() -> new NoExisteExcepcion("el grupo no se encuentra registrado en el sistema"));
-        entidad.setCupos(datosGrupo.getCupos());
+        // cupos/fechaCreacion/fechaFinalizacion no enviados (null) => se conserva el valor
+        // actual del grupo, igual que imagenGrupo -- antes se sobreescribian con null.
+        if (datosGrupo.getCupos() != null) {
+            entidad.setCupos(datosGrupo.getCupos());
+        }
         entidad.setEliminado(0);
-        entidad.setFechaCreacion(datosGrupo.getFechaCreacion());
-        entidad.setFechaFinalizacion(datosGrupo.getFechaFinalizacion());
+        if (datosGrupo.getFechaCreacion() != null) {
+            entidad.setFechaCreacion(datosGrupo.getFechaCreacion());
+        }
+        if (datosGrupo.getFechaFinalizacion() != null) {
+            entidad.setFechaFinalizacion(datosGrupo.getFechaFinalizacion());
+        }
         entidad.setIdInstructor(datosGrupo.getIdInstructor());
-        entidad.setImagenGrupo(datosGrupo.getImagenGrupo());
+        if (datosGrupo.getImagenGrupo() != null) {
+            entidad.setImagenGrupo(datosGrupo.getImagenGrupo());
+        }
         try {
             GrupoEntidad guardado = repoGrupo.save(entidad);
             return GrupoMapper.toDominio(guardado);

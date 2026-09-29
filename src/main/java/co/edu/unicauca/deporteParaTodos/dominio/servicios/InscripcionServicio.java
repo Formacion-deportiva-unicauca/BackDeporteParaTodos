@@ -85,6 +85,7 @@ public class InscripcionServicio implements IInscripcionServicio {
                 return gateway.guardarInscripcion(existente);
             }
             datos.setFechaInscripcion(Timestamp.from(Instant.now()));
+            datos.setFechaDesvinculacion(null); // viene del body sin validar; una fila nueva nunca nace desvinculada
             datos.setEstado("INSCRITO");
             return gateway.guardarInscripcion(datos);
         } else {
@@ -105,6 +106,7 @@ public class InscripcionServicio implements IInscripcionServicio {
                 return gateway.guardarInscripcion(existente);
             }
             datos.setFechaInscripcion(Timestamp.from(Instant.now()));
+            datos.setFechaDesvinculacion(null); // idem: ignorar lo que envie el cliente
             datos.setEstado("EN_ESPERA");
             return gateway.guardarInscripcion(datos);
         }

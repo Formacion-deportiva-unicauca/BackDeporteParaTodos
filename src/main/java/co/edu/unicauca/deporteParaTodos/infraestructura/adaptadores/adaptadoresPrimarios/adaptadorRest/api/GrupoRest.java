@@ -26,6 +26,7 @@ import jakarta.validation.Valid;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 
 
@@ -116,6 +117,24 @@ public class GrupoRest {
         Grupo grupo = GrupoMapper.fromDto(dto);
         Grupo guardado = servicio.insertarGrupo(grupo);
         return new ResponseEntity<>(GrupoMapper.toDto(guardado), HttpStatus.CREATED);
+    }
+
+    @Operation(summary = "Actualiza un grupo existente. idInstructor null quita el instructor "
+            + "asignado; imagenGrupo no enviada (null) conserva la imagen actual del grupo.")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Grupo actualizado"),
+    })
+    @PreAuthorize("hasAuthority('Coordinador')")
+    @PutMapping("/grupo")
+    public ResponseEntity<GrupoDto> putGrupo(
+            @RequestParam String categoria, @RequestParam String curso,
+            @RequestParam Integer anio, @RequestParam Integer iterable,
+            @RequestBody GrupoDto dto) {
+        PeticionLogger.log(LOGGER, "PUT", "/api/v2/grupo",
+                "categoria=" + categoria + ", curso=" + curso + ", anio=" + anio + ", iterable=" + iterable);
+        Grupo datos = GrupoMapper.fromDto(dto);
+        Grupo actualizado = servicio.actualizarGrupo(categoria, curso, anio, iterable, datos);
+        return new ResponseEntity<>(GrupoMapper.toDto(actualizado), HttpStatus.OK);
     }
 
     @Operation(summary = "obtiene un grupo del sistema")
