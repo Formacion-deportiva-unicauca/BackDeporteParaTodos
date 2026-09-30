@@ -65,17 +65,22 @@ public class ClaseRest {
         return new ResponseEntity<>(respuesta, HttpStatus.OK);
     }
 
-    @Operation(summary = "Registra una nueva clase para un grupo, el codigo es generado por el sistema")
+    @Operation(summary = "Registra una nueva clase para un grupo, el codigo es generado por el sistema. "
+            + "Si ya existe una clase para ese grupo en esa fecha, la reutiliza (200) en vez de crear otra.")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "201", description = "Clase registrada correctamente")
+        @ApiResponse(responseCode = "201", description = "Clase registrada correctamente"),
+        @ApiResponse(responseCode = "200", description = "Ya existia una clase para ese grupo en esa fecha; se reutiliza")
     })
     @PreAuthorize("hasAnyAuthority('Instructor','Coordinador')")
     @PostMapping("/claseGrupo")
     public ResponseEntity<ClaseDto> postClase(@RequestBody @Valid ClaseDto entidad) {
         PeticionLogger.log(LOGGER, "POST", "/api/v2/claseGrupo", entidad);
         Clase modelo = ClaseMapper.fromDto(entidad);
-        Clase claseInsertada = servicioClase.insertarClase(modelo);
-        return new ResponseEntity<>(ClaseMapper.toDto(claseInsertada), HttpStatus.CREATED);
+        boolean yaExistiaClaseHoy = servicioClase.existeClaseEnFecha(
+                modelo.getCategoria(), modelo.getCurso(), modelo.getAnio(), modelo.getIterable(), modelo.getFecha());
+        Clase claseResultado = servicioClase.insertarClase(modelo);
+        HttpStatus status = yaExistiaClaseHoy ? HttpStatus.OK : HttpStatus.CREATED;
+        return new ResponseEntity<>(ClaseMapper.toDto(claseResultado), status);
     }
 
     @Operation(summary = "Marca una clase como eliminada")

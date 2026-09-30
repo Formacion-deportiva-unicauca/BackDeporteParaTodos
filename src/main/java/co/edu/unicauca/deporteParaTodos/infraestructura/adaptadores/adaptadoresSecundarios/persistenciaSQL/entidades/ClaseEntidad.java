@@ -1,7 +1,6 @@
 package co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresSecundarios.persistenciaSQL.entidades;
 
-import java.sql.Date;
-import java.sql.Timestamp;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -49,7 +48,7 @@ public class ClaseEntidad {
     private String idInstructor;
 
     @Column(name = "CLS_FECHA")
-    private Date fecha;
+    private LocalDate fecha;
 
     @Column(name="cls_duracion_horas")
     private Integer horas;

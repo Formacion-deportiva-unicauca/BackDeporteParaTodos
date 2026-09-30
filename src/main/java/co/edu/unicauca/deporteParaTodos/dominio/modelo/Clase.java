@@ -1,6 +1,6 @@
 package co.edu.unicauca.deporteParaTodos.dominio.modelo;
 
-import java.sql.Date;
+import java.time.LocalDate;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -25,7 +25,7 @@ public class Clase {
 
     private String idInstructor;
 
-    private Date fecha;
+    private LocalDate fecha;
 
     private Integer horas;
 

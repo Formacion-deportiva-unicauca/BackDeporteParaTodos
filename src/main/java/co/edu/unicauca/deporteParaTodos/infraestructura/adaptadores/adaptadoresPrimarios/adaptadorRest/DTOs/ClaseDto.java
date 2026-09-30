@@ -1,6 +1,6 @@
 package co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs;
 
-import java.sql.Date;
+import java.time.LocalDate;
 
 import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -43,7 +43,7 @@ public class ClaseDto {
     private String idInstructor;
 
     @NotNull(message = "{clase.fecha.null}")
-    private Date fecha;
+    private LocalDate fecha;
 
     @NotNull(message = "{clase.horas.null}")
     private Integer horas;

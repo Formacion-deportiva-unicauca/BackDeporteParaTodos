@@ -6,7 +6,7 @@ import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresP
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresSecundarios.persistenciaSQL.entidades.ClaseEntidad;
 import org.junit.jupiter.api.Test;
 
-import java.sql.Date;
+import java.time.LocalDate;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -16,7 +16,7 @@ class ClaseMapperTest {
     private static final String CURSO      = "Natacion";
     private static final Integer ANIO      = 2025;
     private static final Integer ITERABLE  = 1;
-    private static final Date    FECHA     = Date.valueOf("2025-01-15");
+    private static final LocalDate FECHA   = LocalDate.of(2025, 1, 15);
 
     private ClaseEntidad entidadBase() {
         ClaseEntidad e = new ClaseEntidad();
