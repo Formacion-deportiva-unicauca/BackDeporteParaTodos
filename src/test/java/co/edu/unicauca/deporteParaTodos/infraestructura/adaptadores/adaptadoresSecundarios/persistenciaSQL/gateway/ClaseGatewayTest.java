@@ -11,7 +11,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.sql.Date;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -32,7 +32,7 @@ class ClaseGatewayTest {
     private static final String  CURSO     = "Natacion";
     private static final Integer ANIO      = 2025;
     private static final Integer ITERABLE  = 1;
-    private static final Date    FECHA     = Date.valueOf("2025-01-15");
+    private static final LocalDate FECHA   = LocalDate.of(2025, 1, 15);
 
     private ClaseEntidad entidadBase() {
         ClaseEntidad e = new ClaseEntidad();
@@ -76,6 +76,39 @@ class ClaseGatewayTest {
         assertEquals(0,         captor.getValue().getEliminado());
         assertEquals(CATEGORIA, captor.getValue().getIdGrupoCategoria());
         assertEquals(CURSO,     captor.getValue().getIdGrupoCurso());
+    }
+
+    @Test
+    void existeClaseEnFecha_delegaAlRepositorioConEliminado0() {
+        when(repoClase.existsByIdGrupoCategoriaAndIdGrupoCursoAndIdGrupoAnioAndIdGrupoIterableAndFechaAndEliminado(
+                CATEGORIA, CURSO, ANIO, ITERABLE, FECHA, 0)).thenReturn(true);
+
+        boolean resultado = claseGateway.existeClaseEnFecha(CATEGORIA, CURSO, ANIO, ITERABLE, FECHA);
+
+        assertTrue(resultado);
+        verify(repoClase).existsByIdGrupoCategoriaAndIdGrupoCursoAndIdGrupoAnioAndIdGrupoIterableAndFechaAndEliminado(
+                CATEGORIA, CURSO, ANIO, ITERABLE, FECHA, 0);
+    }
+
+    @Test
+    void obtenerClaseEnFecha_existente_retornaClaseMapeada() {
+        when(repoClase.findByIdGrupoCategoriaAndIdGrupoCursoAndIdGrupoAnioAndIdGrupoIterableAndFechaAndEliminado(
+                CATEGORIA, CURSO, ANIO, ITERABLE, FECHA, 0)).thenReturn(Optional.of(entidadBase()));
+
+        Clase resultado = claseGateway.obtenerClaseEnFecha(CATEGORIA, CURSO, ANIO, ITERABLE, FECHA);
+
+        assertEquals(1,         resultado.getCodigo());
+        assertEquals(CATEGORIA, resultado.getCategoria());
+        assertEquals(CURSO,     resultado.getCurso());
+    }
+
+    @Test
+    void obtenerClaseEnFecha_noExiste_lanzaNoExisteExcepcion() {
+        when(repoClase.findByIdGrupoCategoriaAndIdGrupoCursoAndIdGrupoAnioAndIdGrupoIterableAndFechaAndEliminado(
+                CATEGORIA, CURSO, ANIO, ITERABLE, FECHA, 0)).thenReturn(Optional.empty());
+
+        assertThrows(NoExisteExcepcion.class,
+                () -> claseGateway.obtenerClaseEnFecha(CATEGORIA, CURSO, ANIO, ITERABLE, FECHA));
     }
 
     @Test

@@ -1,6 +1,8 @@
 package co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresSecundarios.persistenciaSQL.gateway;
 
+import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,6 +24,21 @@ public class ClaseGateway implements IClaseGateway {
     @Override
     public boolean existeClase(int id) {
         return repoClase.existsById(id);
+    }
+
+    @Override
+    public boolean existeClaseEnFecha(String categoria, String curso, Integer anio, Integer iterable, LocalDate fecha) {
+        return repoClase.existsByIdGrupoCategoriaAndIdGrupoCursoAndIdGrupoAnioAndIdGrupoIterableAndFechaAndEliminado(
+                categoria, curso, anio, iterable, fecha, 0);
+    }
+
+    @Override
+    public Clase obtenerClaseEnFecha(String categoria, String curso, Integer anio, Integer iterable, LocalDate fecha) {
+        Optional<ClaseEntidad> entidad = repoClase
+                .findByIdGrupoCategoriaAndIdGrupoCursoAndIdGrupoAnioAndIdGrupoIterableAndFechaAndEliminado(
+                        categoria, curso, anio, iterable, fecha, 0);
+        return entidad.map(ClaseMapper::toDominio)
+                .orElseThrow(() -> new NoExisteExcepcion("No existe una clase para el grupo en esa fecha"));
     }
 
     @Override

@@ -10,7 +10,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.sql.Date;
+import java.time.LocalDate;
 import java.util.Collections;
 import java.util.List;
 
@@ -40,7 +40,7 @@ class ClaseServicioTest {
         c.setAnio(ANIO);
         c.setIterable(ITERABLE);
         c.setIdInstructor("INS001");
-        c.setFecha(Date.valueOf("2025-01-15"));
+        c.setFecha(LocalDate.of(2025, 1, 15));
         c.setHoras(1);
         c.setMinutos(30);
         c.setEliminado(0);
@@ -77,6 +77,7 @@ class ClaseServicioTest {
 
     @Test
     void insertarClase_exitoso_delegaAlGateway() {
+        when(claseGateway.existeClaseEnFecha(any(), any(), any(), any(), any())).thenReturn(false);
         when(claseGateway.insertarClase(any(Clase.class))).thenReturn(claseBase());
 
         Clase resultado = claseServicio.insertarClase(claseBase());
@@ -84,6 +85,43 @@ class ClaseServicioTest {
         assertNotNull(resultado);
         assertEquals(CATEGORIA, resultado.getCategoria());
         verify(claseGateway).insertarClase(any(Clase.class));
+    }
+
+    // El Instructor registra asistencia alumno por alumno (un click por alumno, en
+    // momentos distintos). Si ya existe una clase de hoy para el grupo, insertarClase()
+    // debe REUTILIZARLA -- devolver la existente, no lanzar excepcion ni crear una
+    // segunda fila (ver ClaseFechaDuplicadaIT para la prueba real contra MySQL).
+    @Test
+    void insertarClase_yaExisteClaseEnFecha_retornaClaseExistenteSinCrearOtra() {
+        Clase datos = claseBase();
+        Clase existente = claseBase();
+        existente.setCodigo(99); // codigo distinto: confirma que es la fila YA existente, no una nueva
+        when(claseGateway.existeClaseEnFecha(
+                datos.getCategoria(), datos.getCurso(), datos.getAnio(), datos.getIterable(), datos.getFecha()))
+                .thenReturn(true);
+        when(claseGateway.obtenerClaseEnFecha(
+                datos.getCategoria(), datos.getCurso(), datos.getAnio(), datos.getIterable(), datos.getFecha()))
+                .thenReturn(existente);
+
+        Clase resultado = claseServicio.insertarClase(datos);
+
+        assertEquals(99, resultado.getCodigo());
+        verify(claseGateway, never()).insertarClase(any(Clase.class));
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // existeClaseEnFecha
+    // ──────────────────────────────────────────────────────────────────────────
+
+    @Test
+    void existeClaseEnFecha_delegaAlGateway() {
+        LocalDate fecha = LocalDate.of(2026, 1, 1);
+        when(claseGateway.existeClaseEnFecha(CATEGORIA, CURSO, ANIO, ITERABLE, fecha)).thenReturn(true);
+
+        boolean resultado = claseServicio.existeClaseEnFecha(CATEGORIA, CURSO, ANIO, ITERABLE, fecha);
+
+        assertTrue(resultado);
+        verify(claseGateway).existeClaseEnFecha(CATEGORIA, CURSO, ANIO, ITERABLE, fecha);
     }
 
     // ──────────────────────────────────────────────────────────────────────────
