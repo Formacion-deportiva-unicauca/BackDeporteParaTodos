@@ -1,6 +1,10 @@
 package co.edu.unicauca.deporteParaTodos.dominio.servicios;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -165,5 +169,59 @@ class GrupoIT {
                         + "AND GRP_ANIO = ? AND GRP_ITERABLE = ?",
                 String.class, CATEGORIA, CURSO, ANIO, ITERABLE);
         assertNull(perfId, "PERF_ID debe quedar NULL en la BD tras quitar el instructor");
+    }
+
+    // Grupo propio por test (iterable asignado por insertarGrupo()) para no interferir
+    // con el grupo ITERABLE=1 que usa putGrupo_instructorNull_dejaPerfIdNullEnBd --
+    // eliminarGrupo() no tiene reversa, asi que borrarlo dejaria ese otro test sin fixture.
+    private int crearGrupoFresco() {
+        Grupo grupo = new Grupo();
+        grupo.setCategoria(CATEGORIA);
+        grupo.setCurso(CURSO);
+        grupo.setImagenGrupo(imagenId);
+        grupo.setIdInstructor(INSTRUCTOR_SEED_ID);
+        grupo.setCupos(1);
+        grupo.setFechaCreacion(LocalDate.now());
+        grupo.setPeriodo(1);
+        return grupoServicio.insertarGrupo(grupo).getIterable();
+    }
+
+    private boolean apareceEnGruposDisponibles(int iterable) {
+        return grupoServicio.obtenerGruposDisponibles().stream()
+                .anyMatch(g -> CATEGORIA.equals(g.getCategoria()) && CURSO.equals(g.getCurso())
+                        && g.getIterable() == iterable);
+    }
+
+    @Test
+    void deleteGrupo_marcaEliminadoYDesaparaceDeGruposDisponibles() throws Exception {
+        int iterable = crearGrupoFresco();
+        assertTrue(apareceEnGruposDisponibles(iterable),
+                "El grupo recien creado debe aparecer en obtenerGruposDisponibles() antes del DELETE");
+
+        mockMvc.perform(delete("/api/v2/grupo")
+                .param("categoria", CATEGORIA).param("curso", CURSO)
+                .param("anio", String.valueOf(ANIO)).param("iterable", String.valueOf(iterable))
+                .header("Authorization", "Bearer " + buildJwt("Coordinador", "coord-it")))
+                .andExpect(status().isOk());
+
+        assertFalse(apareceEnGruposDisponibles(iterable),
+                "El grupo eliminado no debe aparecer en obtenerGruposDisponibles() -- sin filtro adicional");
+    }
+
+    @Test
+    void deleteGrupo_segundaVezSobreElMismoGrupo_retorna409() throws Exception {
+        int iterable = crearGrupoFresco();
+
+        mockMvc.perform(delete("/api/v2/grupo")
+                .param("categoria", CATEGORIA).param("curso", CURSO)
+                .param("anio", String.valueOf(ANIO)).param("iterable", String.valueOf(iterable))
+                .header("Authorization", "Bearer " + buildJwt("Coordinador", "coord-it")))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(delete("/api/v2/grupo")
+                .param("categoria", CATEGORIA).param("curso", CURSO)
+                .param("anio", String.valueOf(ANIO)).param("iterable", String.valueOf(iterable))
+                .header("Authorization", "Bearer " + buildJwt("Coordinador", "coord-it")))
+                .andExpect(status().isConflict());
     }
 }

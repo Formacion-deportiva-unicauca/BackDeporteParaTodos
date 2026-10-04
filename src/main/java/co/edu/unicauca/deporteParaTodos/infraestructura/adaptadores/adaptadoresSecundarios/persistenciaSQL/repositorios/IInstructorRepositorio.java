@@ -10,6 +10,10 @@ import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresS
 
 public interface IInstructorRepositorio extends CrudRepository<InstructorEntidad, String>{
 
+    List<InstructorEntidad> findByEliminado(Integer eliminado);
+
+    boolean existsByIdPerfilAndEliminado(String idPerfil, Integer eliminado);
+
     @Query(value = """
         SELECT
             inst.perf_id AS id,

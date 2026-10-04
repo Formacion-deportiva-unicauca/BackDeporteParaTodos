@@ -5,9 +5,7 @@ import java.util.List;
 import java.util.Optional;
 
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Perfil;
-import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IInstructorGateway;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Instructor;
@@ -33,14 +31,11 @@ public class InstructorGateway implements IInstructorGateway {
     @Autowired
     private IAlumnoRepositorio repoAlumno;
 
-    @Qualifier("modelMapperGenerico")
-    @Autowired
-    private ModelMapper mapper;
-
     // ── Mapeo manual Entidad → Dominio ──────────────────────────────────────
     private Instructor mapearEntidadADominio(InstructorEntidad entidad) {
         Instructor instructor = new Instructor();
         instructor.setInst_codigo(entidad.getIdPerfil());
+        instructor.setEliminado(entidad.getEliminado());
 
         if (entidad.getPerfil() != null) {
             instructor.setPerfil(PerfilMapper.toDominio(entidad.getPerfil()));
@@ -53,7 +48,10 @@ public class InstructorGateway implements IInstructorGateway {
     @Override
     public List<Instructor> obtenerInstructores() {
         List<Instructor> lista = new ArrayList<>();
-        repoInstructor.findAll()
+        // Lista publica: excluye eliminados (mismo criterio que CursoServicio para
+        // listados). obtenerInstructor() NO se filtra -- lo usa el guard de 409 de
+        // eliminarInstructor() para leer el estado de un instructor ya eliminado.
+        repoInstructor.findByEliminado(0)
                 .forEach(entidad -> lista.add(mapearEntidadADominio(entidad)));
         return lista;
     }
@@ -87,8 +85,14 @@ public class InstructorGateway implements IInstructorGateway {
         Optional<InstructorEntidad> entidadExistente = repoInstructor.findById(instructorId);
         if (entidadExistente.isPresent()) {
             InstructorEntidad entidad = entidadExistente.get();
-            repoInstructor.delete(entidad);
-            return mapper.map(entidad, Instructor.class);
+            entidad.setEliminado(1);
+            InstructorEntidad guardado = repoInstructor.save(entidad);
+            // mapper.map() generico (ModelMapper) no mapeaba bien el perfil anidado
+            // (nombre/correo quedaban null -- confirmado con test de integracion real,
+            // ver InstructorIT) por los getters irregulares de PerfilEntidad
+            // (getPerfcorreo() sin guion bajo, getPerf_Sexo() con S mayuscula). Se usa
+            // el mismo mapeo manual que ya usan obtenerInstructor()/obtenerInstructores().
+            return mapearEntidadADominio(guardado);
         }
         throw new NoExisteExcepcion();
     }

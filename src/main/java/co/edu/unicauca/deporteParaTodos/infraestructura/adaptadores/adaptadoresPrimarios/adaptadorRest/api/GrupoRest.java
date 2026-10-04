@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -135,6 +136,23 @@ public class GrupoRest {
         Grupo datos = GrupoMapper.fromDto(dto);
         Grupo actualizado = servicio.actualizarGrupo(categoria, curso, anio, iterable, datos);
         return new ResponseEntity<>(GrupoMapper.toDto(actualizado), HttpStatus.OK);
+    }
+
+    @Operation(summary = "Borrado lógico de un grupo: marca meta_eliminado=1. Retorna 409 si ya estaba eliminado.")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Grupo eliminado lógicamente"),
+        @ApiResponse(responseCode = "404", description = "El grupo no existe"),
+        @ApiResponse(responseCode = "409", description = "El grupo ya estaba eliminado"),
+    })
+    @PreAuthorize("hasAuthority('Coordinador')")
+    @DeleteMapping("/grupo")
+    public ResponseEntity<GrupoDto> deleteGrupo(
+            @RequestParam String categoria, @RequestParam String curso,
+            @RequestParam Integer anio, @RequestParam Integer iterable) {
+        PeticionLogger.log(LOGGER, "DELETE", "/api/v2/grupo",
+                "categoria=" + categoria + ", curso=" + curso + ", anio=" + anio + ", iterable=" + iterable);
+        Grupo eliminado = servicio.eliminarGrupo(categoria, curso, anio, iterable);
+        return new ResponseEntity<>(GrupoMapper.toDto(eliminado), HttpStatus.OK);
     }
 
     @Operation(summary = "obtiene un grupo del sistema")

@@ -30,6 +30,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -111,6 +112,43 @@ class GrupoRestSecurityTest {
                 .param("anio", "2026").param("iterable", "1")
                 .contentType("application/json")
                 .content(BODY_SIN_INSTRUCTOR)
+                .header("Authorization", "Bearer " + buildJwt("Coordinador", "coord1")))
+                .andExpect(status().isOk());
+    }
+
+    // DELETE /api/v2/grupo -- solo Coordinador puede eliminar un grupo (@PreAuthorize).
+
+    @Test
+    void deleteGrupo_rolAlumno_retorna403() throws Exception {
+        mockMvc.perform(delete("/api/v2/grupo")
+                .param("categoria", "cat1").param("curso", "cur1")
+                .param("anio", "2026").param("iterable", "1")
+                .header("Authorization", "Bearer " + buildJwt("Alumno", "alum1")))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void deleteGrupo_rolInstructor_retorna403() throws Exception {
+        mockMvc.perform(delete("/api/v2/grupo")
+                .param("categoria", "cat1").param("curso", "cur1")
+                .param("anio", "2026").param("iterable", "1")
+                .header("Authorization", "Bearer " + buildJwt("Instructor", "ins1")))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void deleteGrupo_rolCoordinador_retorna200() throws Exception {
+        Grupo eliminado = new Grupo();
+        eliminado.setCategoria("cat1");
+        eliminado.setCurso("cur1");
+        eliminado.setAnio(2026);
+        eliminado.setIterable(1);
+        when(servicio.eliminarGrupo(anyString(), anyString(), anyInt(), anyInt()))
+                .thenReturn(eliminado);
+
+        mockMvc.perform(delete("/api/v2/grupo")
+                .param("categoria", "cat1").param("curso", "cur1")
+                .param("anio", "2026").param("iterable", "1")
                 .header("Authorization", "Bearer " + buildJwt("Coordinador", "coord1")))
                 .andExpect(status().isOk());
     }

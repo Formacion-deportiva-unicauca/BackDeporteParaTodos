@@ -7,6 +7,7 @@ import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosEntrada.IGrupo
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IGrupoGateway;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Grupo;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.NoExisteExcepcion;
+import co.edu.unicauca.deporteParaTodos.dominio.excepciones.YaExisteElementoExcepcion;
 
 @Service
 public class GrupoServicio implements IGrupoServicio {
@@ -56,6 +57,9 @@ public class GrupoServicio implements IGrupoServicio {
     public Grupo eliminarGrupo(String categoria, String curso, Integer anio, Integer iterable) {
         if (!grupoGateway.existeGrupo(categoria, curso, anio, iterable)) {
             throw new NoExisteExcepcion("el objetivo a eliminar no existe");
+        }
+        if (grupoGateway.existeGrupoEliminado(categoria, curso, anio, iterable)) {
+            throw new YaExisteElementoExcepcion("El grupo ya se encuentra eliminado");
         }
         return grupoGateway.eliminarGrupo(categoria, curso, anio, iterable);
     }

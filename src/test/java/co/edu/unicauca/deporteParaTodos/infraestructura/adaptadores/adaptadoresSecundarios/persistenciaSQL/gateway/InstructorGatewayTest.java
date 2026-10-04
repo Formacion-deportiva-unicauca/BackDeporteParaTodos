@@ -14,7 +14,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.modelmapper.ModelMapper;
 
 import java.util.List;
 import java.util.Optional;
@@ -35,9 +34,6 @@ class InstructorGatewayTest {
 
     @Mock
     private IAlumnoRepositorio repoAlumno;
-
-    @Mock
-    private ModelMapper mapper;
 
     @InjectMocks
     private InstructorGateway instructorGateway;
@@ -77,9 +73,12 @@ class InstructorGatewayTest {
         return p;
     }
 
+    // Riesgo real detectado al activar DELETE /instructor: la lista publica usaba
+    // findAll() (sin filtro), por lo que un instructor eliminado seguiria apareciendo
+    // en GET /instructores. Ahora delega en findByEliminado(0).
     @Test
-    void obtenerInstructores_retornaListaConInstructor() {
-        when(repoInstructor.findAll()).thenReturn(List.of(instructorEntidadBase()));
+    void obtenerInstructores_delegaEnFindByEliminado0_excluyeEliminados() {
+        when(repoInstructor.findByEliminado(0)).thenReturn(List.of(instructorEntidadBase()));
 
         List<Instructor> resultado = instructorGateway.obtenerInstructores();
 
@@ -88,6 +87,8 @@ class InstructorGatewayTest {
         assertNotNull(resultado.get(0).getPerfil());
         assertEquals(PERF_ID, resultado.get(0).getPerfil().getId());
         assertEquals(CORREO,  resultado.get(0).getPerfil().getCorreo());
+        verify(repoInstructor).findByEliminado(0);
+        verify(repoInstructor, never()).findAll();
     }
 
     @Test
@@ -111,16 +112,32 @@ class InstructorGatewayTest {
         verify(repoInstructor, never()).findById(any());
     }
 
+    // SCRUM-138: eliminarInstructor() hacia DELETE fisico (repoInstructor.delete()),
+    // riesgo real de romper FK_GRUPO_INSTRUCTOR (RESTRICT) y de borrar silenciosamente
+    // la atribucion historica en tbl_clase (FK_CLASE_INSTRUCTOR ON DELETE SET NULL).
+    // Ahora es borrado logico: setEliminado(1) + save(), mismo patron exacto de
+    // HorarioGateway.eliminarHorario() -- nunca debe llamar a delete().
     @Test
-    void eliminarInstructor_existente_eliminaYRetornaInstructor() {
+    void eliminarInstructor_existente_marcaEliminadoYNuncaBorraFisicamente() {
         InstructorEntidad entidad = instructorEntidadBase();
+        InstructorEntidad guardado = instructorEntidadBase();
+        guardado.setEliminado(1);
         when(repoInstructor.findById(PERF_ID)).thenReturn(Optional.of(entidad));
-        when(mapper.map(entidad, Instructor.class)).thenReturn(new Instructor());
+        when(repoInstructor.save(entidad)).thenReturn(guardado);
 
         Instructor resultado = instructorGateway.eliminarInstructor(PERF_ID);
 
         assertNotNull(resultado);
-        verify(repoInstructor).delete(entidad);
+        assertEquals(1, entidad.getEliminado(), "La entidad pasada a save() debe quedar con eliminado=1");
+        // El mapeo manual (mapearEntidadADominio -> PerfilMapper) debe poblar el
+        // perfil completo -- a diferencia de mapper.map() generico, que en
+        // InstructorIT se confirmo que dejaba nombre/correo en null.
+        assertNotNull(resultado.getPerfil(), "El perfil debe venir poblado, no null");
+        assertEquals(PERF_ID, resultado.getPerfil().getId());
+        assertEquals(NOMBRE,  resultado.getPerfil().getNombre());
+        assertEquals(CORREO,  resultado.getPerfil().getCorreo());
+        verify(repoInstructor).save(entidad);
+        verify(repoInstructor, never()).delete(any());
     }
 
     @Test

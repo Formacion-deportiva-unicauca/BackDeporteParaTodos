@@ -81,6 +81,13 @@ public interface IGrupoGateway {
      */
     public Grupo eliminarGrupo(String categoria, String curso, Integer anio, Integer iterable);
 
+    /***
+     * Confirma si el grupo identificado con los parametros dados ya esta marcado
+     * como eliminado (META_ELIMINADO=1). Si el grupo no existe, retorna false --
+     * ese caso lo cubre existeGrupo().
+     */
+    public boolean existeGrupoEliminado(String categoria, String curso, Integer anio, Integer iterable);
+
 
     /***
      * Recupera un curso del sistema identificado con los parametros
