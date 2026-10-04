@@ -62,6 +62,11 @@ public class InstructorServicio implements IInstructorServicio {
         if (!instructorsGateway.existeInstructor(instructorId)) {
             throw new NoExisteExcepcion("No exoste el instructor con el identificador " + instructorId);
         }
+        Instructor actual = instructorsGateway.obtenerInstructor(instructorId)
+                .orElseThrow(() -> new NoExisteExcepcion("No exoste el instructor con el identificador " + instructorId));
+        if (actual.getEliminado() != null && actual.getEliminado() == 1) {
+            throw new YaExisteElementoExcepcion("El instructor ya se encuentra eliminado");
+        }
         return instructorsGateway.eliminarInstructor(instructorId);
     }
 

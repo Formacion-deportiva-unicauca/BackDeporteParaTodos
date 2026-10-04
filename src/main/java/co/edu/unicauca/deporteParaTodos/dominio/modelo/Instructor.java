@@ -12,5 +12,6 @@ import lombok.Setter;
 public class Instructor {
     private String inst_codigo;
     private Perfil perfil;
+    private Integer eliminado;
 
 }

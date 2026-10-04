@@ -18,7 +18,25 @@
       "Read(//d/ACER/Documents/Practica_Codigo_Fuente/Fronted2026/DeporteParaTodosFront/src/**)",
       "Bash(find \"/d/ACER/Documents/Practica_Codigo_Fuente/Fronted2026/DeporteParaTodosFront/src\" -type f \\\\\\( -name \"*.ts\" -o -name \"*.html\" \\\\\\) | grep -iE \"instructor\" | sort)",
       "PowerShell(cd \"d:\\\\ACER\\\\Documents\\\\Practica_Codigo_Fuente\\\\Backend2026\\\\BackDeporteParaTodos\"; mvn test 2>&1 | Select-String -Pattern \"Tests run|BUILD|ERROR|FAILURE|CategoriaGatewayTest|GrupoGatewayTest|HorarioServicioTest|EscenarioServicioTest\" | ForEach-Object { $_.Line })",
-      "Bash(mvn test *)"
+      "Bash(mvn test *)",
+      "PowerShell(graphify query \"�Qu� archivos y m�todos est�n involucrados en desvincular una inscripci�n \\(desvincularInscripcion\\)? Incluye el servicio, gateway, repositorio, entidad, y cualquier m�todo relacionado con promoci�n autom�tica de lista de espera al desvincular.\")",
+      "Bash(./mvnw.cmd -q verify)",
+      "Bash(echo \"EXIT_CODE=$?\")",
+      "Read(//tmp/**)",
+      "Bash(python3 -c ' *)",
+      "Bash(awk -F'[:,]' '{run+=$2; fail+=$4; err+=$6; skip+=$8} END {print \"TOTAL=\"run, \"FAILURES=\"fail, \"ERRORS=\"err, \"SKIPPED=\"skip}')",
+      "Bash(rtk find *)",
+      "Bash(rtk grep *)",
+      "Bash(rtk ls *)",
+      "Bash(cd \"/d/ACER/Documents/Practica_Codigo_Fuente/Backend2026/BackDeporteParaTodos\" && grep -nE \"COMPILATION ERROR|\\\\[ERROR\\\\].*\\\\.java\" /tmp/mvn_verify_out.log | head -30; echo \"count_error_java=$\\(grep -c '\\\\[ERROR\\\\].*\\\\.java' /tmp/mvn_verify_out.log\\)\")",
+      "PowerShell(graphify query \"promoverManualmente PATCH inscripcion promover InscripcionServicio InscripcionGateway bloqueo pesimista PESSIMISTIC_WRITE obtenerGrupoConLock cupos\" --budget 1500)",
+      "PowerShell(graphify query \"obtenerGrupoConLock PESSIMISTIC_WRITE GrupoGateway IGrupoGateway GrupoEntidad lock\" --budget 1200)",
+      "Bash(docker --version)",
+      "Bash(rtk docker *)",
+      "Bash(rtk read *)",
+      "Bash(rtk wc *)",
+      "Bash(docker compose *)",
+      "Bash(rtk git *)"
     ]
   }
 }

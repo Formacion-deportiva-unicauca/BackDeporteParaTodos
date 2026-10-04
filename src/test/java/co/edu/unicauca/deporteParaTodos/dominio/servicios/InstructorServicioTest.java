@@ -134,4 +134,52 @@ class InstructorServicioTest {
 
         verify(instructorsGateway, never()).registrarInstructor(any(), any());
     }
+
+    // ── eliminarInstructor ──────────────────────────────────────────────────
+    // SCRUM-138: eliminarInstructor() hacia DELETE fisico (riesgo real de romper
+    // FK_GRUPO_INSTRUCTOR -- RESTRICT -- y de borrar silenciosamente la atribucion
+    // historica en tbl_clase via FK_CLASE_INSTRUCTOR ON DELETE SET NULL). Mismo
+    // patron exacto de HorarioServicio.eliminarHorario(): existeInstructor() (404),
+    // luego obtenerInstructor() para leer el estado actual y guardar contra 409.
+
+    @Test
+    void eliminarInstructor_noExiste_lanzaNoExisteExcepcion() {
+        when(instructorsGateway.existeInstructor(ID)).thenReturn(false);
+
+        assertThrows(NoExisteExcepcion.class, () -> instructorServicio.eliminarInstructor(ID));
+
+        verify(instructorsGateway, never()).eliminarInstructor(any());
+    }
+
+    @Test
+    void eliminarInstructor_exitoso_delegaAlGateway() {
+        Instructor activo = instructorConPerfil();
+        activo.setEliminado(0);
+        Instructor eliminado = instructorConPerfil();
+        eliminado.setEliminado(1);
+        when(instructorsGateway.existeInstructor(ID)).thenReturn(true);
+        when(instructorsGateway.obtenerInstructor(ID)).thenReturn(Optional.of(activo));
+        when(instructorsGateway.eliminarInstructor(ID)).thenReturn(eliminado);
+
+        Instructor resultado = instructorServicio.eliminarInstructor(ID);
+
+        assertNotNull(resultado);
+        verify(instructorsGateway).eliminarInstructor(ID);
+    }
+
+    // Llamar eliminarInstructor() dos veces seguidas: la primera exitosa, la segunda
+    // debe dar 409 en vez de reintentar el borrado silenciosamente.
+    @Test
+    void eliminarInstructor_yaEliminado_lanzaYaExisteElementoExcepcion() {
+        Instructor yaEliminado = instructorConPerfil();
+        yaEliminado.setEliminado(1);
+        when(instructorsGateway.existeInstructor(ID)).thenReturn(true);
+        when(instructorsGateway.obtenerInstructor(ID)).thenReturn(Optional.of(yaEliminado));
+
+        YaExisteElementoExcepcion ex = assertThrows(YaExisteElementoExcepcion.class,
+                () -> instructorServicio.eliminarInstructor(ID));
+
+        assertEquals("El instructor ya se encuentra eliminado", ex.getMessage());
+        verify(instructorsGateway, never()).eliminarInstructor(any());
+    }
 }

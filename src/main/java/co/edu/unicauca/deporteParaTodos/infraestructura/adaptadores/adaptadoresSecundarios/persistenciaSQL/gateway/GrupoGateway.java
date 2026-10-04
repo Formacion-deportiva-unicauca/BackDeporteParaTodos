@@ -98,7 +98,7 @@ public class GrupoGateway implements IGrupoGateway {
             throw new DependenciaFallida("la imagen identificado con " + datosGrupo.getImagenGrupo() + " no existe en el sistema");
         }
         if (datosGrupo.getIdInstructor() != null) {
-            if (!repoInstructor.existsById(datosGrupo.getIdInstructor())) {
+            if (!repoInstructor.existsByIdPerfilAndEliminado(datosGrupo.getIdInstructor(), 0)) {
                 throw new DependenciaFallida("el instructor identificado con " + datosGrupo.getIdInstructor() + " no existe en el sistema");
             }
         }
@@ -130,7 +130,8 @@ public class GrupoGateway implements IGrupoGateway {
             throw new DependenciaFallida("la imagen identificado con " + datosGrupo.getImagenGrupo() + " no existe en el sistema");
         }
         // idInstructor null => se quita el instructor del grupo (mismo criterio que insertarGrupo()).
-        if (datosGrupo.getIdInstructor() != null && !repoInstructor.existsById(datosGrupo.getIdInstructor())) {
+        if (datosGrupo.getIdInstructor() != null
+                && !repoInstructor.existsByIdPerfilAndEliminado(datosGrupo.getIdInstructor(), 0)) {
             throw new DependenciaFallida("el instructor identificado con " + datosGrupo.getIdInstructor() + " no existe en el sistema");
         }
         GrupoEntidad entidad = repoGrupo.findById(id)
@@ -166,6 +167,14 @@ public class GrupoGateway implements IGrupoGateway {
         entidad.setEliminado(1);
         GrupoEntidad respuesta = repoGrupo.save(entidad);
         return GrupoMapper.toDominio(respuesta);
+    }
+
+    @Override
+    public boolean existeGrupoEliminado(String categoria, String curso, Integer anio, Integer iterable) {
+        GrupoId id = new GrupoId(categoria, curso, anio, iterable);
+        return repoGrupo.findById(id)
+                .map(entidad -> Integer.valueOf(1).equals(entidad.getEliminado()))
+                .orElse(false);
     }
 
     @Override

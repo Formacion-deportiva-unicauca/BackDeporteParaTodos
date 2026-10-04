@@ -1,0 +1,1400 @@
+{
+  ".agents/skills/idea-refine/scripts/idea-refine.sh": {
+    "mtime": 1782434328.6403239,
+    "seen": 1788761054.816113,
+    "ast_hash": "a31fba73833373afec792641d2a8121a",
+    "semantic_hash": "a31fba73833373afec792641d2a8121a"
+  },
+  ".claude/settings.local.json": {
+    "mtime": 1787243003.410872,
+    "seen": 1788761054.816113,
+    "ast_hash": "e0cf31d351f3a543a7a80cc27e443597",
+    "semantic_hash": "e0cf31d351f3a543a7a80cc27e443597"
+  },
+  ".vscode/launch.json": {
+    "mtime": 1776653706.5742235,
+    "seen": 1788761054.816113,
+    "ast_hash": "3e3493d74ff997c63555109758119e52",
+    "semantic_hash": "3e3493d74ff997c63555109758119e52"
+  },
+  ".vscode/settings.json": {
+    "mtime": 1776653706.5742235,
+    "seen": 1788761054.816113,
+    "ast_hash": "74e9c64568833f4e7ca9ce5dac85ed71",
+    "semantic_hash": "74e9c64568833f4e7ca9ce5dac85ed71"
+  },
+  "mvnw": {
+    "mtime": 1776653706.5742235,
+    "seen": 1788761054.816113,
+    "ast_hash": "3b6222254e1da36c0039ab5df8941dbc",
+    "semantic_hash": "3b6222254e1da36c0039ab5df8941dbc"
+  },
+  "pom.xml": {
+    "mtime": 1787707704.9415946,
+    "seen": 1788761054.816113,
+    "ast_hash": "570b87b4834da880a1d1fd5d12b06afe",
+    "semantic_hash": "570b87b4834da880a1d1fd5d12b06afe"
+  },
+  "skills-lock.json": {
+    "mtime": 1782434328.6905222,
+    "seen": 1788761054.816113,
+    "ast_hash": "d86c4fd7050af22740e24edfd53750fd",
+    "semantic_hash": "d86c4fd7050af22740e24edfd53750fd"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/aplicacion/puertos/puertosEntrada/IAlumnoServicio.java": {
+    "mtime": 1776653706.576756,
+    "seen": 1788761054.816113,
+    "ast_hash": "77eaccb4f50bdf175017924da87865b6",
+    "semantic_hash": "77eaccb4f50bdf175017924da87865b6"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/aplicacion/puertos/puertosEntrada/IAsistenciaServicio.java": {
+    "mtime": 1785002246.2000644,
+    "seen": 1788761054.816113,
+    "ast_hash": "91e5f8307fd3ee65526fe0a4899d050d",
+    "semantic_hash": "91e5f8307fd3ee65526fe0a4899d050d"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/aplicacion/puertos/puertosEntrada/IAutenticacionServicio.java": {
+    "mtime": 1776653706.576756,
+    "seen": 1788761054.816113,
+    "ast_hash": "9a333a7fc27f8730d81c23ea128ac15f",
+    "semantic_hash": "9a333a7fc27f8730d81c23ea128ac15f"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/aplicacion/puertos/puertosEntrada/ICategoriaCursoServicio.java": {
+    "mtime": 1788237303.3675237,
+    "seen": 1788761054.816113,
+    "ast_hash": "9b3b4fd5c51ea4f92cd6231ba0797003",
+    "semantic_hash": "9b3b4fd5c51ea4f92cd6231ba0797003"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/aplicacion/puertos/puertosEntrada/IClaseServicio.java": {
+    "mtime": 1788406085.9949608,
+    "seen": 1788761054.816113,
+    "ast_hash": "feb924e1f1515bf31c4e5227ca3d3d19",
+    "semantic_hash": "feb924e1f1515bf31c4e5227ca3d3d19"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/aplicacion/puertos/puertosEntrada/ICoordinadorServicio.java": {
+    "mtime": 1776653706.576756,
+    "seen": 1788761054.816113,
+    "ast_hash": "ef9ebe3b892550b33fbf3a79ab7467dc",
+    "semantic_hash": "ef9ebe3b892550b33fbf3a79ab7467dc"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/aplicacion/puertos/puertosEntrada/ICursoServicio.java": {
+    "mtime": 1788226838.3990717,
+    "seen": 1788761054.816113,
+    "ast_hash": "a2ac7fb0c92c79b0014a4a9173e3e16f",
+    "semantic_hash": "a2ac7fb0c92c79b0014a4a9173e3e16f"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/aplicacion/puertos/puertosEntrada/IDeporteServicio.java": {
+    "mtime": 1776653706.576756,
+    "seen": 1788761054.816113,
+    "ast_hash": "b52a70f1d8595c3e056dc0ee872811e9",
+    "semantic_hash": "b52a70f1d8595c3e056dc0ee872811e9"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/aplicacion/puertos/puertosEntrada/IEscenarioServicio.java": {
+    "mtime": 1788306156.2429316,
+    "seen": 1788761054.816113,
+    "ast_hash": "759b53677324156166f138231669cd98",
+    "semantic_hash": "759b53677324156166f138231669cd98"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/aplicacion/puertos/puertosEntrada/IEstadisticaServicio.java": {
+    "mtime": 1776653706.576756,
+    "seen": 1788761054.816113,
+    "ast_hash": "36cbcf65dd2ce00cfa099af58d49928f",
+    "semantic_hash": "36cbcf65dd2ce00cfa099af58d49928f"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/aplicacion/puertos/puertosEntrada/IFacultadServicio.java": {
+    "mtime": 1776653706.576756,
+    "seen": 1788761054.816113,
+    "ast_hash": "428e4da015ae006be7290be9cdd745cd",
+    "semantic_hash": "428e4da015ae006be7290be9cdd745cd"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/aplicacion/puertos/puertosEntrada/IGrupoServicio.java": {
+    "mtime": 1788372739.3988893,
+    "seen": 1788761054.816113,
+    "ast_hash": "bae5851f3c79344da71dc3c8e5a0581f",
+    "semantic_hash": "bae5851f3c79344da71dc3c8e5a0581f"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/aplicacion/puertos/puertosEntrada/IHorarioServicio.java": {
+    "mtime": 1788372739.3988893,
+    "seen": 1788761054.8181243,
+    "ast_hash": "873e51792076cebd652a90f5a73010b2",
+    "semantic_hash": "873e51792076cebd652a90f5a73010b2"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/aplicacion/puertos/puertosEntrada/IImagenServicio.java": {
+    "mtime": 1776653706.576756,
+    "seen": 1788761054.8181243,
+    "ast_hash": "f406a961ec3faeb36f5a723e4d476a89",
+    "semantic_hash": "f406a961ec3faeb36f5a723e4d476a89"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/aplicacion/puertos/puertosEntrada/IInscripcionServicio.java": {
+    "mtime": 1785002246.202834,
+    "seen": 1788761054.8181243,
+    "ast_hash": "d303f8ad4159f51ff1a6c482816047e1",
+    "semantic_hash": "d303f8ad4159f51ff1a6c482816047e1"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/aplicacion/puertos/puertosEntrada/IInstructorServicio.java": {
+    "mtime": 1779382173.0639038,
+    "seen": 1788761054.8181243,
+    "ast_hash": "a650f08b63958886ef86521c6bc21b2d",
+    "semantic_hash": "a650f08b63958886ef86521c6bc21b2d"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/aplicacion/puertos/puertosEntrada/IPerfilServicio.java": {
+    "mtime": 1776653706.5899906,
+    "seen": 1788761054.8181243,
+    "ast_hash": "77ebeee0a6cd5cd50c155a3727016459",
+    "semantic_hash": "77ebeee0a6cd5cd50c155a3727016459"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/aplicacion/puertos/puertosEntrada/IProgramaServicio.java": {
+    "mtime": 1776653706.5899906,
+    "seen": 1788761054.8181243,
+    "ast_hash": "c10494ce54d08bbb3b1bc2f8bc8760f3",
+    "semantic_hash": "c10494ce54d08bbb3b1bc2f8bc8760f3"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/aplicacion/puertos/puertosSalida/IAlumnoGateway.java": {
+    "mtime": 1776653706.5899906,
+    "seen": 1788761054.8181243,
+    "ast_hash": "ba246d554b1692e0b6a2b8681893756a",
+    "semantic_hash": "ba246d554b1692e0b6a2b8681893756a"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/aplicacion/puertos/puertosSalida/IAsistenciaGateway.java": {
+    "mtime": 1785002246.204841,
+    "seen": 1788761054.8181243,
+    "ast_hash": "4ea835733934d79a60908b383c2a0549",
+    "semantic_hash": "4ea835733934d79a60908b383c2a0549"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/aplicacion/puertos/puertosSalida/ICategoriaCursoGateway.java": {
+    "mtime": 1776653706.5899906,
+    "seen": 1788761054.8181243,
+    "ast_hash": "4904070cfef4af4d67863672a65f84f8",
+    "semantic_hash": "4904070cfef4af4d67863672a65f84f8"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/aplicacion/puertos/puertosSalida/IClaseGateway.java": {
+    "mtime": 1776653706.5899906,
+    "seen": 1788761054.8181243,
+    "ast_hash": "bd0163f32d24c9df1a0a6a38ffcadb10",
+    "semantic_hash": "bd0163f32d24c9df1a0a6a38ffcadb10"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/aplicacion/puertos/puertosSalida/ICoordinadorGateway.java": {
+    "mtime": 1776653706.5899906,
+    "seen": 1788761054.8181243,
+    "ast_hash": "1733bb0a622a71328245c721cf954af7",
+    "semantic_hash": "1733bb0a622a71328245c721cf954af7"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/aplicacion/puertos/puertosSalida/ICursoGateway.java": {
+    "mtime": 1785002246.2058406,
+    "seen": 1788761054.8181243,
+    "ast_hash": "b4324ad7a57c2b1479901cb7a7046fc3",
+    "semantic_hash": "b4324ad7a57c2b1479901cb7a7046fc3"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/aplicacion/puertos/puertosSalida/IDeporteGateway.java": {
+    "mtime": 1776653706.5899906,
+    "seen": 1788761054.8181243,
+    "ast_hash": "cf6c23abd4ad93d4dffb0ce9ea1f8320",
+    "semantic_hash": "cf6c23abd4ad93d4dffb0ce9ea1f8320"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/aplicacion/puertos/puertosSalida/IEscenarioGateway.java": {
+    "mtime": 1786253018.9547145,
+    "seen": 1788761054.8181243,
+    "ast_hash": "f45002ea2c4a77426989cc1b8cf0a83b",
+    "semantic_hash": "f45002ea2c4a77426989cc1b8cf0a83b"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/aplicacion/puertos/puertosSalida/IEstadisticasGateway.java": {
+    "mtime": 1776653706.5899906,
+    "seen": 1788761054.8181243,
+    "ast_hash": "04a9c18a36f9c22080bd5a2ed7be3cbc",
+    "semantic_hash": "04a9c18a36f9c22080bd5a2ed7be3cbc"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/aplicacion/puertos/puertosSalida/IFacultadGateway.java": {
+    "mtime": 1776653706.5899906,
+    "seen": 1788761054.8181243,
+    "ast_hash": "fb1f3f4ba838413ab80cf9a7d9cba87a",
+    "semantic_hash": "fb1f3f4ba838413ab80cf9a7d9cba87a"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/aplicacion/puertos/puertosSalida/IGrupoGateway.java": {
+    "mtime": 1776653706.5899906,
+    "seen": 1788761054.8181243,
+    "ast_hash": "ae48ea309447b4d144093c0bf26ba8f2",
+    "semantic_hash": "ae48ea309447b4d144093c0bf26ba8f2"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/aplicacion/puertos/puertosSalida/IHorarioGateway.java": {
+    "mtime": 1786253018.9557135,
+    "seen": 1788761054.8181243,
+    "ast_hash": "0db5fdc2e252848b65dbd2c5961260e7",
+    "semantic_hash": "0db5fdc2e252848b65dbd2c5961260e7"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/aplicacion/puertos/puertosSalida/IImagenGateway.java": {
+    "mtime": 1776653706.5899906,
+    "seen": 1788761054.8181243,
+    "ast_hash": "d0326f97f28117ad3b34dd4705d5f5a8",
+    "semantic_hash": "d0326f97f28117ad3b34dd4705d5f5a8"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/aplicacion/puertos/puertosSalida/IInscripcionGateway.java": {
+    "mtime": 1785002246.2068398,
+    "seen": 1788761054.8181243,
+    "ast_hash": "8b33e2b2efbe216f42350c47ddc45c20",
+    "semantic_hash": "8b33e2b2efbe216f42350c47ddc45c20"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/aplicacion/puertos/puertosSalida/IInstructorGateway.java": {
+    "mtime": 1779382173.0649028,
+    "seen": 1788761054.8181243,
+    "ast_hash": "46ba73db4c53d61d60e4b46aeb0a44a2",
+    "semantic_hash": "46ba73db4c53d61d60e4b46aeb0a44a2"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/aplicacion/puertos/puertosSalida/IPerfilGateway.java": {
+    "mtime": 1776653706.5899906,
+    "seen": 1788761054.8181243,
+    "ast_hash": "de09b589f1623a92c401f8ba079b7735",
+    "semantic_hash": "de09b589f1623a92c401f8ba079b7735"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/aplicacion/puertos/puertosSalida/IProgramaGateway.java": {
+    "mtime": 1776653706.5899906,
+    "seen": 1788761054.8181243,
+    "ast_hash": "cb5455adb9d47598d678e869ac5e1beb",
+    "semantic_hash": "cb5455adb9d47598d678e869ac5e1beb"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/configurations/MessageConfiguration.java": {
+    "mtime": 1776653706.5899906,
+    "seen": 1788761054.8181243,
+    "ast_hash": "0b7bb96ea3cb41411df74d3e107fa36d",
+    "semantic_hash": "0b7bb96ea3cb41411df74d3e107fa36d"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/configurations/SecurityConfig.java": {
+    "mtime": 1788709927.881363,
+    "seen": 1788761054.8181243,
+    "ast_hash": "d03a5fc44870230ad3e90bdc38d8e28f",
+    "semantic_hash": "d03a5fc44870230ad3e90bdc38d8e28f"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/deporteParaTodos.java": {
+    "mtime": 1776653706.5899906,
+    "seen": 1788761054.8181243,
+    "ast_hash": "8610c0a93c24c189292e60a1f056e3c7",
+    "semantic_hash": "8610c0a93c24c189292e60a1f056e3c7"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/dominio/excepciones/CodigoError.java": {
+    "mtime": 1788372739.3988893,
+    "seen": 1788761054.8181243,
+    "ast_hash": "efe757343496f43ea61dc71d6922c5d0",
+    "semantic_hash": "efe757343496f43ea61dc71d6922c5d0"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/dominio/excepciones/DependenciaFallida.java": {
+    "mtime": 1788372739.4031854,
+    "seen": 1788761054.8181243,
+    "ast_hash": "cb589d5675c5939d378e0c1a21e3b220",
+    "semantic_hash": "cb589d5675c5939d378e0c1a21e3b220"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/dominio/excepciones/ErrorInternoException.java": {
+    "mtime": 1788372739.4054,
+    "seen": 1788761054.8181243,
+    "ast_hash": "229d78401bc4563be1f54e12ddf8c79b",
+    "semantic_hash": "229d78401bc4563be1f54e12ddf8c79b"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/dominio/excepciones/InsercionFallidaExepcion.java": {
+    "mtime": 1788372739.4054,
+    "seen": 1788761054.8181243,
+    "ast_hash": "5e9e01ce5a5bc7f3c4833ede1b4537aa",
+    "semantic_hash": "5e9e01ce5a5bc7f3c4833ede1b4537aa"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/dominio/excepciones/ListadoVacioExcepcion.java": {
+    "mtime": 1788372739.4074075,
+    "seen": 1788761054.8181243,
+    "ast_hash": "e97b087a5a6fc1164e58fad3555477b3",
+    "semantic_hash": "e97b087a5a6fc1164e58fad3555477b3"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/dominio/excepciones/NoExisteExcepcion.java": {
+    "mtime": 1788372739.4085088,
+    "seen": 1788761054.8181243,
+    "ast_hash": "3ed0e88fe32364a898bdc3be78c50c25",
+    "semantic_hash": "3ed0e88fe32364a898bdc3be78c50c25"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/dominio/excepciones/NoProcesableEntidadException.java": {
+    "mtime": 1788372739.4085088,
+    "seen": 1788761054.8181243,
+    "ast_hash": "1e3e4186990ee2c5d071e9bd7e0b01f7",
+    "semantic_hash": "1e3e4186990ee2c5d071e9bd7e0b01f7"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/dominio/excepciones/YaExisteElementoExcepcion.java": {
+    "mtime": 1788372739.4085088,
+    "seen": 1788761054.8181243,
+    "ast_hash": "43892077dcb5e8adbc34b23540abc931",
+    "semantic_hash": "43892077dcb5e8adbc34b23540abc931"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/dominio/modelo/Alumno.java": {
+    "mtime": 1776653706.5899906,
+    "seen": 1788761054.8181243,
+    "ast_hash": "873996231c6fd8110264b6bb1b017fe9",
+    "semantic_hash": "873996231c6fd8110264b6bb1b017fe9"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/dominio/modelo/Asistencia.java": {
+    "mtime": 1785002246.2085357,
+    "seen": 1788761054.8181243,
+    "ast_hash": "4fde785d1f51a89a74dad5fd35310c79",
+    "semantic_hash": "4fde785d1f51a89a74dad5fd35310c79"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/dominio/modelo/Categoria.java": {
+    "mtime": 1788237303.3685238,
+    "seen": 1788761054.8181243,
+    "ast_hash": "6ee65f03441a999317c5195a652d8412",
+    "semantic_hash": "6ee65f03441a999317c5195a652d8412"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/dominio/modelo/Clase.java": {
+    "mtime": 1788406085.9964676,
+    "seen": 1788761054.8181243,
+    "ast_hash": "2a0dba01d06cb07476944f2a9cb5a893",
+    "semantic_hash": "2a0dba01d06cb07476944f2a9cb5a893"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/dominio/modelo/Coordinador.java": {
+    "mtime": 1776653706.6059036,
+    "seen": 1788761054.8181243,
+    "ast_hash": "fa4180c16ced9ce5374552d8f991806e",
+    "semantic_hash": "fa4180c16ced9ce5374552d8f991806e"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/dominio/modelo/Curso.java": {
+    "mtime": 1788226838.4000714,
+    "seen": 1788761054.8181243,
+    "ast_hash": "1029fbd5ee1efbbd5f0b47a9ee3ede95",
+    "semantic_hash": "1029fbd5ee1efbbd5f0b47a9ee3ede95"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/dominio/modelo/Deporte.java": {
+    "mtime": 1776653706.6059036,
+    "seen": 1788761054.8181243,
+    "ast_hash": "db2dc23037c106719bee606e92f11e8b",
+    "semantic_hash": "db2dc23037c106719bee606e92f11e8b"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/dominio/modelo/Escenario.java": {
+    "mtime": 1788306156.2439308,
+    "seen": 1788761054.8181243,
+    "ast_hash": "a39c57980eb55bae602bc01a020cdbaa",
+    "semantic_hash": "a39c57980eb55bae602bc01a020cdbaa"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/dominio/modelo/EstadoCurso.java": {
+    "mtime": 1785002246.2090492,
+    "seen": 1788761054.8181243,
+    "ast_hash": "0d9ccb6cf5d2c2cd0d060adc19a52e99",
+    "semantic_hash": "0d9ccb6cf5d2c2cd0d060adc19a52e99"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/dominio/modelo/EstadoInscripciones.java": {
+    "mtime": 1785002246.2090492,
+    "seen": 1788761054.8181243,
+    "ast_hash": "055f4afc01da7a46967193ecf2ad75af",
+    "semantic_hash": "055f4afc01da7a46967193ecf2ad75af"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/dominio/modelo/Facultad.java": {
+    "mtime": 1776653706.6059036,
+    "seen": 1788761054.8181243,
+    "ast_hash": "a1de005c76d9ebf25b80113e3aa9efcb",
+    "semantic_hash": "a1de005c76d9ebf25b80113e3aa9efcb"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/dominio/modelo/Grupo.java": {
+    "mtime": 1788372739.4085088,
+    "seen": 1788761054.8181243,
+    "ast_hash": "574c778881df9d110b3f06efd948f9dc",
+    "semantic_hash": "574c778881df9d110b3f06efd948f9dc"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/dominio/modelo/Horario.java": {
+    "mtime": 1788372739.4129329,
+    "seen": 1788761054.8181243,
+    "ast_hash": "137333d1d87f377f35fd1f48c6cab48f",
+    "semantic_hash": "137333d1d87f377f35fd1f48c6cab48f"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/dominio/modelo/Imagen.java": {
+    "mtime": 1776653706.6059036,
+    "seen": 1788761054.8181243,
+    "ast_hash": "1d42284dde8d210375e5a59129db8a8a",
+    "semantic_hash": "1d42284dde8d210375e5a59129db8a8a"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/dominio/modelo/Inscripcion.java": {
+    "mtime": 1788409843.0793862,
+    "seen": 1788761054.8181243,
+    "ast_hash": "39d6ad2a39ca42a6bddcaf1403f35cab",
+    "semantic_hash": "39d6ad2a39ca42a6bddcaf1403f35cab"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/dominio/modelo/Instructor.java": {
+    "mtime": 1776653706.6059036,
+    "seen": 1788761054.8181243,
+    "ast_hash": "1918794d7de199280c93a3284ff5edfc",
+    "semantic_hash": "1918794d7de199280c93a3284ff5edfc"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/dominio/modelo/Perfil.java": {
+    "mtime": 1788709927.8823717,
+    "seen": 1788761054.8181243,
+    "ast_hash": "de25454a8ef20a09463dd5685ee8e64c",
+    "semantic_hash": "de25454a8ef20a09463dd5685ee8e64c"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/dominio/modelo/Programa.java": {
+    "mtime": 1776653706.6059036,
+    "seen": 1788761054.8181243,
+    "ast_hash": "0fa2a5cda5b9a32e8e9b3ba636a33d57",
+    "semantic_hash": "0fa2a5cda5b9a32e8e9b3ba636a33d57"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/dominio/servicios/AlumnoServicio.java": {
+    "mtime": 1788372739.4471545,
+    "seen": 1788761054.8181243,
+    "ast_hash": "19ec9150bb52653dc0e3c8cf436e98d8",
+    "semantic_hash": "19ec9150bb52653dc0e3c8cf436e98d8"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/dominio/servicios/AsistenciaServicio.java": {
+    "mtime": 1788372739.4560764,
+    "seen": 1788761054.8181243,
+    "ast_hash": "0134a1c04b2654dbb6182594d89de9ae",
+    "semantic_hash": "0134a1c04b2654dbb6182594d89de9ae"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/dominio/servicios/AutenticacionServicio.java": {
+    "mtime": 1788709927.904166,
+    "seen": 1788761054.8181243,
+    "ast_hash": "b6d244f990d7c1db264b08b7502a4c86",
+    "semantic_hash": "b6d244f990d7c1db264b08b7502a4c86"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/dominio/servicios/CategoriaCursoServicio.java": {
+    "mtime": 1788372739.4782512,
+    "seen": 1788761054.8181243,
+    "ast_hash": "d7a9a8b9721cc8082913694c9a352eee",
+    "semantic_hash": "d7a9a8b9721cc8082913694c9a352eee"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/dominio/servicios/ClaseServicio.java": {
+    "mtime": 1788406085.997481,
+    "seen": 1788761054.8181243,
+    "ast_hash": "2504551db7681d05fdc80705a55c6482",
+    "semantic_hash": "2504551db7681d05fdc80705a55c6482"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/dominio/servicios/CoordinadorServico.java": {
+    "mtime": 1788372739.4873855,
+    "seen": 1788761054.8181243,
+    "ast_hash": "336327dce66a14b042643e12abb1397c",
+    "semantic_hash": "336327dce66a14b042643e12abb1397c"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/dominio/servicios/CursoServicio.java": {
+    "mtime": 1788372739.504077,
+    "seen": 1788761054.8181243,
+    "ast_hash": "7e2598c306af98ec54b0b2eeea7e976e",
+    "semantic_hash": "7e2598c306af98ec54b0b2eeea7e976e"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/dominio/servicios/DeporteServicio.java": {
+    "mtime": 1788372739.5201561,
+    "seen": 1788761054.8181243,
+    "ast_hash": "73aa9d4a85e67c4e92da4976e8574a5d",
+    "semantic_hash": "73aa9d4a85e67c4e92da4976e8574a5d"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/dominio/servicios/EscenarioServicio.java": {
+    "mtime": 1788372739.537672,
+    "seen": 1788761054.8181243,
+    "ast_hash": "ec8c481932acef86b22584eae5b85c95",
+    "semantic_hash": "ec8c481932acef86b22584eae5b85c95"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/dominio/servicios/EstadisticaServicio.java": {
+    "mtime": 1776653706.6059036,
+    "seen": 1788761054.8181243,
+    "ast_hash": "d09f313f463a3040cf9dc4c8516e98c5",
+    "semantic_hash": "d09f313f463a3040cf9dc4c8516e98c5"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/dominio/servicios/FacultadServicio.java": {
+    "mtime": 1788372739.537672,
+    "seen": 1788761054.8181243,
+    "ast_hash": "05d9de72e96701b7cd961a0f9d8f7162",
+    "semantic_hash": "05d9de72e96701b7cd961a0f9d8f7162"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/dominio/servicios/GrupoServicio.java": {
+    "mtime": 1788372739.537672,
+    "seen": 1788761054.8181243,
+    "ast_hash": "af30e810462fc5bdd889ab124d5d6d99",
+    "semantic_hash": "af30e810462fc5bdd889ab124d5d6d99"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/dominio/servicios/HorarioServicio.java": {
+    "mtime": 1788372739.5514367,
+    "seen": 1788761054.8181243,
+    "ast_hash": "b9eec81e7dc5ff2be6eb3de3efafcaf6",
+    "semantic_hash": "b9eec81e7dc5ff2be6eb3de3efafcaf6"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/dominio/servicios/ImagenServicio.java": {
+    "mtime": 1788372739.5514367,
+    "seen": 1788761054.8181243,
+    "ast_hash": "34df9805d6c3bf6fb493788691aecab0",
+    "semantic_hash": "34df9805d6c3bf6fb493788691aecab0"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/dominio/servicios/InscripcionServicio.java": {
+    "mtime": 1788372739.5672095,
+    "seen": 1788761054.8181243,
+    "ast_hash": "cff22c5a68d527e1cb4522259813caaf",
+    "semantic_hash": "cff22c5a68d527e1cb4522259813caaf"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/dominio/servicios/InstructorServicio.java": {
+    "mtime": 1788709927.9571688,
+    "seen": 1788761054.8181243,
+    "ast_hash": "01e42972cd8329a5208d20b1502d34ab",
+    "semantic_hash": "01e42972cd8329a5208d20b1502d34ab"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/dominio/servicios/PerfilServicio.java": {
+    "mtime": 1788372739.5871286,
+    "seen": 1788761054.8181243,
+    "ast_hash": "c0f4f658e9f3f777392a0b6e9d2fabd2",
+    "semantic_hash": "c0f4f658e9f3f777392a0b6e9d2fabd2"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/dominio/servicios/ProgramaServicio.java": {
+    "mtime": 1788372739.599213,
+    "seen": 1788761054.8181243,
+    "ast_hash": "36cb5f11d9a1168e1f4acfa8ba8f7197",
+    "semantic_hash": "36cb5f11d9a1168e1f4acfa8ba8f7197"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/dominio/servicios/TokenServicio.java": {
+    "mtime": 1787707704.9464083,
+    "seen": 1788761054.8181243,
+    "ast_hash": "0b84f5c926c07d406d215ce85763c057",
+    "semantic_hash": "0b84f5c926c07d406d215ce85763c057"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/dominio/servicios/valores/Roles.java": {
+    "mtime": 1776653706.621701,
+    "seen": 1788761054.8181243,
+    "ast_hash": "d9c5884942dec7576172581e2eecbe06",
+    "semantic_hash": "d9c5884942dec7576172581e2eecbe06"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresPrimarios/adaptadorRest/DTOs/AlumnoDto.java": {
+    "mtime": 1776653706.621701,
+    "seen": 1788761054.8181243,
+    "ast_hash": "ca58d2a8827e6da565bb1f88340223a9",
+    "semantic_hash": "ca58d2a8827e6da565bb1f88340223a9"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresPrimarios/adaptadorRest/DTOs/AlumnoRequest.java": {
+    "mtime": 1776653706.621701,
+    "seen": 1788761054.8181243,
+    "ast_hash": "921533e97227af60f8d7a97ada1acb98",
+    "semantic_hash": "921533e97227af60f8d7a97ada1acb98"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresPrimarios/adaptadorRest/DTOs/AtencionDto.java": {
+    "mtime": 1785002246.2090492,
+    "seen": 1788761054.8181243,
+    "ast_hash": "889a23aad84a4f734b0963153c7eaa31",
+    "semantic_hash": "889a23aad84a4f734b0963153c7eaa31"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresPrimarios/adaptadorRest/DTOs/CategoriaDto.java": {
+    "mtime": 1788237303.3730586,
+    "seen": 1788761054.8181243,
+    "ast_hash": "3dd032c45e2d2d0e3d49cabdcfaa9d71",
+    "semantic_hash": "3dd032c45e2d2d0e3d49cabdcfaa9d71"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresPrimarios/adaptadorRest/DTOs/ClaseDto.java": {
+    "mtime": 1788406085.9989946,
+    "seen": 1788761054.8181243,
+    "ast_hash": "35af809f503bc289b732b5bbaf0b912d",
+    "semantic_hash": "35af809f503bc289b732b5bbaf0b912d"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresPrimarios/adaptadorRest/DTOs/CursoDto.java": {
+    "mtime": 1788226838.4040735,
+    "seen": 1788761054.8181243,
+    "ast_hash": "fc3a87eaf1504c47231f3cf5237cc8ff",
+    "semantic_hash": "fc3a87eaf1504c47231f3cf5237cc8ff"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresPrimarios/adaptadorRest/DTOs/DeporteDto.java": {
+    "mtime": 1776653706.621701,
+    "seen": 1788761054.8181243,
+    "ast_hash": "12aabf099dcc15d6199d11826ffd93f2",
+    "semantic_hash": "12aabf099dcc15d6199d11826ffd93f2"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresPrimarios/adaptadorRest/DTOs/EscenarioDto.java": {
+    "mtime": 1788306156.2650797,
+    "seen": 1788761054.8181243,
+    "ast_hash": "f50bf3fbeeba0f9829c6e9b9596deb15",
+    "semantic_hash": "f50bf3fbeeba0f9829c6e9b9596deb15"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresPrimarios/adaptadorRest/DTOs/EstadisticaDto.java": {
+    "mtime": 1776653706.621701,
+    "seen": 1788761054.8181243,
+    "ast_hash": "a1dc04d654cd82e0b813b988891b0bf6",
+    "semantic_hash": "a1dc04d654cd82e0b813b988891b0bf6"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresPrimarios/adaptadorRest/DTOs/FacultadDto.java": {
+    "mtime": 1776653706.621701,
+    "seen": 1788761054.8181243,
+    "ast_hash": "088c0ac4ef6d8de7e2571afcfd5cefb2",
+    "semantic_hash": "088c0ac4ef6d8de7e2571afcfd5cefb2"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresPrimarios/adaptadorRest/DTOs/GrupoDto.java": {
+    "mtime": 1788372739.6088753,
+    "seen": 1788761054.8181243,
+    "ast_hash": "a6d05355c94f68244906583cfa123a3c",
+    "semantic_hash": "a6d05355c94f68244906583cfa123a3c"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresPrimarios/adaptadorRest/DTOs/HorarioDto.java": {
+    "mtime": 1788372739.6088753,
+    "seen": 1788761054.8181243,
+    "ast_hash": "406535884f583be355f20daf07fc0bb6",
+    "semantic_hash": "406535884f583be355f20daf07fc0bb6"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresPrimarios/adaptadorRest/DTOs/ImagenDto.java": {
+    "mtime": 1776653706.621701,
+    "seen": 1788761054.8181243,
+    "ast_hash": "09d29da8e706ce5817c1e6ac54d50942",
+    "semantic_hash": "09d29da8e706ce5817c1e6ac54d50942"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresPrimarios/adaptadorRest/DTOs/InscripcionDto.java": {
+    "mtime": 1788409843.080382,
+    "seen": 1788761054.8181243,
+    "ast_hash": "a954a04f030d5b09c201db1170213281",
+    "semantic_hash": "a954a04f030d5b09c201db1170213281"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresPrimarios/adaptadorRest/DTOs/InstructorDto.java": {
+    "mtime": 1776653706.621701,
+    "seen": 1788761054.8181243,
+    "ast_hash": "990f6c042cbfe15dc9399b8d388510a6",
+    "semantic_hash": "990f6c042cbfe15dc9399b8d388510a6"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresPrimarios/adaptadorRest/DTOs/PerfilDto.java": {
+    "mtime": 1788709927.9760592,
+    "seen": 1788761054.8181243,
+    "ast_hash": "8fcf9db5510b36676603c9c38d9bef87",
+    "semantic_hash": "8fcf9db5510b36676603c9c38d9bef87"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresPrimarios/adaptadorRest/DTOs/TokenResponseDto.java": {
+    "mtime": 1787707704.9486332,
+    "seen": 1788761054.8181243,
+    "ast_hash": "3c28aac5af7837b9f3c3259d8bd9d10e",
+    "semantic_hash": "3c28aac5af7837b9f3c3259d8bd9d10e"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresPrimarios/adaptadorRest/api/AlumnoRest.java": {
+    "mtime": 1787707704.9530401,
+    "seen": 1788761054.8181243,
+    "ast_hash": "c224b49176a9f5dce791cf6a23e75b0f",
+    "semantic_hash": "c224b49176a9f5dce791cf6a23e75b0f"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresPrimarios/adaptadorRest/api/AtencionRest.java": {
+    "mtime": 1787707704.9640946,
+    "seen": 1788761054.8181243,
+    "ast_hash": "0e216f062024025c82abaa6fffc1fa7e",
+    "semantic_hash": "0e216f062024025c82abaa6fffc1fa7e"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresPrimarios/adaptadorRest/api/AutenticacionRest.java": {
+    "mtime": 1787707704.9753287,
+    "seen": 1788761054.8181243,
+    "ast_hash": "dcf07e6fb630aac5f63400e08561ce41",
+    "semantic_hash": "dcf07e6fb630aac5f63400e08561ce41"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresPrimarios/adaptadorRest/api/CategoriaRest.java": {
+    "mtime": 1788237303.3750687,
+    "seen": 1788761054.8181243,
+    "ast_hash": "e591cc81ccfff17552282c93e4bcc660",
+    "semantic_hash": "e591cc81ccfff17552282c93e4bcc660"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresPrimarios/adaptadorRest/api/ClaseRest.java": {
+    "mtime": 1788406086.0381367,
+    "seen": 1788761054.8181243,
+    "ast_hash": "7a7be72759ffe8e3cbb3b777c1cce599",
+    "semantic_hash": "7a7be72759ffe8e3cbb3b777c1cce599"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresPrimarios/adaptadorRest/api/CursoRest.java": {
+    "mtime": 1788226838.4061067,
+    "seen": 1788761054.8181243,
+    "ast_hash": "4a80eb3a88ab27c6728cd72c1feb9115",
+    "semantic_hash": "4a80eb3a88ab27c6728cd72c1feb9115"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresPrimarios/adaptadorRest/api/DeporteRest.java": {
+    "mtime": 1787707705.0198288,
+    "seen": 1788761054.8181243,
+    "ast_hash": "55c92c4522fd6f5ac55d81991d28ba0a",
+    "semantic_hash": "55c92c4522fd6f5ac55d81991d28ba0a"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresPrimarios/adaptadorRest/api/EscenarioRest.java": {
+    "mtime": 1788306156.2833192,
+    "seen": 1788761054.8181243,
+    "ast_hash": "567ae7f1429fa3d957cd6505c54814fd",
+    "semantic_hash": "567ae7f1429fa3d957cd6505c54814fd"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresPrimarios/adaptadorRest/api/EstadisticasRest.java": {
+    "mtime": 1787707705.042434,
+    "seen": 1788761054.8181243,
+    "ast_hash": "6b07c1a287909470dfc435f7b00e0e26",
+    "semantic_hash": "6b07c1a287909470dfc435f7b00e0e26"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresPrimarios/adaptadorRest/api/FacultadRest.java": {
+    "mtime": 1787707705.0538125,
+    "seen": 1788761054.8181243,
+    "ast_hash": "9fce50b02f2c63c6b8feba41f3233428",
+    "semantic_hash": "9fce50b02f2c63c6b8feba41f3233428"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresPrimarios/adaptadorRest/api/GrupoRest.java": {
+    "mtime": 1788372739.6088753,
+    "seen": 1788761054.8181243,
+    "ast_hash": "6714d390928f9c87473c40212b9c7a4b",
+    "semantic_hash": "6714d390928f9c87473c40212b9c7a4b"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresPrimarios/adaptadorRest/api/HorarioRest.java": {
+    "mtime": 1788372739.6274538,
+    "seen": 1788761054.8181243,
+    "ast_hash": "227f9b7e440557c5e04ac110714e56a1",
+    "semantic_hash": "227f9b7e440557c5e04ac110714e56a1"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresPrimarios/adaptadorRest/api/ImagenRest.java": {
+    "mtime": 1787707705.1537201,
+    "seen": 1788761054.8181243,
+    "ast_hash": "71b7c482e16c44e1eb6dde6988e825e2",
+    "semantic_hash": "71b7c482e16c44e1eb6dde6988e825e2"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresPrimarios/adaptadorRest/api/InscripcionRest.java": {
+    "mtime": 1788409843.0819054,
+    "seen": 1788761054.8181243,
+    "ast_hash": "c73b3f4a4d1c95138c035f51f632337f",
+    "semantic_hash": "c73b3f4a4d1c95138c035f51f632337f"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresPrimarios/adaptadorRest/api/InstructoresRest.java": {
+    "mtime": 1787707705.1761906,
+    "seen": 1788761054.8181243,
+    "ast_hash": "5f3f9688b1e8e2c9dcb01dabb628518c",
+    "semantic_hash": "5f3f9688b1e8e2c9dcb01dabb628518c"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresPrimarios/adaptadorRest/api/TokenInterchangeRest.java": {
+    "mtime": 1788709928.0137498,
+    "seen": 1788761054.8181243,
+    "ast_hash": "d48ad767ae6e5948a483ddc0ce3b8180",
+    "semantic_hash": "d48ad767ae6e5948a483ddc0ce3b8180"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresSecundarios/persistenciaSQL/entidades/AlumnoEntidad.java": {
+    "mtime": 1788709928.0157504,
+    "seen": 1788761054.8181243,
+    "ast_hash": "492593dc664707a7194764f7d583e6fe",
+    "semantic_hash": "492593dc664707a7194764f7d583e6fe"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresSecundarios/persistenciaSQL/entidades/AsistenciaEntidad.java": {
+    "mtime": 1776653706.657228,
+    "seen": 1788761054.8181243,
+    "ast_hash": "d7e019aa15266b4464472138282d1ed4",
+    "semantic_hash": "d7e019aa15266b4464472138282d1ed4"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresSecundarios/persistenciaSQL/entidades/CategoriaCursoEntidad.java": {
+    "mtime": 1788237303.3770647,
+    "seen": 1788761054.8181243,
+    "ast_hash": "7177e87944ae1398e7abd4df7c48740f",
+    "semantic_hash": "7177e87944ae1398e7abd4df7c48740f"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresSecundarios/persistenciaSQL/entidades/ClaseEntidad.java": {
+    "mtime": 1776653706.657228,
+    "seen": 1788761054.8181243,
+    "ast_hash": "5bbc6d25197aed9e1caf8bfa9a81da92",
+    "semantic_hash": "5bbc6d25197aed9e1caf8bfa9a81da92"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresSecundarios/persistenciaSQL/entidades/CoordinadorEntidad.java": {
+    "mtime": 1776653706.657228,
+    "seen": 1788761054.8181243,
+    "ast_hash": "560fe16d06d93443e72c72976f16d61f",
+    "semantic_hash": "560fe16d06d93443e72c72976f16d61f"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresSecundarios/persistenciaSQL/entidades/CursoEntidad.java": {
+    "mtime": 1788226838.4070504,
+    "seen": 1788761054.8181243,
+    "ast_hash": "13beb9329307597493e1e32c2ceaaa80",
+    "semantic_hash": "13beb9329307597493e1e32c2ceaaa80"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresSecundarios/persistenciaSQL/entidades/DeporteEntidad.java": {
+    "mtime": 1776653706.657228,
+    "seen": 1788761054.8181243,
+    "ast_hash": "40a256f5a117e4699736674d9e3d9587",
+    "semantic_hash": "40a256f5a117e4699736674d9e3d9587"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresSecundarios/persistenciaSQL/entidades/EscenarioEntidad.java": {
+    "mtime": 1788306156.2852385,
+    "seen": 1788761054.8181243,
+    "ast_hash": "94d62773db6d7e53ffdab87cc666be91",
+    "semantic_hash": "94d62773db6d7e53ffdab87cc666be91"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresSecundarios/persistenciaSQL/entidades/FacultadEntidad.java": {
+    "mtime": 1776653706.657228,
+    "seen": 1788761054.8181243,
+    "ast_hash": "3c8f2daae0e44057029320d74848c535",
+    "semantic_hash": "3c8f2daae0e44057029320d74848c535"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresSecundarios/persistenciaSQL/entidades/GrupoEntidad.java": {
+    "mtime": 1788372739.6305954,
+    "seen": 1788761054.8181243,
+    "ast_hash": "893c95a6070194d9622903ef1958fbe9",
+    "semantic_hash": "893c95a6070194d9622903ef1958fbe9"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresSecundarios/persistenciaSQL/entidades/HorarioEntidad.java": {
+    "mtime": 1788372739.6471512,
+    "seen": 1788761054.8181243,
+    "ast_hash": "605017adffeef9e5faea3518fd6e4b7d",
+    "semantic_hash": "605017adffeef9e5faea3518fd6e4b7d"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresSecundarios/persistenciaSQL/entidades/ImagenEntidad.java": {
+    "mtime": 1776653706.657228,
+    "seen": 1788761054.8181243,
+    "ast_hash": "1aa0e9c0e8a96b623ed684d2085fc76b",
+    "semantic_hash": "1aa0e9c0e8a96b623ed684d2085fc76b"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresSecundarios/persistenciaSQL/entidades/InscripcionEntidad.java": {
+    "mtime": 1788409843.083385,
+    "seen": 1788761054.8181243,
+    "ast_hash": "6362a067bb9fbda6554e4c02bb287a5d",
+    "semantic_hash": "6362a067bb9fbda6554e4c02bb287a5d"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresSecundarios/persistenciaSQL/entidades/InstructorEntidad.java": {
+    "mtime": 1776653706.667499,
+    "seen": 1788761054.8181243,
+    "ast_hash": "76766b3de242da1ffa52aaf60a7ca44d",
+    "semantic_hash": "76766b3de242da1ffa52aaf60a7ca44d"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresSecundarios/persistenciaSQL/entidades/PerfilEntidad.java": {
+    "mtime": 1788709928.0702658,
+    "seen": 1788761054.8181243,
+    "ast_hash": "d8de2eb831d6f64cc5088ae006457efa",
+    "semantic_hash": "d8de2eb831d6f64cc5088ae006457efa"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresSecundarios/persistenciaSQL/entidades/ProgramaEntidad.java": {
+    "mtime": 1776653706.667499,
+    "seen": 1788761054.8181243,
+    "ast_hash": "53d785b6be2756b43a391631bc94cb32",
+    "semantic_hash": "53d785b6be2756b43a391631bc94cb32"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresSecundarios/persistenciaSQL/entidades/ids/AsistenciaId.java": {
+    "mtime": 1776653706.6692386,
+    "seen": 1788761054.8181243,
+    "ast_hash": "b8e1dc4a9e3f2f05924e4750c6c3da83",
+    "semantic_hash": "b8e1dc4a9e3f2f05924e4750c6c3da83"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresSecundarios/persistenciaSQL/entidades/ids/CursoId.java": {
+    "mtime": 1776653706.6692386,
+    "seen": 1788761054.8181243,
+    "ast_hash": "78de63d22ad48b319c9087c812769c42",
+    "semantic_hash": "78de63d22ad48b319c9087c812769c42"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresSecundarios/persistenciaSQL/entidades/ids/GrupoId.java": {
+    "mtime": 1776653706.6692386,
+    "seen": 1788761054.8181243,
+    "ast_hash": "1e4682e23c326894c8829abb69711316",
+    "semantic_hash": "1e4682e23c326894c8829abb69711316"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresSecundarios/persistenciaSQL/entidades/ids/InscripcionId.java": {
+    "mtime": 1776653706.6692386,
+    "seen": 1788761054.8181243,
+    "ast_hash": "b3449705f3aedbb15b29b23b91a20d8d",
+    "semantic_hash": "b3449705f3aedbb15b29b23b91a20d8d"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresSecundarios/persistenciaSQL/gateway/AlumnoGateway.java": {
+    "mtime": 1788372739.6471512,
+    "seen": 1788761054.8181243,
+    "ast_hash": "2aea1f27ae849d08126f83d64acd8ef1",
+    "semantic_hash": "2aea1f27ae849d08126f83d64acd8ef1"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresSecundarios/persistenciaSQL/gateway/AsistenciaGateway.java": {
+    "mtime": 1788372739.6627333,
+    "seen": 1788761054.8181243,
+    "ast_hash": "90797c296b3474da4011485aa33f3e9e",
+    "semantic_hash": "90797c296b3474da4011485aa33f3e9e"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresSecundarios/persistenciaSQL/gateway/CategoriaGateway.java": {
+    "mtime": 1788372739.6741178,
+    "seen": 1788761054.8181243,
+    "ast_hash": "2cb5b39d96c941809af4f22c6747405a",
+    "semantic_hash": "2cb5b39d96c941809af4f22c6747405a"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresSecundarios/persistenciaSQL/gateway/ClaseGateway.java": {
+    "mtime": 1788406086.0455112,
+    "seen": 1788761054.8181243,
+    "ast_hash": "b89df930b5a08a6438615152f50a3f0e",
+    "semantic_hash": "b89df930b5a08a6438615152f50a3f0e"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresSecundarios/persistenciaSQL/gateway/CoordinadorGateway.java": {
+    "mtime": 1788372739.6973355,
+    "seen": 1788761054.8181243,
+    "ast_hash": "fef8ddd7041aeb0520b1266705239e81",
+    "semantic_hash": "fef8ddd7041aeb0520b1266705239e81"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresSecundarios/persistenciaSQL/gateway/CursoGateway.java": {
+    "mtime": 1788372739.713705,
+    "seen": 1788761054.8181243,
+    "ast_hash": "b769ccfc90aedf195424f9703311a70e",
+    "semantic_hash": "b769ccfc90aedf195424f9703311a70e"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresSecundarios/persistenciaSQL/gateway/DeporteGateway.java": {
+    "mtime": 1776653706.6692386,
+    "seen": 1788761054.8181243,
+    "ast_hash": "d2839682f82f9fe4d9e102ef4ae84b9d",
+    "semantic_hash": "d2839682f82f9fe4d9e102ef4ae84b9d"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresSecundarios/persistenciaSQL/gateway/EscenarioGateway.java": {
+    "mtime": 1788372739.7313156,
+    "seen": 1788761054.8181243,
+    "ast_hash": "7c28c389d2f577d1fbd510d750f5b82a",
+    "semantic_hash": "7c28c389d2f577d1fbd510d750f5b82a"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresSecundarios/persistenciaSQL/gateway/EstadisticasGateway.java": {
+    "mtime": 1788372739.7438405,
+    "seen": 1788761054.8181243,
+    "ast_hash": "2c72d983b92a7f73c7b3645a6f248585",
+    "semantic_hash": "2c72d983b92a7f73c7b3645a6f248585"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresSecundarios/persistenciaSQL/gateway/FacultadGateway.java": {
+    "mtime": 1788372739.761459,
+    "seen": 1788761054.8181243,
+    "ast_hash": "2d6d831a251b04871b5b508d344bfdc9",
+    "semantic_hash": "2d6d831a251b04871b5b508d344bfdc9"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresSecundarios/persistenciaSQL/gateway/GrupoGateway.java": {
+    "mtime": 1788372739.7674966,
+    "seen": 1788761054.8181243,
+    "ast_hash": "b070fcc3c58ae57aa063a6c13f342a26",
+    "semantic_hash": "b070fcc3c58ae57aa063a6c13f342a26"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresSecundarios/persistenciaSQL/gateway/HorarioGateway.java": {
+    "mtime": 1788372739.7836273,
+    "seen": 1788761054.8181243,
+    "ast_hash": "f9239e120b7f8f2c02bfb5978ea28fce",
+    "semantic_hash": "f9239e120b7f8f2c02bfb5978ea28fce"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresSecundarios/persistenciaSQL/gateway/ImagenGateway.java": {
+    "mtime": 1776653706.7011542,
+    "seen": 1788761054.8181243,
+    "ast_hash": "0b5adb36bbbbb3a31728b60998ec0816",
+    "semantic_hash": "0b5adb36bbbbb3a31728b60998ec0816"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresSecundarios/persistenciaSQL/gateway/InscripcionGateway.java": {
+    "mtime": 1788409843.0837693,
+    "seen": 1788761054.8181243,
+    "ast_hash": "aaf94a85a9b2d055ec691ec3d5305ba4",
+    "semantic_hash": "aaf94a85a9b2d055ec691ec3d5305ba4"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresSecundarios/persistenciaSQL/gateway/InstructorGateway.java": {
+    "mtime": 1788709928.1080928,
+    "seen": 1788761054.8181243,
+    "ast_hash": "21d47f4ec9ca22d0ef776f189f4c6805",
+    "semantic_hash": "21d47f4ec9ca22d0ef776f189f4c6805"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresSecundarios/persistenciaSQL/gateway/PerfilGateway.java": {
+    "mtime": 1788709928.1426258,
+    "seen": 1788761054.8181243,
+    "ast_hash": "727339e01a4a08dd8ad27404dfe405a6",
+    "semantic_hash": "727339e01a4a08dd8ad27404dfe405a6"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresSecundarios/persistenciaSQL/gateway/ProgramaGateway.java": {
+    "mtime": 1788372739.838337,
+    "seen": 1788761054.8181243,
+    "ast_hash": "da5e753e816ffa77106a0287b75a6eec",
+    "semantic_hash": "da5e753e816ffa77106a0287b75a6eec"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresSecundarios/persistenciaSQL/repositorios/IAlumnoRepositorio.java": {
+    "mtime": 1786253018.9718015,
+    "seen": 1788761054.8181243,
+    "ast_hash": "c9e13281b6106285cb053a5e5af47ad5",
+    "semantic_hash": "c9e13281b6106285cb053a5e5af47ad5"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresSecundarios/persistenciaSQL/repositorios/IAsistenciaRepositorio.java": {
+    "mtime": 1776653706.704028,
+    "seen": 1788761054.8181243,
+    "ast_hash": "d34f3f0c81cd913ef5248aed0a6ead7a",
+    "semantic_hash": "d34f3f0c81cd913ef5248aed0a6ead7a"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresSecundarios/persistenciaSQL/repositorios/ICategoriaCursoRepositorio.java": {
+    "mtime": 1776653706.704028,
+    "seen": 1788761054.8181243,
+    "ast_hash": "0aff6a94a93c3b973719556fdb582987",
+    "semantic_hash": "0aff6a94a93c3b973719556fdb582987"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresSecundarios/persistenciaSQL/repositorios/IClaseRepositorio.java": {
+    "mtime": 1776653706.704028,
+    "seen": 1788761054.8181243,
+    "ast_hash": "8af28213aa0649466653d1e174fee5b8",
+    "semantic_hash": "8af28213aa0649466653d1e174fee5b8"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresSecundarios/persistenciaSQL/repositorios/ICoordinadorRepositorio.java": {
+    "mtime": 1776653706.704028,
+    "seen": 1788761054.8181243,
+    "ast_hash": "449849169a1311e03b03b8022d0316c8",
+    "semantic_hash": "449849169a1311e03b03b8022d0316c8"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresSecundarios/persistenciaSQL/repositorios/ICursoRepositorio.java": {
+    "mtime": 1785002246.2291622,
+    "seen": 1788761054.8181243,
+    "ast_hash": "cf86c31d67fde50404cc3d62354d4e85",
+    "semantic_hash": "cf86c31d67fde50404cc3d62354d4e85"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresSecundarios/persistenciaSQL/repositorios/IDeporteRepositorio.java": {
+    "mtime": 1776653706.704028,
+    "seen": 1788761054.8181243,
+    "ast_hash": "c55f82427e1d8e2295d6715b18da2891",
+    "semantic_hash": "c55f82427e1d8e2295d6715b18da2891"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresSecundarios/persistenciaSQL/repositorios/IEscenarioRepositorio.java": {
+    "mtime": 1786253018.972801,
+    "seen": 1788761054.8181243,
+    "ast_hash": "a36bb4a66fa75ea6313123e3a5f55d8f",
+    "semantic_hash": "a36bb4a66fa75ea6313123e3a5f55d8f"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresSecundarios/persistenciaSQL/repositorios/IFacultadRepositorio.java": {
+    "mtime": 1776653706.704028,
+    "seen": 1788761054.8181243,
+    "ast_hash": "a596d9dac851f4a2a890eaa6e8c7ba4e",
+    "semantic_hash": "a596d9dac851f4a2a890eaa6e8c7ba4e"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresSecundarios/persistenciaSQL/repositorios/IGrupoRepositorio.java": {
+    "mtime": 1776653706.704028,
+    "seen": 1788761054.8181243,
+    "ast_hash": "445d180229ec70593ca9066634638637",
+    "semantic_hash": "445d180229ec70593ca9066634638637"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresSecundarios/persistenciaSQL/repositorios/IHorarioRepositorio.java": {
+    "mtime": 1776653706.704028,
+    "seen": 1788761054.8181243,
+    "ast_hash": "4bcb27d2bdd10355df0b12f72b4d2d59",
+    "semantic_hash": "4bcb27d2bdd10355df0b12f72b4d2d59"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresSecundarios/persistenciaSQL/repositorios/IImagenRepositorio.java": {
+    "mtime": 1776653706.704028,
+    "seen": 1788761054.8181243,
+    "ast_hash": "2a2ed8dfaeb524320db7155930b2f109",
+    "semantic_hash": "2a2ed8dfaeb524320db7155930b2f109"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresSecundarios/persistenciaSQL/repositorios/IInscripcionRepositorio.java": {
+    "mtime": 1776653706.704028,
+    "seen": 1788761054.8181243,
+    "ast_hash": "939112410ac801199109b697498aa245",
+    "semantic_hash": "939112410ac801199109b697498aa245"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresSecundarios/persistenciaSQL/repositorios/IInstructorRepositorio.java": {
+    "mtime": 1776653706.704028,
+    "seen": 1788761054.8181243,
+    "ast_hash": "1563a474025a7b8589dbefc7e32573dd",
+    "semantic_hash": "1563a474025a7b8589dbefc7e32573dd"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresSecundarios/persistenciaSQL/repositorios/IPerfilRepositorio.java": {
+    "mtime": 1776653706.704028,
+    "seen": 1788761054.8181243,
+    "ast_hash": "a54031cb73e67f62fc20bf3025748ddb",
+    "semantic_hash": "a54031cb73e67f62fc20bf3025748ddb"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresSecundarios/persistenciaSQL/repositorios/IProgramaRepositorio.java": {
+    "mtime": 1776653706.704028,
+    "seen": 1788761054.8181243,
+    "ast_hash": "a87b8bf84be200f3580c222a0e227a67",
+    "semantic_hash": "a87b8bf84be200f3580c222a0e227a67"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/controladorExcepciones/RestExceptionHandler.java": {
+    "mtime": 1788372739.8674538,
+    "seen": 1788761054.8181243,
+    "ast_hash": "22fba24635c1c971b6e22297c7ac672f",
+    "semantic_hash": "22fba24635c1c971b6e22297c7ac672f"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/controladorExcepciones/excepciones/ArchivoNoConvertibleExcepcion.java": {
+    "mtime": 1788372739.8697581,
+    "seen": 1788761054.8181243,
+    "ast_hash": "b895175d3675846289fb932ecda5a245",
+    "semantic_hash": "b895175d3675846289fb932ecda5a245"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/controladorExcepciones/excepciones/NoConvertibleException.java": {
+    "mtime": 1788372739.8703613,
+    "seen": 1788761054.8181243,
+    "ast_hash": "6f222e96b8f3ad93b469a6228371c14c",
+    "semantic_hash": "6f222e96b8f3ad93b469a6228371c14c"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/controladorExcepciones/excepciones/NoImplementadoException.java": {
+    "mtime": 1788372739.8703613,
+    "seen": 1788761054.8181243,
+    "ast_hash": "e3041ba80ab13c883c6858e1c0f41ee1",
+    "semantic_hash": "e3041ba80ab13c883c6858e1c0f41ee1"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/controladorExcepciones/formatoError/Error.java": {
+    "mtime": 1776653706.717147,
+    "seen": 1788761054.8181243,
+    "ast_hash": "6022ba1151c19b795ac3e458f48a7df9",
+    "semantic_hash": "6022ba1151c19b795ac3e458f48a7df9"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/controladorExcepciones/formatoError/ErrorUtils.java": {
+    "mtime": 1776653706.717147,
+    "seen": 1788761054.8181243,
+    "ast_hash": "cd1ed0751bcc64307801940f47f173c7",
+    "semantic_hash": "cd1ed0751bcc64307801940f47f173c7"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/logs/PeticionLogger.java": {
+    "mtime": 1776653706.717147,
+    "seen": 1788761054.8181243,
+    "ast_hash": "ec869fa3386efc30a7b0b104c1babfa8",
+    "semantic_hash": "ec869fa3386efc30a7b0b104c1babfa8"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/mappers/CategoriaMapper.java": {
+    "mtime": 1788372739.873764,
+    "seen": 1788761054.8181243,
+    "ast_hash": "1eb913b3ae39a834d05dbaffd407b53a",
+    "semantic_hash": "1eb913b3ae39a834d05dbaffd407b53a"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/mappers/ClaseMapper.java": {
+    "mtime": 1788406086.0555313,
+    "seen": 1788761054.8181243,
+    "ast_hash": "84e4c14f605a4462a361e38324c3c6c0",
+    "semantic_hash": "84e4c14f605a4462a361e38324c3c6c0"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/mappers/CursoMapper.java": {
+    "mtime": 1788372739.8755,
+    "seen": 1788761054.8181243,
+    "ast_hash": "25236145a0101d74e46a27e645d51bbd",
+    "semantic_hash": "25236145a0101d74e46a27e645d51bbd"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/mappers/EscenarioMapper.java": {
+    "mtime": 1788372739.8775313,
+    "seen": 1788761054.8181243,
+    "ast_hash": "8828bb35b383ae684d5fb2bb4da48bb0",
+    "semantic_hash": "8828bb35b383ae684d5fb2bb4da48bb0"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/mappers/GrupoMapper.java": {
+    "mtime": 1788372739.8790631,
+    "seen": 1788761054.8181243,
+    "ast_hash": "2e223aaf3da2872470d04f4ccea6e9d2",
+    "semantic_hash": "2e223aaf3da2872470d04f4ccea6e9d2"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/mappers/HorarioMapper.java": {
+    "mtime": 1788372739.8806908,
+    "seen": 1788761054.8181243,
+    "ast_hash": "80eb3ac84bac19d5f2c453abf5743739",
+    "semantic_hash": "80eb3ac84bac19d5f2c453abf5743739"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/mappers/InscripcionMapper.java": {
+    "mtime": 1788409843.0837693,
+    "seen": 1788761054.8181243,
+    "ast_hash": "fd38475c2e86fc2f29f542efa0244c1d",
+    "semantic_hash": "fd38475c2e86fc2f29f542efa0244c1d"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/mappers/Mapper.java": {
+    "mtime": 1776653706.717147,
+    "seen": 1788761054.8181243,
+    "ast_hash": "5381e6f65439882249847c921f12b81c",
+    "semantic_hash": "5381e6f65439882249847c921f12b81c"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/mappers/MapperImagen.java": {
+    "mtime": 1776653706.717147,
+    "seen": 1788761054.8181243,
+    "ast_hash": "54730295826d6221a5bb5508a2ca00c4",
+    "semantic_hash": "54730295826d6221a5bb5508a2ca00c4"
+  },
+  "src/main/java/co/edu/unicauca/deporteParaTodos/infraestructura/mappers/PerfilMapper.java": {
+    "mtime": 1788709928.195441,
+    "seen": 1788761054.8181243,
+    "ast_hash": "8e6666bfc4f8a65e439a1116cef993bd",
+    "semantic_hash": "8e6666bfc4f8a65e439a1116cef993bd"
+  },
+  "src/test/java/co/edu/unicauca/deporteParaTodos/configurations/SecurityConfigTest.java": {
+    "mtime": 1788709928.2832334,
+    "seen": 1788761054.8181243,
+    "ast_hash": "82bfb72cb9489a624c0b2584c8f06d94",
+    "semantic_hash": "82bfb72cb9489a624c0b2584c8f06d94"
+  },
+  "src/test/java/co/edu/unicauca/deporteParaTodos/dominio/servicios/AlumnoServicioTest.java": {
+    "mtime": 1788372739.903083,
+    "seen": 1788761054.8181243,
+    "ast_hash": "16db82a070f9bc5820002f1064592a6c",
+    "semantic_hash": "16db82a070f9bc5820002f1064592a6c"
+  },
+  "src/test/java/co/edu/unicauca/deporteParaTodos/dominio/servicios/AsistenciaServicioTest.java": {
+    "mtime": 1788372739.9148467,
+    "seen": 1788761054.8181243,
+    "ast_hash": "89dd91b55d4a7cb362c1f7549fea9b94",
+    "semantic_hash": "89dd91b55d4a7cb362c1f7549fea9b94"
+  },
+  "src/test/java/co/edu/unicauca/deporteParaTodos/dominio/servicios/AutenticacionServicioTest.java": {
+    "mtime": 1788709928.333937,
+    "seen": 1788761054.8181243,
+    "ast_hash": "412a1f6b3e6609c8d2a6134a574dcaab",
+    "semantic_hash": "412a1f6b3e6609c8d2a6134a574dcaab"
+  },
+  "src/test/java/co/edu/unicauca/deporteParaTodos/dominio/servicios/CategoriaCursoServicioTest.java": {
+    "mtime": 1788372739.9271505,
+    "seen": 1788761054.8181243,
+    "ast_hash": "41f4d39cdd2cf8c24b142e68fe847d0c",
+    "semantic_hash": "41f4d39cdd2cf8c24b142e68fe847d0c"
+  },
+  "src/test/java/co/edu/unicauca/deporteParaTodos/dominio/servicios/ClaseServicioTest.java": {
+    "mtime": 1788406086.0683444,
+    "seen": 1788761054.8181243,
+    "ast_hash": "0df46b0be572a365ff7c5bdffc243915",
+    "semantic_hash": "0df46b0be572a365ff7c5bdffc243915"
+  },
+  "src/test/java/co/edu/unicauca/deporteParaTodos/dominio/servicios/CursoServicioTest.java": {
+    "mtime": 1788372739.9415076,
+    "seen": 1788761054.8181243,
+    "ast_hash": "3ce2982d4edb49b92e6bfd4a77972c78",
+    "semantic_hash": "3ce2982d4edb49b92e6bfd4a77972c78"
+  },
+  "src/test/java/co/edu/unicauca/deporteParaTodos/dominio/servicios/EscenarioServicioTest.java": {
+    "mtime": 1788372739.9445286,
+    "seen": 1788761054.8181243,
+    "ast_hash": "9c47287a96305d87df5f90931d8d5028",
+    "semantic_hash": "9c47287a96305d87df5f90931d8d5028"
+  },
+  "src/test/java/co/edu/unicauca/deporteParaTodos/dominio/servicios/GrupoServicioTest.java": {
+    "mtime": 1788372739.9465427,
+    "seen": 1788761054.8181243,
+    "ast_hash": "801bb980bb9f19037e722570c5bba04a",
+    "semantic_hash": "801bb980bb9f19037e722570c5bba04a"
+  },
+  "src/test/java/co/edu/unicauca/deporteParaTodos/dominio/servicios/HorarioServicioTest.java": {
+    "mtime": 1788372739.9548638,
+    "seen": 1788761054.8181243,
+    "ast_hash": "43a1c7b9b736bc940e9e08d0f3c57b80",
+    "semantic_hash": "43a1c7b9b736bc940e9e08d0f3c57b80"
+  },
+  "src/test/java/co/edu/unicauca/deporteParaTodos/dominio/servicios/InscripcionServicioTest.java": {
+    "mtime": 1788372739.9697502,
+    "seen": 1788761054.8181243,
+    "ast_hash": "1cb4949c5b156a293e70e04fa23b3c9b",
+    "semantic_hash": "1cb4949c5b156a293e70e04fa23b3c9b"
+  },
+  "src/test/java/co/edu/unicauca/deporteParaTodos/dominio/servicios/InstructorServicioTest.java": {
+    "mtime": 1788709928.3352442,
+    "seen": 1788761054.8181243,
+    "ast_hash": "46f26d5cb41a276d2a31a340ee460410",
+    "semantic_hash": "46f26d5cb41a276d2a31a340ee460410"
+  },
+  "src/test/java/co/edu/unicauca/deporteParaTodos/dominio/servicios/TokenServicioTest.java": {
+    "mtime": 1787707705.2491815,
+    "seen": 1788761054.8181243,
+    "ast_hash": "20e9ed76aa1cc6c83a86224f2952e5b3",
+    "semantic_hash": "20e9ed76aa1cc6c83a86224f2952e5b3"
+  },
+  "src/test/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresPrimarios/adaptadorRest/api/CategoriaRestTest.java": {
+    "mtime": 1788237303.3839953,
+    "seen": 1788761054.8181243,
+    "ast_hash": "f55efbe3a9930137d5c0de3fb9ecc50b",
+    "semantic_hash": "f55efbe3a9930137d5c0de3fb9ecc50b"
+  },
+  "src/test/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresPrimarios/adaptadorRest/api/ClaseRestTest.java": {
+    "mtime": 1788406086.0785687,
+    "seen": 1788761054.8181243,
+    "ast_hash": "d1b99c42569d53bcdca4071612c8c355",
+    "semantic_hash": "d1b99c42569d53bcdca4071612c8c355"
+  },
+  "src/test/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresPrimarios/adaptadorRest/api/CursoRestTest.java": {
+    "mtime": 1788234419.2294815,
+    "seen": 1788761054.8181243,
+    "ast_hash": "59a2f825ebe33663eb7f08544804039a",
+    "semantic_hash": "59a2f825ebe33663eb7f08544804039a"
+  },
+  "src/test/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresPrimarios/adaptadorRest/api/EscenarioRestTest.java": {
+    "mtime": 1788306156.345703,
+    "seen": 1788761054.8181243,
+    "ast_hash": "da741df178d50be1764df6aec64db3d7",
+    "semantic_hash": "da741df178d50be1764df6aec64db3d7"
+  },
+  "src/test/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresPrimarios/adaptadorRest/api/GrupoRestTest.java": {
+    "mtime": 1788372739.9697502,
+    "seen": 1788761054.8181243,
+    "ast_hash": "1314f7eeb5f637f7fd1fb9702a008d26",
+    "semantic_hash": "1314f7eeb5f637f7fd1fb9702a008d26"
+  },
+  "src/test/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresPrimarios/adaptadorRest/api/HorarioRestTest.java": {
+    "mtime": 1788372739.9697502,
+    "seen": 1788761054.8181243,
+    "ast_hash": "e4a7f3ec6e1f424a782b7e9f80248acf",
+    "semantic_hash": "e4a7f3ec6e1f424a782b7e9f80248acf"
+  },
+  "src/test/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresPrimarios/adaptadorRest/api/InscripcionRestTest.java": {
+    "mtime": 1788409843.0837693,
+    "seen": 1788761054.8181243,
+    "ast_hash": "e8211f612177dd224c265b0936b8ae24",
+    "semantic_hash": "e8211f612177dd224c265b0936b8ae24"
+  },
+  "src/test/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresPrimarios/adaptadorRest/api/TokenInterchangeRestTest.java": {
+    "mtime": 1788372739.9971826,
+    "seen": 1788761054.8181243,
+    "ast_hash": "8ad7854578aea30471d586e19af3436e",
+    "semantic_hash": "8ad7854578aea30471d586e19af3436e"
+  },
+  "src/test/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresSecundarios/persistenciaSQL/gateway/AlumnoGatewayTest.java": {
+    "mtime": 1786253018.9786966,
+    "seen": 1788761054.8181243,
+    "ast_hash": "004a5bb6bd2b7d006f6447c91df2983a",
+    "semantic_hash": "004a5bb6bd2b7d006f6447c91df2983a"
+  },
+  "src/test/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresSecundarios/persistenciaSQL/gateway/CategoriaGatewayTest.java": {
+    "mtime": 1788372740.0121386,
+    "seen": 1788761054.8181243,
+    "ast_hash": "152aaa1bfc502b945b7433754aa16ad4",
+    "semantic_hash": "152aaa1bfc502b945b7433754aa16ad4"
+  },
+  "src/test/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresSecundarios/persistenciaSQL/gateway/ClaseGatewayTest.java": {
+    "mtime": 1788406086.097323,
+    "seen": 1788761054.8181243,
+    "ast_hash": "961cda50ca85e1e7aea1c099459d4280",
+    "semantic_hash": "961cda50ca85e1e7aea1c099459d4280"
+  },
+  "src/test/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresSecundarios/persistenciaSQL/gateway/CursoGatewayTest.java": {
+    "mtime": 1788372740.01726,
+    "seen": 1788761054.8181243,
+    "ast_hash": "2811c25c9f26b9fe18103db7ce80b2f9",
+    "semantic_hash": "2811c25c9f26b9fe18103db7ce80b2f9"
+  },
+  "src/test/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresSecundarios/persistenciaSQL/gateway/GrupoGatewayTest.java": {
+    "mtime": 1785002246.2482185,
+    "seen": 1788761054.8181243,
+    "ast_hash": "51f7d48e13c96d1ae1be42b67bd93d39",
+    "semantic_hash": "51f7d48e13c96d1ae1be42b67bd93d39"
+  },
+  "src/test/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresSecundarios/persistenciaSQL/gateway/InscripcionGatewayTest.java": {
+    "mtime": 1788409843.0837693,
+    "seen": 1788761054.8181243,
+    "ast_hash": "33b4179d163e50749df073c1e1816d1a",
+    "semantic_hash": "33b4179d163e50749df073c1e1816d1a"
+  },
+  "src/test/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresSecundarios/persistenciaSQL/gateway/InstructorGatewayTest.java": {
+    "mtime": 1788709928.3763847,
+    "seen": 1788761054.8181243,
+    "ast_hash": "961d98f9088830a8cca334440ad632b2",
+    "semantic_hash": "961d98f9088830a8cca334440ad632b2"
+  },
+  "src/test/java/co/edu/unicauca/deporteParaTodos/infraestructura/adaptadores/adaptadoresSecundarios/persistenciaSQL/gateway/PerfilGatewayTest.java": {
+    "mtime": 1788709928.4557264,
+    "seen": 1788761054.8181243,
+    "ast_hash": "accd3caea41ea615bd7acba6a7fa16b8",
+    "semantic_hash": "accd3caea41ea615bd7acba6a7fa16b8"
+  },
+  "src/test/java/co/edu/unicauca/deporteParaTodos/infraestructura/controladorExcepciones/RestExceptionHandlerTest.java": {
+    "mtime": 1788372740.0373733,
+    "seen": 1788761054.8181243,
+    "ast_hash": "6486e7891c83226fb35b9805c37bca0b",
+    "semantic_hash": "6486e7891c83226fb35b9805c37bca0b"
+  },
+  "src/test/java/co/edu/unicauca/deporteParaTodos/infraestructura/mappers/CategoriaMapperTest.java": {
+    "mtime": 1788372740.05192,
+    "seen": 1788761054.8181243,
+    "ast_hash": "0d9363d2d369f7b947749061aaa6449d",
+    "semantic_hash": "0d9363d2d369f7b947749061aaa6449d"
+  },
+  "src/test/java/co/edu/unicauca/deporteParaTodos/infraestructura/mappers/ClaseMapperTest.java": {
+    "mtime": 1788406086.097323,
+    "seen": 1788761054.8181243,
+    "ast_hash": "dbff999714a30286e1fd58179c94096a",
+    "semantic_hash": "dbff999714a30286e1fd58179c94096a"
+  },
+  "src/test/java/co/edu/unicauca/deporteParaTodos/infraestructura/mappers/CursoMapperTest.java": {
+    "mtime": 1788372740.0568597,
+    "seen": 1788761054.8181243,
+    "ast_hash": "7e424710996db480009d5667f38158bc",
+    "semantic_hash": "7e424710996db480009d5667f38158bc"
+  },
+  "src/test/java/co/edu/unicauca/deporteParaTodos/infraestructura/mappers/EscenarioMapperTest.java": {
+    "mtime": 1788372740.069748,
+    "seen": 1788761054.8181243,
+    "ast_hash": "c960fed64e31202d908dc65c6d7f41bc",
+    "semantic_hash": "c960fed64e31202d908dc65c6d7f41bc"
+  },
+  "src/test/java/co/edu/unicauca/deporteParaTodos/infraestructura/mappers/GrupoMapperTest.java": {
+    "mtime": 1788372740.071509,
+    "seen": 1788761054.8181243,
+    "ast_hash": "69bc14b0768954f001009beed3c53e72",
+    "semantic_hash": "69bc14b0768954f001009beed3c53e72"
+  },
+  "src/test/java/co/edu/unicauca/deporteParaTodos/infraestructura/mappers/HorarioMapperTest.java": {
+    "mtime": 1788372740.0725212,
+    "seen": 1788761054.8181243,
+    "ast_hash": "82041652953a1d258975bf4aa15c9e6a",
+    "semantic_hash": "82041652953a1d258975bf4aa15c9e6a"
+  },
+  "src/test/java/co/edu/unicauca/deporteParaTodos/infraestructura/mappers/InscripcionMapperTest.java": {
+    "mtime": 1788409843.0837693,
+    "seen": 1788761054.8181243,
+    "ast_hash": "a2ff9c1070eb8ca1f880e7a645853356",
+    "semantic_hash": "a2ff9c1070eb8ca1f880e7a645853356"
+  },
+  "src/test/java/co/edu/unicauca/deporteParaTodos/infraestructura/mappers/PerfilMapperTest.java": {
+    "mtime": 1788709928.5091689,
+    "seen": 1788761054.8181243,
+    "ast_hash": "25211c96159008698aec12df0bf1b116",
+    "semantic_hash": "25211c96159008698aec12df0bf1b116"
+  },
+  "src/test/java/co/edu/unicauca/desarrolloprueba/DesarrollopruebaApplicationTests.java": {
+    "mtime": 1787707705.2547858,
+    "seen": 1788761054.8181243,
+    "ast_hash": "9b6e6deb458e5c4f2185981dfde15852",
+    "semantic_hash": "9b6e6deb458e5c4f2185981dfde15852"
+  }
+}

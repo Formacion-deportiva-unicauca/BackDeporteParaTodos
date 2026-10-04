@@ -8,11 +8,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosEntrada.IInstructorServicio;
+import co.edu.unicauca.deporteParaTodos.dominio.modelo.Instructor;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.InstructorDto;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.PerfilDto;
 import co.edu.unicauca.deporteParaTodos.infraestructura.logs.PeticionLogger;
@@ -74,6 +76,21 @@ public class InstructoresRest {
                 "id: " + perfilDto.getId() + ", nombre: " + perfilDto.getNombre());
         InstructorDto respuesta = servicioInstructor.registrarInstructor(perfilDto);
         return new ResponseEntity<>(respuesta, HttpStatus.CREATED);
+    }
+
+    @Operation(summary = "Borrado lógico de un instructor: marca meta_eliminado=1. Retorna 409 si ya estaba eliminado.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Instructor eliminado lógicamente"),
+            @ApiResponse(responseCode = "404", description = "El instructor no existe"),
+            @ApiResponse(responseCode = "409", description = "El instructor ya estaba eliminado")
+    })
+    @PreAuthorize("hasAuthority('Coordinador')")
+    @DeleteMapping("/instructor")
+    public ResponseEntity<InstructorDto> deleteInstructor(
+            @RequestParam(name = "instructorId") @NotBlank String instructorId) {
+        PeticionLogger.log(LOGGER, "DELETE", "/api/v2/instructor", "instructorId: " + instructorId);
+        Instructor eliminado = servicioInstructor.eliminarInstructor(instructorId);
+        return new ResponseEntity<>(InstructorDto.fabricarDeModelo(eliminado), HttpStatus.OK);
     }
 
 }

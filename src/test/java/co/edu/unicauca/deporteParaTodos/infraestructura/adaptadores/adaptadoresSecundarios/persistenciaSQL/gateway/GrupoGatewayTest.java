@@ -162,7 +162,7 @@ class GrupoGatewayTest {
     @Test
     void actualizarGrupo_conInstructorValido_actualizaCorrectamente() {
         when(repoImagen.existsById(2)).thenReturn(true);
-        when(repoInstructor.existsById("ins-nuevo")).thenReturn(true);
+        when(repoInstructor.existsByIdPerfilAndEliminado("ins-nuevo", 0)).thenReturn(true);
         when(repoGrupo.findById(any(GrupoId.class))).thenReturn(java.util.Optional.of(entidadExistente(1, null)));
         when(repoGrupo.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
@@ -197,13 +197,13 @@ class GrupoGatewayTest {
         Grupo resultado = grupoGateway.actualizarGrupo(CATEGORIA, CURSO, 2026, 1, datos);
 
         assertNull(resultado.getIdInstructor());
-        verify(repoInstructor, never()).existsById(any());
+        verify(repoInstructor, never()).existsByIdPerfilAndEliminado(any(), any());
     }
 
     @Test
     void actualizarGrupo_instructorInexistente_lanzaDependenciaFallida() {
         when(repoImagen.existsById(1)).thenReturn(true);
-        when(repoInstructor.existsById("no-existe")).thenReturn(false);
+        when(repoInstructor.existsByIdPerfilAndEliminado("no-existe", 0)).thenReturn(false);
 
         Grupo datos = new Grupo();
         datos.setImagenGrupo(1);
@@ -218,7 +218,7 @@ class GrupoGatewayTest {
     // grupo, no se valida contra repoImagen ni se sobreescribe con null.
     @Test
     void actualizarGrupo_sinImagen_conservaImagenActual() {
-        when(repoInstructor.existsById("ins-actual")).thenReturn(true);
+        when(repoInstructor.existsByIdPerfilAndEliminado("ins-actual", 0)).thenReturn(true);
         when(repoGrupo.findById(any(GrupoId.class))).thenReturn(java.util.Optional.of(entidadExistente(7, "ins-actual")));
         when(repoGrupo.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
@@ -240,7 +240,7 @@ class GrupoGatewayTest {
     @Test
     void actualizarGrupo_sinCupos_conservaCuposActuales() {
         when(repoImagen.existsById(1)).thenReturn(true);
-        when(repoInstructor.existsById("ins-actual")).thenReturn(true);
+        when(repoInstructor.existsByIdPerfilAndEliminado("ins-actual", 0)).thenReturn(true);
         when(repoGrupo.findById(any(GrupoId.class))).thenReturn(java.util.Optional.of(entidadExistente(1, "ins-actual")));
         when(repoGrupo.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
@@ -257,7 +257,7 @@ class GrupoGatewayTest {
     @Test
     void actualizarGrupo_sinFechaCreacion_conservaFechaCreacionActual() {
         when(repoImagen.existsById(1)).thenReturn(true);
-        when(repoInstructor.existsById("ins-actual")).thenReturn(true);
+        when(repoInstructor.existsByIdPerfilAndEliminado("ins-actual", 0)).thenReturn(true);
         GrupoEntidad existente = entidadExistente(1, "ins-actual");
         existente.setFechaCreacion(LocalDate.of(2020, 1, 1));
         when(repoGrupo.findById(any(GrupoId.class))).thenReturn(java.util.Optional.of(existente));
@@ -276,7 +276,7 @@ class GrupoGatewayTest {
     @Test
     void actualizarGrupo_sinFechaFinalizacion_conservaFechaFinalizacionActual() {
         when(repoImagen.existsById(1)).thenReturn(true);
-        when(repoInstructor.existsById("ins-actual")).thenReturn(true);
+        when(repoInstructor.existsByIdPerfilAndEliminado("ins-actual", 0)).thenReturn(true);
         GrupoEntidad existente = entidadExistente(1, "ins-actual");
         existente.setFechaFinalizacion(LocalDate.of(2026, 12, 31));
         when(repoGrupo.findById(any(GrupoId.class))).thenReturn(java.util.Optional.of(existente));
@@ -290,5 +290,32 @@ class GrupoGatewayTest {
         Grupo resultado = grupoGateway.actualizarGrupo(CATEGORIA, CURSO, 2026, 1, datos);
 
         assertEquals(LocalDate.of(2026, 12, 31), resultado.getFechaFinalizacion());
+    }
+
+    // ── existeGrupoEliminado ─────────────────────────────────────────────────
+
+    @Test
+    void existeGrupoEliminado_grupoActivo_retornaFalse() {
+        GrupoEntidad activo = entidadExistente(1, "ins-actual");
+        activo.setEliminado(0);
+        when(repoGrupo.findById(any(GrupoId.class))).thenReturn(java.util.Optional.of(activo));
+
+        assertFalse(grupoGateway.existeGrupoEliminado(CATEGORIA, CURSO, 2026, 1));
+    }
+
+    @Test
+    void existeGrupoEliminado_grupoYaEliminado_retornaTrue() {
+        GrupoEntidad eliminado = entidadExistente(1, "ins-actual");
+        eliminado.setEliminado(1);
+        when(repoGrupo.findById(any(GrupoId.class))).thenReturn(java.util.Optional.of(eliminado));
+
+        assertTrue(grupoGateway.existeGrupoEliminado(CATEGORIA, CURSO, 2026, 1));
+    }
+
+    @Test
+    void existeGrupoEliminado_grupoNoExiste_retornaFalse() {
+        when(repoGrupo.findById(any(GrupoId.class))).thenReturn(java.util.Optional.empty());
+
+        assertFalse(grupoGateway.existeGrupoEliminado(CATEGORIA, CURSO, 2026, 1));
     }
 }

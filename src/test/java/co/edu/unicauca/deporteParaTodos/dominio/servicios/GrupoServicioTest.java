@@ -3,6 +3,7 @@ package co.edu.unicauca.deporteParaTodos.dominio.servicios;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IGrupoGateway;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Grupo;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.NoExisteExcepcion;
+import co.edu.unicauca.deporteParaTodos.dominio.excepciones.YaExisteElementoExcepcion;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -197,6 +198,7 @@ class GrupoServicioTest {
     @Test
     void eliminarGrupo_exitoso_delegaAlGateway() {
         when(grupoGateway.existeGrupo(CATEGORIA, CURSO, ANIO, ITERABLE)).thenReturn(true);
+        when(grupoGateway.existeGrupoEliminado(CATEGORIA, CURSO, ANIO, ITERABLE)).thenReturn(false);
         when(grupoGateway.eliminarGrupo(CATEGORIA, CURSO, ANIO, ITERABLE)).thenReturn(grupoModelo());
 
         Grupo resultado = grupoServicio.eliminarGrupo(CATEGORIA, CURSO, ANIO, ITERABLE);
@@ -212,6 +214,21 @@ class GrupoServicioTest {
         assertThrows(NoExisteExcepcion.class,
                 () -> grupoServicio.eliminarGrupo(CATEGORIA, CURSO, ANIO, ITERABLE));
 
+        verify(grupoGateway, never()).eliminarGrupo(any(), any(), any(), any());
+    }
+
+    // Llamar eliminarGrupo() dos veces seguidas: la primera exitosa, la segunda debe
+    // dar 409 en vez de volver a marcar eliminado=1 sin avisar (ver GrupoIT para la
+    // prueba real HTTP, y GrupoRestSecurityTest para los roles).
+    @Test
+    void eliminarGrupo_yaEstabaEliminado_lanzaYaExisteElementoExcepcion() {
+        when(grupoGateway.existeGrupo(CATEGORIA, CURSO, ANIO, ITERABLE)).thenReturn(true);
+        when(grupoGateway.existeGrupoEliminado(CATEGORIA, CURSO, ANIO, ITERABLE)).thenReturn(true);
+
+        YaExisteElementoExcepcion ex = assertThrows(YaExisteElementoExcepcion.class,
+                () -> grupoServicio.eliminarGrupo(CATEGORIA, CURSO, ANIO, ITERABLE));
+
+        assertEquals("El grupo ya se encuentra eliminado", ex.getMessage());
         verify(grupoGateway, never()).eliminarGrupo(any(), any(), any(), any());
     }
 
