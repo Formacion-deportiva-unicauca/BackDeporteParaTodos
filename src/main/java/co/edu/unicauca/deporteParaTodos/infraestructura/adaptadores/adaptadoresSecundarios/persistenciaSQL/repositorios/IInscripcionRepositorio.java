@@ -161,4 +161,24 @@ WHERE i.alumnoId = :alumnoId
 ORDER BY CASE WHEN i.estado = 'INSCRITO' THEN 0 ELSE 1 END, i.anio DESC, i.iterable DESC
 """)
     List<InscripcionEntidad> findMisCursos(@Param("alumnoId") String alumnoId);
+
+    // "Mis grupos" (Instructor): conteos de inscritos/en-espera de TODOS los grupos
+    // del instructor en UNA sola consulta agrupada (no una consulta por grupo).
+    // Mismo criterio de "activa" que contarInscripcionesActivasGrupo/contarEnEsperaGrupo:
+    // META_ELIMINADO=0, FECHADESVINCULACION IS NULL, filtrado por estado. Un grupo sin
+    // ninguna inscripcion simplemente no aparece en el resultado (se trata como 0/0
+    // en el servicio, no aqui).
+    @Query("""
+SELECT i.categoria, i.curso, i.anio, i.iterable,
+       SUM(CASE WHEN i.estado = 'INSCRITO' THEN 1 ELSE 0 END),
+       SUM(CASE WHEN i.estado = 'EN_ESPERA' THEN 1 ELSE 0 END)
+FROM InscripcionEntidad i, GrupoEntidad g
+WHERE i.categoria = g.categoria AND i.curso = g.curso
+  AND i.anio = g.anio AND i.iterable = g.iterable
+  AND g.idInstructor = :idInstructor
+  AND i.eliminado = 0
+  AND i.fechaDesvinculacion IS NULL
+GROUP BY i.categoria, i.curso, i.anio, i.iterable
+""")
+    List<Object[]> contarInscripcionesPorInstructor(@Param("idInstructor") String idInstructor);
 }

@@ -200,6 +200,7 @@
 								<exclude>**/ClaseFechaDuplicadaIT.java</exclude>
 								<exclude>**/InstructorIT.java</exclude>
 								<exclude>**/InscripcionMisCursosIT.java</exclude>
+								<exclude>**/GrupoMisGruposIT.java</exclude>
 							</excludes>
 						</configuration>
 					</plugin>

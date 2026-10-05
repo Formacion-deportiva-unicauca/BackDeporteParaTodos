@@ -303,4 +303,34 @@ class InscripcionGatewayTest {
         assertNotNull(resultado);
         assertTrue(resultado.isEmpty());
     }
+
+    // ── contarInscripcionesPorInstructor ──────────────────────────────────────
+
+    @Test
+    void contarInscripcionesPorInstructor_hayFilas_mapeaCamposYConvierteNumerosAInt() {
+        Object[] fila = new Object[]{CATEGORIA, CURSO, ANIO, ITERABLE, 3L, 1L};
+        when(repoInscrp.contarInscripcionesPorInstructor("INS001")).thenReturn(List.<Object[]>of(fila));
+
+        List<co.edu.unicauca.deporteParaTodos.dominio.modelo.ConteoInscripcionGrupo> resultado =
+                gateway.contarInscripcionesPorInstructor("INS001");
+
+        assertEquals(1, resultado.size());
+        assertEquals(CATEGORIA, resultado.get(0).getCategoria());
+        assertEquals(CURSO, resultado.get(0).getCurso());
+        assertEquals(ANIO, resultado.get(0).getAnio());
+        assertEquals(ITERABLE, resultado.get(0).getIterable());
+        assertEquals(3, resultado.get(0).getInscritos());
+        assertEquals(1, resultado.get(0).getEnEspera());
+    }
+
+    @Test
+    void contarInscripcionesPorInstructor_sinFilas_retornaListaVacia() {
+        when(repoInscrp.contarInscripcionesPorInstructor("INS001")).thenReturn(List.of());
+
+        List<co.edu.unicauca.deporteParaTodos.dominio.modelo.ConteoInscripcionGrupo> resultado =
+                gateway.contarInscripcionesPorInstructor("INS001");
+
+        assertNotNull(resultado);
+        assertTrue(resultado.isEmpty());
+    }
 }

@@ -1,5 +1,6 @@
 package co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida;
 
+import co.edu.unicauca.deporteParaTodos.dominio.modelo.ConteoInscripcionGrupo;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Inscripcion;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.InscripcionEnEspera;
 
@@ -34,4 +35,6 @@ public interface IInscripcionGateway {
     List<InscripcionEnEspera> listarEnEspera(String categoria, String curso, int anio, int iterable);
 
     List<Inscripcion> obtenerInscripcionesAlumno(String alumnoId);
+
+    List<ConteoInscripcionGrupo> contarInscripcionesPorInstructor(String idInstructor);
 }

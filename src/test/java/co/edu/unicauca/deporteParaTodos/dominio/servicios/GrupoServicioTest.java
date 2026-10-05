@@ -1,7 +1,16 @@
 package co.edu.unicauca.deporteParaTodos.dominio.servicios;
 
+import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.ICursoGateway;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IGrupoGateway;
+import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IHorarioGateway;
+import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IInscripcionGateway;
+import co.edu.unicauca.deporteParaTodos.dominio.modelo.ConteoInscripcionGrupo;
+import co.edu.unicauca.deporteParaTodos.dominio.modelo.Curso;
+import co.edu.unicauca.deporteParaTodos.dominio.modelo.EstadoCurso;
+import co.edu.unicauca.deporteParaTodos.dominio.modelo.EstadoInscripciones;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Grupo;
+import co.edu.unicauca.deporteParaTodos.dominio.modelo.Horario;
+import co.edu.unicauca.deporteParaTodos.dominio.modelo.InstructorGrupoResumen;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.NoExisteExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.YaExisteElementoExcepcion;
 import org.junit.jupiter.api.Test;
@@ -22,6 +31,15 @@ class GrupoServicioTest {
 
     @Mock
     private IGrupoGateway grupoGateway;
+
+    @Mock
+    private IInscripcionGateway inscripcionGateway;
+
+    @Mock
+    private ICursoGateway cursoGateway;
+
+    @Mock
+    private IHorarioGateway horarioGateway;
 
     @InjectMocks
     private GrupoServicio grupoServicio;
@@ -255,5 +273,89 @@ class GrupoServicioTest {
         Grupo resultado = grupoServicio.obtenerGrupo(CATEGORIA, CURSO, ANIO, ITERABLE);
 
         assertNull(resultado);
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // obtenerMisGrupos
+    // ──────────────────────────────────────────────────────────────────────────
+
+    @Test
+    void obtenerMisGrupos_conDatos_componeCursoHorariosYConteos() {
+        Grupo grupoConConteo = grupoModelo();
+        Grupo grupoSinConteo = grupoModelo();
+        grupoSinConteo.setCurso("Futbol");
+        Curso curso = new Curso();
+        curso.setEstadoCurso(EstadoCurso.ACTIVO);
+        curso.setEstadoInscripciones(EstadoInscripciones.ABIERTO);
+        Horario horarioLunes = new Horario(1, CATEGORIA, CURSO, ANIO, ITERABLE, "LUNES", "08:00", "10:00", "Cancha 1", 0);
+        Horario horarioMiercoles = new Horario(2, CATEGORIA, CURSO, ANIO, ITERABLE, "MIERCOLES", "08:00", "10:00", "Cancha 1", 0);
+
+        when(grupoGateway.obtenerGruposInstructor("INS001")).thenReturn(List.of(grupoConConteo, grupoSinConteo));
+        when(inscripcionGateway.contarInscripcionesPorInstructor("INS001"))
+                .thenReturn(List.of(new ConteoInscripcionGrupo(CATEGORIA, CURSO, ANIO, ITERABLE, 3, 1)));
+        when(cursoGateway.obtenerCurso(eq(CATEGORIA), anyString())).thenReturn(curso);
+        when(horarioGateway.listarHorariosPorGrupo(CATEGORIA, CURSO, ANIO, ITERABLE))
+                .thenReturn(List.of(horarioLunes, horarioMiercoles));
+        when(horarioGateway.listarHorariosPorGrupo(CATEGORIA, "Futbol", ANIO, ITERABLE))
+                .thenReturn(List.of());
+
+        List<InstructorGrupoResumen> resultado = grupoServicio.obtenerMisGrupos("INS001");
+
+        assertEquals(2, resultado.size());
+        InstructorGrupoResumen filaConConteo = resultado.get(0);
+        assertEquals(CATEGORIA, filaConConteo.getCategoria());
+        assertEquals(CURSO, filaConConteo.getCurso());
+        assertEquals(ANIO, filaConConteo.getAnio());
+        assertEquals(ITERABLE, filaConConteo.getIterable());
+        assertEquals(1, filaConConteo.getPeriodo());
+        assertEquals(20, filaConConteo.getCupos());
+        assertEquals(3, filaConConteo.getInscritos());
+        assertEquals(1, filaConConteo.getEnEspera());
+        assertEquals(2, filaConConteo.getHorarios().size(), "una sola fila por grupo, con los 2 horarios anidados");
+        assertEquals(EstadoCurso.ACTIVO, filaConConteo.getEstadoCurso());
+        assertEquals(EstadoInscripciones.ABIERTO, filaConConteo.getEstadoInscripciones());
+
+        // Grupo sin inscripciones no aparece en el query agrupado -- debe tratarse
+        // como 0/0, no lanzar excepcion ni omitirse de la respuesta.
+        InstructorGrupoResumen filaSinConteo = resultado.get(1);
+        assertEquals("Futbol", filaSinConteo.getCurso());
+        assertEquals(0, filaSinConteo.getInscritos());
+        assertEquals(0, filaSinConteo.getEnEspera());
+        assertTrue(filaSinConteo.getHorarios().isEmpty());
+
+        // Un solo query de conteos para TODOS los grupos, no uno por grupo.
+        verify(inscripcionGateway, times(1)).contarInscripcionesPorInstructor("INS001");
+    }
+
+    @Test
+    void obtenerMisGrupos_instructorSinGrupos_retornaListaVaciaSinConsultarNada() {
+        when(grupoGateway.obtenerGruposInstructor("INS001")).thenReturn(List.of());
+
+        List<InstructorGrupoResumen> resultado = grupoServicio.obtenerMisGrupos("INS001");
+
+        assertNotNull(resultado);
+        assertTrue(resultado.isEmpty());
+        verify(inscripcionGateway, never()).contarInscripcionesPorInstructor(any());
+        verify(cursoGateway, never()).obtenerCurso(any(), any());
+        verify(horarioGateway, never()).listarHorariosPorGrupo(any(), any(), anyInt(), anyInt());
+    }
+
+    // Hallazgo del diseno: un curso INACTIVO no debe ocultar el grupo -- debe
+    // devolverse igual, con estadoCurso=INACTIVO reflejado tal cual.
+    @Test
+    void obtenerMisGrupos_cursoInactivo_devuelveGrupoConEstadoInactivo() {
+        Grupo grupo = grupoModelo();
+        Curso cursoInactivo = new Curso();
+        cursoInactivo.setEstadoCurso(EstadoCurso.INACTIVO);
+        cursoInactivo.setEstadoInscripciones(EstadoInscripciones.CERRADO);
+        when(grupoGateway.obtenerGruposInstructor("INS001")).thenReturn(List.of(grupo));
+        when(inscripcionGateway.contarInscripcionesPorInstructor("INS001")).thenReturn(List.of());
+        when(cursoGateway.obtenerCurso(CATEGORIA, CURSO)).thenReturn(cursoInactivo);
+        when(horarioGateway.listarHorariosPorGrupo(CATEGORIA, CURSO, ANIO, ITERABLE)).thenReturn(List.of());
+
+        List<InstructorGrupoResumen> resultado = grupoServicio.obtenerMisGrupos("INS001");
+
+        assertEquals(1, resultado.size());
+        assertEquals(EstadoCurso.INACTIVO, resultado.get(0).getEstadoCurso());
     }
 }
