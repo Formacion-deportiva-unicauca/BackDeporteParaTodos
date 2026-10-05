@@ -32,4 +32,6 @@ public interface IInscripcionGateway {
     Inscripcion promoverInscripcion(String alumnoId, String categoria, String curso, int anio, int iterable);
 
     List<InscripcionEnEspera> listarEnEspera(String categoria, String curso, int anio, int iterable);
+
+    List<Inscripcion> obtenerInscripcionesAlumno(String alumnoId);
 }

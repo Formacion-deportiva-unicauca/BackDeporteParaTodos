@@ -3,6 +3,7 @@ package co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadores
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosEntrada.IInscripcionServicio;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Disponibilidad;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Inscripcion;
+import co.edu.unicauca.deporteParaTodos.dominio.modelo.InscripcionResumen;
 import co.edu.unicauca.deporteParaTodos.deporteParaTodos;
 import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.OctetSequenceKey;
@@ -26,6 +27,7 @@ import javax.crypto.spec.SecretKeySpec;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.Base64;
+import java.util.List;
 
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.when;
@@ -208,5 +210,78 @@ class InscripcionRestSecurityTest {
                 .content("{\"alumnoId\":\"alum1\",\"categoria\":\"cat1\",\"curso\":\"cur1\",\"anio\":2026,\"iterable\":1}")
                 .header("Authorization", "Bearer " + buildJwt("Alumno", "alum1")))
                 .andExpect(status().isOk());
+    }
+
+    // ── GET /inscripcion/misCursos — solo Alumno, identidad SIEMPRE del JWT ──
+
+    // Diseno explicito: "Si el claim [perf_id] falta, rechaza." Un JWT valido (rol
+    // Alumno, firma correcta) pero sin el claim perf_id no debe llegar al servicio.
+    @Test
+    void misCursos_jwtSinClaimPerfId_retorna401() throws Exception {
+        byte[] keyBytes = Base64.getDecoder().decode(TEST_SECRET);
+        SecretKey key = new SecretKeySpec(keyBytes, "HmacSHA256");
+        JWKSource<SecurityContext> source = new ImmutableJWKSet<>(new JWKSet(new OctetSequenceKey.Builder(key).build()));
+        JwtClaimsSet claims = JwtClaimsSet.builder()
+                .subject("test@unicauca.edu.co")
+                .issuedAt(Instant.now())
+                .expiresAt(Instant.now().plusSeconds(3600))
+                .claim("rol", "Alumno")
+                .build();
+        String jwtSinPerfId = new NimbusJwtEncoder(source)
+                .encode(JwtEncoderParameters.from(JwsHeader.with(MacAlgorithm.HS256).build(), claims))
+                .getTokenValue();
+
+        mockMvc.perform(get("/api/v2/inscripcion/misCursos")
+                .header("Authorization", "Bearer " + jwtSinPerfId))
+                .andExpect(status().isUnauthorized());
+
+        org.mockito.Mockito.verify(servicio, org.mockito.Mockito.never()).listarMisCursos(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    void misCursos_rolAlumno_retorna200() throws Exception {
+        when(servicio.listarMisCursos("alum1")).thenReturn(List.of());
+
+        mockMvc.perform(get("/api/v2/inscripcion/misCursos")
+                .header("Authorization", "Bearer " + buildJwt("Alumno", "alum1")))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void misCursos_rolInstructor_retorna403() throws Exception {
+        mockMvc.perform(get("/api/v2/inscripcion/misCursos")
+                .header("Authorization", "Bearer " + buildJwt("Instructor", "ins1")))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void misCursos_rolCoordinador_retorna403() throws Exception {
+        mockMvc.perform(get("/api/v2/inscripcion/misCursos")
+                .header("Authorization", "Bearer " + buildJwt("Coordinador", "coord1")))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void misCursos_sinToken_retorna401() throws Exception {
+        mockMvc.perform(get("/api/v2/inscripcion/misCursos"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    // No se expone ningun parametro de alumnoId: el id SIEMPRE sale del JWT (claim
+    // perf_id), nunca de algo que el cliente pueda enviar -- a diferencia del patron
+    // "parametro validado contra el JWT" de inscribir()/desvincularInscripcion().
+    @Test
+    void misCursos_usaPerfIdDelJwt_ignorandoCualquierParametroDeCliente() throws Exception {
+        InscripcionResumen item = new InscripcionResumen(
+                "cat1", "cur1", 2026, 1, 1, "INSCRITO", "Prof. Garcia", true, List.of());
+        when(servicio.listarMisCursos("alum1")).thenReturn(List.of(item));
+
+        mockMvc.perform(get("/api/v2/inscripcion/misCursos")
+                .param("alumnoId", "alum2")
+                .header("Authorization", "Bearer " + buildJwt("Alumno", "alum1")))
+                .andExpect(status().isOk());
+
+        org.mockito.Mockito.verify(servicio).listarMisCursos("alum1");
+        org.mockito.Mockito.verify(servicio, org.mockito.Mockito.never()).listarMisCursos("alum2");
     }
 }

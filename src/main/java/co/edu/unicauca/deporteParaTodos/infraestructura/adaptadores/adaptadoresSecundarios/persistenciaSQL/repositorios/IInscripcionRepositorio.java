@@ -149,4 +149,16 @@ ORDER BY i.fechaInscripcion ASC
             @Param("curso") String curso,
             @Param("anio") int anio,
             @Param("iterable") int iterable);
+
+    // "Mis cursos": solo inscripciones activas del alumno (sin importar si el curso/grupo
+    // destino fue eliminado logicamente -- eso se refleja aparte via el flag grupoActivo,
+    // no ocultando la fila). Orden: INSCRITO antes que EN_ESPERA, luego mas reciente primero.
+    @Query("""
+SELECT i FROM InscripcionEntidad i
+WHERE i.alumnoId = :alumnoId
+  AND i.eliminado = 0
+  AND i.fechaDesvinculacion IS NULL
+ORDER BY CASE WHEN i.estado = 'INSCRITO' THEN 0 ELSE 1 END, i.anio DESC, i.iterable DESC
+""")
+    List<InscripcionEntidad> findMisCursos(@Param("alumnoId") String alumnoId);
 }

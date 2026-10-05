@@ -199,6 +199,7 @@
 								<exclude>**/InscripcionEstadoCursoIT.java</exclude>
 								<exclude>**/ClaseFechaDuplicadaIT.java</exclude>
 								<exclude>**/InstructorIT.java</exclude>
+								<exclude>**/InscripcionMisCursosIT.java</exclude>
 							</excludes>
 						</configuration>
 					</plugin>

@@ -21,9 +21,11 @@ import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosEntrada.IInscr
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Disponibilidad;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Inscripcion;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.InscripcionEnEspera;
+import co.edu.unicauca.deporteParaTodos.dominio.modelo.InscripcionResumen;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.DisponibilidadDto;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.InscripcionDto;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.InscripcionEnEsperaDto;
+import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.InscripcionResumenDto;
 import co.edu.unicauca.deporteParaTodos.infraestructura.logs.PeticionLogger;
 import co.edu.unicauca.deporteParaTodos.infraestructura.mappers.InscripcionMapper;
 
@@ -127,6 +129,21 @@ public class InscripcionRest {
         List<InscripcionEnEspera> lista = servicio.listarEnEspera(prmCategoria, prmCurso, prmAnio, prmIterable);
         List<InscripcionEnEsperaDto> dtos = lista.stream()
                 .map(InscripcionEnEsperaDto::fabricarDeModelo)
+                .collect(Collectors.toList());
+        return new ResponseEntity<>(dtos, HttpStatus.OK);
+    }
+
+    @PreAuthorize("hasAuthority('Alumno')")
+    @GetMapping("/inscripcion/misCursos")
+    public ResponseEntity<List<InscripcionResumenDto>> misCursos(@AuthenticationPrincipal Jwt jwt) {
+        String alumnoId = jwt != null ? jwt.getClaimAsString("perf_id") : null;
+        if (alumnoId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        PeticionLogger.log(LOGGER, "GET", "/api/v2/inscripcion/misCursos", alumnoId);
+        List<InscripcionResumen> lista = servicio.listarMisCursos(alumnoId);
+        List<InscripcionResumenDto> dtos = lista.stream()
+                .map(InscripcionResumenDto::fabricarDeModelo)
                 .collect(Collectors.toList());
         return new ResponseEntity<>(dtos, HttpStatus.OK);
     }
