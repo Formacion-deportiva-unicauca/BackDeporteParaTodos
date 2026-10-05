@@ -35,4 +35,6 @@ public class Grupo {
     private LocalDate fechaIncripcionCierre;
 
     private int periodo;
+
+    private Integer eliminado;
 }

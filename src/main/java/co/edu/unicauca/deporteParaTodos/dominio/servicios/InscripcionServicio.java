@@ -11,7 +11,9 @@ import org.springframework.transaction.annotation.Transactional;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosEntrada.IInscripcionServicio;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.ICursoGateway;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IGrupoGateway;
+import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IHorarioGateway;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IInscripcionGateway;
+import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IInstructorGateway;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.CuposAgotadosExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.InscripcionesCerradasExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.LimiteCursosExcepcion;
@@ -22,9 +24,13 @@ import co.edu.unicauca.deporteParaTodos.dominio.modelo.Disponibilidad;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.EstadoCurso;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.EstadoInscripciones;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Grupo;
+import co.edu.unicauca.deporteParaTodos.dominio.modelo.Horario;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Inscripcion;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.InscripcionEnEspera;
+import co.edu.unicauca.deporteParaTodos.dominio.modelo.InscripcionResumen;
+import co.edu.unicauca.deporteParaTodos.dominio.modelo.Instructor;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -33,14 +39,19 @@ public class InscripcionServicio implements IInscripcionServicio {
     private final IInscripcionGateway gateway;
     private final ICursoGateway cursoGateway;
     private final IGrupoGateway grupoGateway;
+    private final IHorarioGateway horarioGateway;
+    private final IInstructorGateway instructorGateway;
 
     @Value("${inscripciones.limite-cursos-alumno:3}")
     private int limiteCursosAlumno;
 
-    public InscripcionServicio(IInscripcionGateway gateway, ICursoGateway cursoGateway, IGrupoGateway grupoGateway) {
+    public InscripcionServicio(IInscripcionGateway gateway, ICursoGateway cursoGateway, IGrupoGateway grupoGateway,
+            IHorarioGateway horarioGateway, IInstructorGateway instructorGateway) {
         this.gateway = gateway;
         this.cursoGateway = cursoGateway;
         this.grupoGateway = grupoGateway;
+        this.horarioGateway = horarioGateway;
+        this.instructorGateway = instructorGateway;
     }
 
     @Override
@@ -181,5 +192,33 @@ public class InscripcionServicio implements IInscripcionServicio {
     @Override
     public List<InscripcionEnEspera> listarEnEspera(String categoria, String curso, int anio, int iterable) {
         return gateway.listarEnEspera(categoria, curso, anio, iterable);
+    }
+
+    @Override
+    public List<InscripcionResumen> listarMisCursos(String alumnoId) {
+        List<Inscripcion> inscripciones = gateway.obtenerInscripcionesAlumno(alumnoId);
+        List<InscripcionResumen> resultado = new ArrayList<>();
+        for (Inscripcion inscripcion : inscripciones) {
+            // obtenerGrupo() es unfiltered por eliminado: un grupo borrado logicamente
+            // (DELETE /grupo no desvincula inscritos) sigue resolviendose aqui, nunca
+            // lanza NoExisteExcepcion -- por eso la inscripcion no se oculta, solo se
+            // marca con grupoActivo=false.
+            Grupo grupo = grupoGateway.obtenerGrupo(
+                    inscripcion.getCategoria(), inscripcion.getCurso(), inscripcion.getAnio(), inscripcion.getIterable());
+            List<Horario> horarios = horarioGateway.listarHorariosPorGrupo(
+                    inscripcion.getCategoria(), inscripcion.getCurso(), inscripcion.getAnio(), inscripcion.getIterable());
+            String nombreInstructor = null;
+            if (grupo.getIdInstructor() != null) {
+                nombreInstructor = instructorGateway.obtenerInstructor(grupo.getIdInstructor())
+                        .map(Instructor::getPerfil)
+                        .map(perfil -> perfil.getNombre())
+                        .orElse(null);
+            }
+            boolean grupoActivo = grupo.getEliminado() == null || grupo.getEliminado() == 0;
+            resultado.add(new InscripcionResumen(
+                    inscripcion.getCategoria(), inscripcion.getCurso(), inscripcion.getAnio(), inscripcion.getIterable(),
+                    grupo.getPeriodo(), inscripcion.getEstado(), nombreInstructor, grupoActivo, horarios));
+        }
+        return resultado;
     }
 }

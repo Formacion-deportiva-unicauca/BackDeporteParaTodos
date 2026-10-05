@@ -130,4 +130,11 @@ public class InscripcionGateway implements IInscripcionGateway {
                         (Timestamp) row[3]))
                 .collect(Collectors.toList());
     }
+
+    @Override
+    public List<Inscripcion> obtenerInscripcionesAlumno(String alumnoId) {
+        return repoInscrp.findMisCursos(alumnoId).stream()
+                .map(InscripcionMapper::toDominio)
+                .collect(Collectors.toList());
+    }
 }

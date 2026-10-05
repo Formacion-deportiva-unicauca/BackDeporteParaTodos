@@ -279,4 +279,28 @@ class InscripcionGatewayTest {
         assertNotNull(resultado);
         assertTrue(resultado.isEmpty());
     }
+
+    // ── obtenerInscripcionesAlumno ────────────────────────────────────────────
+
+    @Test
+    void obtenerInscripcionesAlumno_hayFilas_retornaListaMapeada() {
+        when(repoInscrp.findMisCursos(ALUMNO_ID)).thenReturn(List.of(entidadBase(), entidadEnEspera()));
+
+        List<Inscripcion> resultado = gateway.obtenerInscripcionesAlumno(ALUMNO_ID);
+
+        assertEquals(2, resultado.size());
+        assertEquals(CATEGORIA, resultado.get(0).getCategoria());
+        assertEquals("INSCRITO", resultado.get(0).getEstado());
+        assertEquals("EN_ESPERA", resultado.get(1).getEstado());
+    }
+
+    @Test
+    void obtenerInscripcionesAlumno_sinFilas_retornaListaVacia() {
+        when(repoInscrp.findMisCursos(ALUMNO_ID)).thenReturn(List.of());
+
+        List<Inscripcion> resultado = gateway.obtenerInscripcionesAlumno(ALUMNO_ID);
+
+        assertNotNull(resultado);
+        assertTrue(resultado.isEmpty());
+    }
 }

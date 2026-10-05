@@ -22,6 +22,7 @@ public class GrupoMapper {
             grupo.setFechaInscripcionApertura(entidad.getFechaInscripcionApertura());
             grupo.setFechaIncripcionCierre(entidad.getFechaIncripcionCierre());
             grupo.setPeriodo(entidad.getPeriodo());
+            grupo.setEliminado(entidad.getEliminado());
             return grupo;
         } catch (Exception e) {
             throw new NoProcesableEntidadException("No fue posible convertir GrupoEntidad a dominio: " + e.getMessage());
@@ -43,7 +44,7 @@ public class GrupoMapper {
                 grupo.getFechaInscripcionApertura(),
                 grupo.getFechaIncripcionCierre(),
                 grupo.getPeriodo(),
-                0);
+                grupo.getEliminado() != null ? grupo.getEliminado() : 0);
             return entidad;
         } catch (Exception e) {
             throw new NoProcesableEntidadException("No fue posible convertir Grupo a entidad: " + e.getMessage());
@@ -85,7 +86,8 @@ public class GrupoMapper {
                 dto.getFechaFinalizacion(),
                 dto.getFechaInscripcionApertura(),
                 dto.getFechaIncripcionCierre(),
-                dto.getPeriodo() != null ? dto.getPeriodo() : 0);
+                dto.getPeriodo() != null ? dto.getPeriodo() : 0,
+                null);
             return grupo;
         } catch (Exception e) {
             throw new NoProcesableEntidadException("No fue posible convertir GrupoDto a dominio: " + e.getMessage());

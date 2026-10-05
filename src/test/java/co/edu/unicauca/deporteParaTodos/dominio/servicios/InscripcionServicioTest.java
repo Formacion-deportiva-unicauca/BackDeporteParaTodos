@@ -18,7 +18,9 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.ICursoGateway;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IGrupoGateway;
+import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IHorarioGateway;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IInscripcionGateway;
+import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IInstructorGateway;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.CuposAgotadosExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.InscripcionesCerradasExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.LimiteCursosExcepcion;
@@ -29,10 +31,15 @@ import co.edu.unicauca.deporteParaTodos.dominio.modelo.Disponibilidad;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.EstadoCurso;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.EstadoInscripciones;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Grupo;
+import co.edu.unicauca.deporteParaTodos.dominio.modelo.Horario;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Inscripcion;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.InscripcionEnEspera;
+import co.edu.unicauca.deporteParaTodos.dominio.modelo.InscripcionResumen;
+import co.edu.unicauca.deporteParaTodos.dominio.modelo.Instructor;
+import co.edu.unicauca.deporteParaTodos.dominio.modelo.Perfil;
 
 import java.util.List;
+import java.util.Optional;
 
 @ExtendWith(MockitoExtension.class)
 class InscripcionServicioTest {
@@ -45,6 +52,12 @@ class InscripcionServicioTest {
 
     @Mock
     private IGrupoGateway grupoGateway;
+
+    @Mock
+    private IHorarioGateway horarioGateway;
+
+    @Mock
+    private IInstructorGateway instructorGateway;
 
     @InjectMocks
     private InscripcionServicio servicio;
@@ -438,5 +451,107 @@ class InscripcionServicioTest {
         assertEquals(1, resultado.size());
         assertEquals("alum1", resultado.get(0).getAlumnoId());
         verify(gateway).listarEnEspera("cat1", "cur1", 2026, 1);
+    }
+
+    // ── listarMisCursos ───────────────────────────────────────────────────────
+
+    @Test
+    void listarMisCursos_conDatos_componeCategoriaGrupoInstructorYHorarios() {
+        Inscripcion inscripcion = new Inscripcion("alum1", "cat1", "cur1", 2026, 1,
+                Timestamp.from(Instant.now()), null, "INSCRITO");
+        Grupo grupo = new Grupo();
+        grupo.setIdInstructor("ins1");
+        grupo.setPeriodo(1);
+        grupo.setEliminado(0);
+        Perfil perfil = new Perfil();
+        perfil.setNombre("Prof. Garcia");
+        Instructor instructor = new Instructor();
+        instructor.setPerfil(perfil);
+        Horario horarioLunes = new Horario(1, "cat1", "cur1", 2026, 1, "LUNES", "08:00", "10:00", "Cancha 1", 0);
+        Horario horarioMiercoles = new Horario(2, "cat1", "cur1", 2026, 1, "MIERCOLES", "08:00", "10:00", "Cancha 1", 0);
+
+        when(gateway.obtenerInscripcionesAlumno("alum1")).thenReturn(List.of(inscripcion));
+        when(grupoGateway.obtenerGrupo("cat1", "cur1", 2026, 1)).thenReturn(grupo);
+        when(horarioGateway.listarHorariosPorGrupo("cat1", "cur1", 2026, 1))
+                .thenReturn(List.of(horarioLunes, horarioMiercoles));
+        when(instructorGateway.obtenerInstructor("ins1")).thenReturn(Optional.of(instructor));
+
+        List<InscripcionResumen> resultado = servicio.listarMisCursos("alum1");
+
+        assertEquals(1, resultado.size());
+        InscripcionResumen item = resultado.get(0);
+        assertEquals("cat1", item.getCategoria());
+        assertEquals("cur1", item.getCurso());
+        assertEquals("INSCRITO", item.getEstado());
+        assertEquals("Prof. Garcia", item.getNombreInstructor());
+        assertTrue(item.isGrupoActivo());
+        assertEquals(2, item.getHorarios().size(), "una sola fila por inscripcion, con los 2 horarios anidados");
+    }
+
+    @Test
+    void listarMisCursos_sinInscripciones_retornaListaVaciaSinLanzarExcepcion() {
+        when(gateway.obtenerInscripcionesAlumno("alum1")).thenReturn(List.of());
+
+        List<InscripcionResumen> resultado = servicio.listarMisCursos("alum1");
+
+        assertNotNull(resultado);
+        assertTrue(resultado.isEmpty());
+        verify(grupoGateway, never()).obtenerGrupo(any(), any(), anyInt(), anyInt());
+    }
+
+    @Test
+    void listarMisCursos_grupoSinInstructor_nombreInstructorEsNull() {
+        Inscripcion inscripcion = new Inscripcion("alum1", "cat1", "cur1", 2026, 1,
+                Timestamp.from(Instant.now()), null, "EN_ESPERA");
+        Grupo grupo = new Grupo();
+        grupo.setIdInstructor(null);
+        grupo.setPeriodo(1);
+        grupo.setEliminado(0);
+        when(gateway.obtenerInscripcionesAlumno("alum1")).thenReturn(List.of(inscripcion));
+        when(grupoGateway.obtenerGrupo("cat1", "cur1", 2026, 1)).thenReturn(grupo);
+        when(horarioGateway.listarHorariosPorGrupo("cat1", "cur1", 2026, 1)).thenReturn(List.of());
+
+        List<InscripcionResumen> resultado = servicio.listarMisCursos("alum1");
+
+        assertNull(resultado.get(0).getNombreInstructor());
+        verify(instructorGateway, never()).obtenerInstructor(any());
+    }
+
+    @Test
+    void listarMisCursos_grupoEliminadoNulo_tratadoComoActivo() {
+        Inscripcion inscripcion = new Inscripcion("alum1", "cat1", "cur1", 2026, 1,
+                Timestamp.from(Instant.now()), null, "INSCRITO");
+        Grupo grupo = new Grupo();
+        grupo.setIdInstructor(null);
+        grupo.setPeriodo(1);
+        grupo.setEliminado(null);
+        when(gateway.obtenerInscripcionesAlumno("alum1")).thenReturn(List.of(inscripcion));
+        when(grupoGateway.obtenerGrupo("cat1", "cur1", 2026, 1)).thenReturn(grupo);
+        when(horarioGateway.listarHorariosPorGrupo("cat1", "cur1", 2026, 1)).thenReturn(List.of());
+
+        List<InscripcionResumen> resultado = servicio.listarMisCursos("alum1");
+
+        assertTrue(resultado.get(0).isGrupoActivo());
+    }
+
+    // Hallazgo confirmado en la investigacion: DELETE /grupo no desvincula a los
+    // inscritos (borrado logico, FK RESTRICT) -- la inscripcion sigue activa y
+    // debe seguir apareciendo, marcada con grupoActivo=false (no se oculta).
+    @Test
+    void listarMisCursos_grupoEliminadoLogicamente_apareceConGrupoActivoFalse() {
+        Inscripcion inscripcion = new Inscripcion("alum1", "cat1", "cur1", 2026, 1,
+                Timestamp.from(Instant.now()), null, "INSCRITO");
+        Grupo grupo = new Grupo();
+        grupo.setIdInstructor(null);
+        grupo.setPeriodo(1);
+        grupo.setEliminado(1);
+        when(gateway.obtenerInscripcionesAlumno("alum1")).thenReturn(List.of(inscripcion));
+        when(grupoGateway.obtenerGrupo("cat1", "cur1", 2026, 1)).thenReturn(grupo);
+        when(horarioGateway.listarHorariosPorGrupo("cat1", "cur1", 2026, 1)).thenReturn(List.of());
+
+        List<InscripcionResumen> resultado = servicio.listarMisCursos("alum1");
+
+        assertEquals(1, resultado.size(), "la inscripcion no debe ocultarse aunque el grupo este eliminado");
+        assertFalse(resultado.get(0).isGrupoActivo());
     }
 }

@@ -58,6 +58,16 @@ class GrupoMapperTest {
         assertEquals("INS001", resultado.getIdInstructor());
     }
 
+    // "Mis cursos" (Alumno) usa este campo para derivar grupoActivo sin exponer
+    // eliminado en GrupoDto (toDto() nunca lo copia -- ver fromDto/toEntidad abajo).
+    @Test
+    void toDominio_preservaEliminado() {
+        GrupoEntidad entidad = entidadBase();
+        entidad.setEliminado(1);
+        Grupo resultado = GrupoMapper.toDominio(entidad);
+        assertEquals(1, resultado.getEliminado());
+    }
+
     // ────────── toEntidad ──────────
 
     @Test
@@ -72,6 +82,14 @@ class GrupoMapperTest {
     void toEntidad_eliminadoSiempreEs0() {
         GrupoEntidad resultado = GrupoMapper.toEntidad(grupoBase());
         assertEquals(0, resultado.getEliminado());
+    }
+
+    @Test
+    void toEntidad_eliminadoNoNulo_preservaValorProvisto() {
+        Grupo grupo = grupoBase();
+        grupo.setEliminado(1);
+        GrupoEntidad resultado = GrupoMapper.toEntidad(grupo);
+        assertEquals(1, resultado.getEliminado());
     }
 
     @Test
@@ -147,5 +165,20 @@ class GrupoMapperTest {
     @Test
     void fromDto_dtoNulo_lanzaNoProcesableEntidadException() {
         assertThrows(NoProcesableEntidadException.class, () -> GrupoMapper.fromDto(null));
+    }
+
+    // GrupoDto no tiene campo eliminado (nunca se expuso a POST/PUT /grupo); fromDto()
+    // no debe inventarlo -- toEntidad() lo trata como 0 cuando llega null (ver arriba).
+    @Test
+    void fromDto_noRecibeEliminadoDelCliente() {
+        GrupoDto dto = new GrupoDto();
+        dto.setCategoria(CATEGORIA);
+        dto.setCurso(CURSO);
+        dto.setImagenGrupo(1);
+        dto.setCupos(20);
+
+        Grupo resultado = GrupoMapper.fromDto(dto);
+
+        assertNull(resultado.getEliminado());
     }
 }
