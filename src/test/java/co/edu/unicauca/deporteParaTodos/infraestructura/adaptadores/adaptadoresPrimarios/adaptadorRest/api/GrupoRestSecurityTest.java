@@ -25,12 +25,16 @@ import javax.crypto.spec.SecretKeySpec;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Base64;
+import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -151,5 +155,75 @@ class GrupoRestSecurityTest {
                 .param("anio", "2026").param("iterable", "1")
                 .header("Authorization", "Bearer " + buildJwt("Coordinador", "coord1")))
                 .andExpect(status().isOk());
+    }
+
+    // ── GET /api/v2/grupo/misGrupos — solo Instructor, identidad SIEMPRE del JWT ──
+
+    @Test
+    void misGrupos_rolInstructor_retorna200() throws Exception {
+        when(servicio.obtenerMisGrupos("ins1")).thenReturn(List.of());
+
+        mockMvc.perform(get("/api/v2/grupo/misGrupos")
+                .header("Authorization", "Bearer " + buildJwt("Instructor", "ins1")))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void misGrupos_rolAlumno_retorna403() throws Exception {
+        mockMvc.perform(get("/api/v2/grupo/misGrupos")
+                .header("Authorization", "Bearer " + buildJwt("Alumno", "alum1")))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void misGrupos_rolCoordinador_retorna403() throws Exception {
+        mockMvc.perform(get("/api/v2/grupo/misGrupos")
+                .header("Authorization", "Bearer " + buildJwt("Coordinador", "coord1")))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void misGrupos_sinToken_retorna401() throws Exception {
+        mockMvc.perform(get("/api/v2/grupo/misGrupos"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    // Diseno explicito: "Si falta el claim [perf_id], 401." Un JWT valido (rol
+    // Instructor, firma correcta) pero sin el claim perf_id no debe llegar al servicio.
+    @Test
+    void misGrupos_jwtSinClaimPerfId_retorna401() throws Exception {
+        byte[] keyBytes = Base64.getDecoder().decode(TEST_SECRET);
+        SecretKey key = new SecretKeySpec(keyBytes, "HmacSHA256");
+        JWKSource<SecurityContext> source = new ImmutableJWKSet<>(new JWKSet(new OctetSequenceKey.Builder(key).build()));
+        JwtClaimsSet claims = JwtClaimsSet.builder()
+                .subject("test@unicauca.edu.co")
+                .issuedAt(Instant.now())
+                .expiresAt(Instant.now().plusSeconds(3600))
+                .claim("rol", "Instructor")
+                .build();
+        String jwtSinPerfId = new NimbusJwtEncoder(source)
+                .encode(JwtEncoderParameters.from(JwsHeader.with(MacAlgorithm.HS256).build(), claims))
+                .getTokenValue();
+
+        mockMvc.perform(get("/api/v2/grupo/misGrupos")
+                .header("Authorization", "Bearer " + jwtSinPerfId))
+                .andExpect(status().isUnauthorized());
+
+        verify(servicio, never()).obtenerMisGrupos(any());
+    }
+
+    // No se expone ningun parametro de instructorId: el id SIEMPRE sale del JWT
+    // (claim perf_id), nunca de algo que el cliente pueda enviar.
+    @Test
+    void misGrupos_usaPerfIdDelJwt_ignorandoCualquierParametroDeCliente() throws Exception {
+        when(servicio.obtenerMisGrupos("ins1")).thenReturn(List.of());
+
+        mockMvc.perform(get("/api/v2/grupo/misGrupos")
+                .param("idInstructor", "ins2")
+                .header("Authorization", "Bearer " + buildJwt("Instructor", "ins1")))
+                .andExpect(status().isOk());
+
+        verify(servicio).obtenerMisGrupos("ins1");
+        verify(servicio, never()).obtenerMisGrupos("ins2");
     }
 }

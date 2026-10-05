@@ -17,7 +17,9 @@ import org.springframework.web.bind.annotation.RestController;
 
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosEntrada.IGrupoServicio;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Grupo;
+import co.edu.unicauca.deporteParaTodos.dominio.modelo.InstructorGrupoResumen;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.GrupoDto;
+import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.InstructorGrupoResumenDto;
 import co.edu.unicauca.deporteParaTodos.infraestructura.logs.PeticionLogger;
 import co.edu.unicauca.deporteParaTodos.infraestructura.mappers.GrupoMapper;
 import io.swagger.v3.oas.annotations.Operation;
@@ -25,6 +27,10 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import jakarta.validation.Valid;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
+
+import java.util.stream.Collectors;
 
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -164,5 +170,24 @@ public class GrupoRest {
         PeticionLogger.log(LOGGER, "GET", "/api/v2/grupo", "categoria=" + categoria + ", curso=" + curso + ", anio=" + anio + ", iterable=" + iterable);
         Grupo grupo = servicio.obtenerGrupo(categoria, curso, anio, iterable);
         return new ResponseEntity<>(GrupoMapper.toDto(grupo), HttpStatus.OK);
+    }
+
+    @Operation(summary = "Grupos a cargo del Instructor autenticado (identidad tomada del JWT, nunca de un parametro de cliente)")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Grupos recuperados (lista vacia si no tiene ninguno)"),
+    })
+    @PreAuthorize("hasAuthority('Instructor')")
+    @GetMapping("/grupo/misGrupos")
+    public ResponseEntity<List<InstructorGrupoResumenDto>> misGrupos(@AuthenticationPrincipal Jwt jwt) {
+        String idInstructor = jwt != null ? jwt.getClaimAsString("perf_id") : null;
+        if (idInstructor == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        PeticionLogger.log(LOGGER, "GET", "/api/v2/grupo/misGrupos", idInstructor);
+        List<InstructorGrupoResumen> lista = servicio.obtenerMisGrupos(idInstructor);
+        List<InstructorGrupoResumenDto> dtos = lista.stream()
+                .map(InstructorGrupoResumenDto::fabricarDeModelo)
+                .collect(Collectors.toList());
+        return new ResponseEntity<>(dtos, HttpStatus.OK);
     }
 }

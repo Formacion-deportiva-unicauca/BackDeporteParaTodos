@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IInscripcionGateway;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.NoExisteExcepcion;
+import co.edu.unicauca.deporteParaTodos.dominio.modelo.ConteoInscripcionGrupo;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Inscripcion;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.InscripcionEnEspera;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresSecundarios.persistenciaSQL.entidades.InscripcionEntidad;
@@ -135,6 +136,19 @@ public class InscripcionGateway implements IInscripcionGateway {
     public List<Inscripcion> obtenerInscripcionesAlumno(String alumnoId) {
         return repoInscrp.findMisCursos(alumnoId).stream()
                 .map(InscripcionMapper::toDominio)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<ConteoInscripcionGrupo> contarInscripcionesPorInstructor(String idInstructor) {
+        return repoInscrp.contarInscripcionesPorInstructor(idInstructor).stream()
+                .map(row -> new ConteoInscripcionGrupo(
+                        (String) row[0],
+                        (String) row[1],
+                        ((Number) row[2]).intValue(),
+                        ((Number) row[3]).intValue(),
+                        ((Number) row[4]).intValue(),
+                        ((Number) row[5]).intValue()))
                 .collect(Collectors.toList());
     }
 }
