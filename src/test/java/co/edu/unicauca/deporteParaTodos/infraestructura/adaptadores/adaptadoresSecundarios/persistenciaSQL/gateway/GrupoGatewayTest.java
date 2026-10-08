@@ -2,6 +2,7 @@ package co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadores
 
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.DependenciaFallida;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.NoExisteExcepcion;
+import co.edu.unicauca.deporteParaTodos.dominio.excepciones.NoProcesableEntidadException;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Grupo;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresSecundarios.persistenciaSQL.entidades.GrupoEntidad;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresSecundarios.persistenciaSQL.entidades.ids.CursoId;
@@ -112,6 +113,19 @@ class GrupoGatewayTest {
         ArgumentCaptor<GrupoEntidad> captor = ArgumentCaptor.forClass(GrupoEntidad.class);
         verify(repoGrupo).save(captor.capture());
         assertEquals(2, captor.getValue().getPeriodo());
+    }
+
+    // SonarCloud javabugs:S2259: datosGrupo se desreferenciaba sin validar null.
+    // GrupoServicio.insertarGrupo() tolera explicitamente un Grupo null y lo
+    // reenvia tal cual -- este test ejercita el Gateway REAL (sin mocks de
+    // IGrupoGateway, a diferencia de GrupoServicioTest) para confirmar que ya no
+    // lanza NullPointerException sino una excepcion de negocio clara.
+    @Test
+    void insertarGrupo_datosGrupoNulo_lanzaNoProcesableEntidadException() {
+        assertThrows(NoProcesableEntidadException.class,
+                () -> grupoGateway.insertarGrupo(null));
+        verify(repoCategoria, never()).existsById(any());
+        verify(repoGrupo, never()).save(any());
     }
 
     // ── obtenerGrupoConLock ─────────────────────────────────────────────────

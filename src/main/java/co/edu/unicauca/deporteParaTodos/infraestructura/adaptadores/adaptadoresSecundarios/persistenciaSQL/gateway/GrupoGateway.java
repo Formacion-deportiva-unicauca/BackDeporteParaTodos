@@ -19,6 +19,7 @@ import co.edu.unicauca.deporteParaTodos.infraestructura.mappers.GrupoMapper;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.DependenciaFallida;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.InsercionFallidaExepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.NoExisteExcepcion;
+import co.edu.unicauca.deporteParaTodos.dominio.excepciones.NoProcesableEntidadException;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.YaExisteElementoExcepcion;
 
 @Service
@@ -75,6 +76,13 @@ public class GrupoGateway implements IGrupoGateway {
     }
 
     public Grupo insertarGrupo(Grupo datosGrupo) {
+        // SonarCloud javabugs:S2259: datosGrupo se desreferenciaba sin validar null.
+        // El flujo HTTP real nunca lo permite (GrupoMapper.fromDto nunca retorna null),
+        // pero el contrato del metodo no lo garantiza -- GrupoServicio.insertarGrupo()
+        // tolera explicitamente un Grupo null y lo reenvia tal cual hasta aqui.
+        if (datosGrupo == null) {
+            throw new NoProcesableEntidadException("El grupo a insertar no puede ser null");
+        }
         if (!repoCategoria.existsById(datosGrupo.getCategoria())) {
             throw new NoExisteExcepcion("la categoria a la que intenta insertar un grupo no existe");
         }
