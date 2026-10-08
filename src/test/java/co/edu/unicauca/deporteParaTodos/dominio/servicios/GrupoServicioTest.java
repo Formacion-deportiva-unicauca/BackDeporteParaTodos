@@ -11,6 +11,7 @@ import co.edu.unicauca.deporteParaTodos.dominio.modelo.EstadoInscripciones;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Grupo;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Horario;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.InstructorGrupoResumen;
+import co.edu.unicauca.deporteParaTodos.dominio.excepciones.FechasGrupoInvalidasExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.NoExisteExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.YaExisteElementoExcepcion;
 import org.junit.jupiter.api.Test;
@@ -157,6 +158,68 @@ class GrupoServicioTest {
         verify(grupoGateway).insertarGrupo(null);
     }
 
+    // R1: fechaFinalizacion no puede ser anterior a fechaCreacion.
+    // R2: fechaIncripcionCierre no puede ser anterior a fechaInscripcionApertura.
+    // Si cualquiera de las dos fechas de una regla es null, esa regla no aplica.
+
+    @Test
+    void insertarGrupo_R1_fechaFinalizacionAnteriorAFechaCreacion_lanzaFechasGrupoInvalidasExcepcion() {
+        Grupo grupo = grupoModelo();
+        grupo.setFechaCreacion(LocalDate.of(2026, 2, 1));
+        grupo.setFechaFinalizacion(LocalDate.of(2026, 1, 1));
+
+        assertThrows(FechasGrupoInvalidasExcepcion.class,
+                () -> grupoServicio.insertarGrupo(grupo));
+        verify(grupoGateway, never()).insertarGrupo(any());
+    }
+
+    @Test
+    void insertarGrupo_R2_fechaCierreAnteriorAFechaApertura_lanzaFechasGrupoInvalidasExcepcion() {
+        Grupo grupo = grupoModelo();
+        grupo.setFechaInscripcionApertura(LocalDate.of(2026, 2, 1));
+        grupo.setFechaIncripcionCierre(LocalDate.of(2026, 1, 1));
+
+        assertThrows(FechasGrupoInvalidasExcepcion.class,
+                () -> grupoServicio.insertarGrupo(grupo));
+        verify(grupoGateway, never()).insertarGrupo(any());
+    }
+
+    @Test
+    void insertarGrupo_fechasValidas_delegaAlGateway() {
+        Grupo grupo = grupoModelo();
+        grupo.setFechaCreacion(LocalDate.of(2026, 1, 1));
+        grupo.setFechaFinalizacion(LocalDate.of(2026, 6, 1));
+        grupo.setFechaInscripcionApertura(LocalDate.of(2026, 1, 1));
+        grupo.setFechaIncripcionCierre(LocalDate.of(2026, 1, 15));
+        when(grupoGateway.insertarGrupo(grupo)).thenReturn(grupo);
+
+        assertDoesNotThrow(() -> grupoServicio.insertarGrupo(grupo));
+        verify(grupoGateway).insertarGrupo(grupo);
+    }
+
+    @Test
+    void insertarGrupo_conFechaCreacionNula_noValidaR1() {
+        Grupo grupo = grupoModelo();
+        grupo.setFechaCreacion(null);
+        // Anterior a cualquier fecha de creacion razonable, pero R1 no aplica sin fechaCreacion.
+        grupo.setFechaFinalizacion(LocalDate.of(2020, 1, 1));
+        when(grupoGateway.insertarGrupo(grupo)).thenReturn(grupo);
+
+        assertDoesNotThrow(() -> grupoServicio.insertarGrupo(grupo));
+        verify(grupoGateway).insertarGrupo(grupo);
+    }
+
+    @Test
+    void insertarGrupo_conFechaCierreNula_noValidaR2() {
+        Grupo grupo = grupoModelo();
+        grupo.setFechaInscripcionApertura(LocalDate.of(2026, 1, 1));
+        grupo.setFechaIncripcionCierre(null); // R2 no aplica sin fechaIncripcionCierre.
+        when(grupoGateway.insertarGrupo(grupo)).thenReturn(grupo);
+
+        assertDoesNotThrow(() -> grupoServicio.insertarGrupo(grupo));
+        verify(grupoGateway).insertarGrupo(grupo);
+    }
+
     // ──────────────────────────────────────────────────────────────────────────
     // obtenerGrupoPorId
     // ──────────────────────────────────────────────────────────────────────────
@@ -189,6 +252,7 @@ class GrupoServicioTest {
     @Test
     void actualizarGrupo_exitoso_actualizaCorrectamente() {
         when(grupoGateway.existeGrupo(CATEGORIA, CURSO, ANIO, ITERABLE)).thenReturn(true);
+        when(grupoGateway.obtenerGrupo(CATEGORIA, CURSO, ANIO, ITERABLE)).thenReturn(grupoModelo());
         when(grupoGateway.actualizarGrupo(eq(CATEGORIA), eq(CURSO), eq(ANIO), eq(ITERABLE), any()))
                 .thenReturn(grupoModelo());
 
@@ -207,6 +271,87 @@ class GrupoServicioTest {
                 () -> grupoServicio.actualizarGrupo(CATEGORIA, CURSO, ANIO, ITERABLE, grupoModelo()));
 
         verify(grupoGateway, never()).actualizarGrupo(any(), any(), any(), any(), any());
+    }
+
+    // La validacion debe evaluarse sobre los valores FINALES (body combinado con lo
+    // que ya tenia la fila) -- no solo sobre lo que trae el body.
+
+    @Test
+    void actualizarGrupo_R1_fechaFinalizacionDelBodyAnteriorAFechaCreacionDeLaFila_lanzaExcepcion() {
+        Grupo filaActual = grupoModelo();
+        filaActual.setFechaCreacion(LocalDate.of(2026, 3, 1));
+        when(grupoGateway.existeGrupo(CATEGORIA, CURSO, ANIO, ITERABLE)).thenReturn(true);
+        when(grupoGateway.obtenerGrupo(CATEGORIA, CURSO, ANIO, ITERABLE)).thenReturn(filaActual);
+
+        Grupo datos = new Grupo();
+        datos.setFechaFinalizacion(LocalDate.of(2026, 1, 1)); // body solo trae esta; fechaCreacion sale de la fila
+
+        assertThrows(FechasGrupoInvalidasExcepcion.class,
+                () -> grupoServicio.actualizarGrupo(CATEGORIA, CURSO, ANIO, ITERABLE, datos));
+        verify(grupoGateway, never()).actualizarGrupo(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void actualizarGrupo_R2_fechaCierreDelBodyAnteriorAFechaAperturaDeLaFila_lanzaExcepcion() {
+        Grupo filaActual = grupoModelo();
+        filaActual.setFechaInscripcionApertura(LocalDate.of(2026, 3, 1));
+        when(grupoGateway.existeGrupo(CATEGORIA, CURSO, ANIO, ITERABLE)).thenReturn(true);
+        when(grupoGateway.obtenerGrupo(CATEGORIA, CURSO, ANIO, ITERABLE)).thenReturn(filaActual);
+
+        Grupo datos = new Grupo();
+        datos.setFechaIncripcionCierre(LocalDate.of(2026, 1, 1)); // body solo trae esta; apertura sale de la fila
+
+        assertThrows(FechasGrupoInvalidasExcepcion.class,
+                () -> grupoServicio.actualizarGrupo(CATEGORIA, CURSO, ANIO, ITERABLE, datos));
+        verify(grupoGateway, never()).actualizarGrupo(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void actualizarGrupo_fechasCombinadasValidas_actualizaCorrectamente() {
+        Grupo filaActual = grupoModelo();
+        filaActual.setFechaCreacion(LocalDate.of(2026, 1, 1));
+        when(grupoGateway.existeGrupo(CATEGORIA, CURSO, ANIO, ITERABLE)).thenReturn(true);
+        when(grupoGateway.obtenerGrupo(CATEGORIA, CURSO, ANIO, ITERABLE)).thenReturn(filaActual);
+        when(grupoGateway.actualizarGrupo(eq(CATEGORIA), eq(CURSO), eq(ANIO), eq(ITERABLE), any()))
+                .thenReturn(grupoModelo());
+
+        Grupo datos = new Grupo();
+        datos.setFechaFinalizacion(LocalDate.of(2026, 6, 1)); // posterior a la fechaCreacion de la fila
+
+        assertDoesNotThrow(() -> grupoServicio.actualizarGrupo(CATEGORIA, CURSO, ANIO, ITERABLE, datos));
+        verify(grupoGateway).actualizarGrupo(eq(CATEGORIA), eq(CURSO), eq(ANIO), eq(ITERABLE), any());
+    }
+
+    @Test
+    void actualizarGrupo_fechaAperturaEnviadaEnElBody_laUsaParaValidarEnVezDeLaDeLaFila() {
+        Grupo filaActual = grupoModelo();
+        filaActual.setFechaInscripcionApertura(LocalDate.of(2020, 1, 1)); // iria antes que cualquier cierre razonable
+        when(grupoGateway.existeGrupo(CATEGORIA, CURSO, ANIO, ITERABLE)).thenReturn(true);
+        when(grupoGateway.obtenerGrupo(CATEGORIA, CURSO, ANIO, ITERABLE)).thenReturn(filaActual);
+        when(grupoGateway.actualizarGrupo(eq(CATEGORIA), eq(CURSO), eq(ANIO), eq(ITERABLE), any()))
+                .thenReturn(grupoModelo());
+
+        Grupo datos = new Grupo();
+        // El body trae su propia fechaInscripcionApertura, mas reciente que la de la fila;
+        // la validacion debe usar esta, no la de la fila (que hubiera hecho fallar R2).
+        datos.setFechaInscripcionApertura(LocalDate.of(2026, 1, 1));
+        datos.setFechaIncripcionCierre(LocalDate.of(2026, 1, 15));
+
+        assertDoesNotThrow(() -> grupoServicio.actualizarGrupo(CATEGORIA, CURSO, ANIO, ITERABLE, datos));
+        verify(grupoGateway).actualizarGrupo(eq(CATEGORIA), eq(CURSO), eq(ANIO), eq(ITERABLE), any());
+    }
+
+    @Test
+    void actualizarGrupo_sinFechasNiEnBodyNiEnFila_noValidaNada() {
+        Grupo filaActual = grupoModelo(); // sin fechas seteadas
+        when(grupoGateway.existeGrupo(CATEGORIA, CURSO, ANIO, ITERABLE)).thenReturn(true);
+        when(grupoGateway.obtenerGrupo(CATEGORIA, CURSO, ANIO, ITERABLE)).thenReturn(filaActual);
+        when(grupoGateway.actualizarGrupo(eq(CATEGORIA), eq(CURSO), eq(ANIO), eq(ITERABLE), any()))
+                .thenReturn(grupoModelo());
+
+        Grupo datos = new Grupo();
+
+        assertDoesNotThrow(() -> grupoServicio.actualizarGrupo(CATEGORIA, CURSO, ANIO, ITERABLE, datos));
     }
 
     // ──────────────────────────────────────────────────────────────────────────

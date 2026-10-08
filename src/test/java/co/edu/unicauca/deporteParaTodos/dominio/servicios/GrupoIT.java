@@ -224,4 +224,61 @@ class GrupoIT {
                 .header("Authorization", "Bearer " + buildJwt("Coordinador", "coord-it")))
                 .andExpect(status().isConflict());
     }
+
+    // Antes del fix, actualizarGrupo() nunca leia fechaInscripcionApertura/
+    // fechaIncripcionCierre del body -- el PUT respondia 200 pero la fila quedaba
+    // intacta. Reproducido aqui contra MySQL real, no solo contra mocks.
+    @Test
+    void putGrupo_editaFechasDeInscripcion_lasPersisteEnBd() throws Exception {
+        int iterable = crearGrupoFresco();
+        String body = "{\"categoria\":\"" + CATEGORIA + "\",\"curso\":\"" + CURSO
+                + "\",\"imagenGrupo\":" + imagenId + ",\"cupos\":1,\"idInstructor\":\"" + INSTRUCTOR_SEED_ID + "\","
+                + "\"fechaCreacion\":\"" + LocalDate.now() + "\","
+                + "\"fechaInscripcionApertura\":\"2026-02-01\",\"fechaIncripcionCierre\":\"2026-02-28\"}";
+
+        mockMvc.perform(put("/api/v2/grupo")
+                .param("categoria", CATEGORIA).param("curso", CURSO)
+                .param("anio", String.valueOf(ANIO)).param("iterable", String.valueOf(iterable))
+                .contentType("application/json")
+                .content(body)
+                .header("Authorization", "Bearer " + buildJwt("Coordinador", "coord-it")))
+                .andExpect(status().isOk());
+
+        java.sql.Date apertura = jdbc.queryForObject(
+                "SELECT GRP_FECHA_INSCRIP_APERTURA FROM tbl_grupo WHERE CAT_TITULO = ? AND CUR_NOMBRE = ? "
+                        + "AND GRP_ANIO = ? AND GRP_ITERABLE = ?",
+                java.sql.Date.class, CATEGORIA, CURSO, ANIO, iterable);
+        java.sql.Date cierre = jdbc.queryForObject(
+                "SELECT GRP_FECHA_INSCRIP_CIERRE FROM tbl_grupo WHERE CAT_TITULO = ? AND CUR_NOMBRE = ? "
+                        + "AND GRP_ANIO = ? AND GRP_ITERABLE = ?",
+                java.sql.Date.class, CATEGORIA, CURSO, ANIO, iterable);
+        assertEquals(LocalDate.of(2026, 2, 1), apertura.toLocalDate());
+        assertEquals(LocalDate.of(2026, 2, 28), cierre.toLocalDate());
+    }
+
+    // R1 contra MySQL real: fechaFinalizacion anterior a fechaCreacion -- la fila NO
+    // debe modificarse (ni esa fecha ni ninguna otra del mismo PUT).
+    @Test
+    void putGrupo_fechasInvalidas_noModificaLaFilaEnBd() throws Exception {
+        int iterable = crearGrupoFresco();
+        LocalDate fechaCreacionOriginal = LocalDate.now();
+        String bodyInvalido = "{\"categoria\":\"" + CATEGORIA + "\",\"curso\":\"" + CURSO
+                + "\",\"imagenGrupo\":" + imagenId + ",\"cupos\":99,\"idInstructor\":\"" + INSTRUCTOR_SEED_ID + "\","
+                + "\"fechaCreacion\":\"" + fechaCreacionOriginal + "\","
+                + "\"fechaFinalizacion\":\"2020-01-01\"}";
+
+        mockMvc.perform(put("/api/v2/grupo")
+                .param("categoria", CATEGORIA).param("curso", CURSO)
+                .param("anio", String.valueOf(ANIO)).param("iterable", String.valueOf(iterable))
+                .contentType("application/json")
+                .content(bodyInvalido)
+                .header("Authorization", "Bearer " + buildJwt("Coordinador", "coord-it")))
+                .andExpect(status().isUnprocessableEntity());
+
+        Integer cuposEnBd = jdbc.queryForObject(
+                "SELECT GRP_CUPOS FROM tbl_grupo WHERE CAT_TITULO = ? AND CUR_NOMBRE = ? "
+                        + "AND GRP_ANIO = ? AND GRP_ITERABLE = ?",
+                Integer.class, CATEGORIA, CURSO, ANIO, iterable);
+        assertEquals(1, cuposEnBd, "cupos=99 del body invalido NO debe haberse guardado -- el PUT entero se rechaza");
+    }
 }

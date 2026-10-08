@@ -21,6 +21,7 @@ public enum CodigoError {
         INSCRIPCIONES_CERRADAS("GC-0012", "Las inscripciones de este curso estan cerradas"),
         CUPOS_AGOTADOS("GC-0013", "No hay cupos disponibles en el grupo"),
         LIMITE_CURSOS_ALUMNO("GC-0014", "El alumno ha alcanzado el limite de cursos activos"),
+        FECHAS_GRUPO_INVALIDAS("GC-0015", "Las fechas del grupo no son validas"),
         ;
 
         private final String codigo;

@@ -142,8 +142,19 @@ public class PerfilGateway implements IPerfilGateway {
         }
         entidadExistente.setEliminado(0);
 
-        PerfilEntidad perfilActualizado = repoPerfil.save(entidadExistente);
-        return mapper.map(perfilActualizado, Perfil.class);
+        // SCRUM-182: UQ_PERFIL_CORREO solo se verifica en el flush. save() normal no
+        // lo dispara aqui (quedaria pendiente hasta el commit de la transaccion, fuera
+        // de este metodo, donde el catch ya no lo veria) -- saveAndFlush() lo fuerza de
+        // forma sincrona para poder capturarlo. Mismo patron que registrarAlumno().
+        // Cambiar el correo al mismo que ya tenia (o no tocarlo) nunca viola la
+        // restriccion UNIQUE, porque la fila que ya posee ese valor es esta misma.
+        try {
+            PerfilEntidad perfilActualizado = repoPerfil.saveAndFlush(entidadExistente);
+            return mapper.map(perfilActualizado, Perfil.class);
+        } catch (DataIntegrityViolationException e) {
+            throw new YaExisteElementoExcepcion(
+                    "El correo " + datosPerfil.getCorreo() + " ya esta en uso por otro perfil");
+        }
     }
 
     @Override

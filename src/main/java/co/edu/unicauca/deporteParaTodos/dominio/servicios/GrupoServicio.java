@@ -1,5 +1,6 @@
 package co.edu.unicauca.deporteParaTodos.dominio.servicios;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -16,6 +17,7 @@ import co.edu.unicauca.deporteParaTodos.dominio.modelo.Curso;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Grupo;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Horario;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.InstructorGrupoResumen;
+import co.edu.unicauca.deporteParaTodos.dominio.excepciones.FechasGrupoInvalidasExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.NoExisteExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.YaExisteElementoExcepcion;
 
@@ -55,6 +57,10 @@ public class GrupoServicio implements IGrupoServicio {
     }
 
     public Grupo insertarGrupo(Grupo datosGrupo) {
+        if (datosGrupo != null) {
+            validarFechasGrupo(datosGrupo.getFechaCreacion(), datosGrupo.getFechaFinalizacion(),
+                    datosGrupo.getFechaInscripcionApertura(), datosGrupo.getFechaIncripcionCierre());
+        }
         return grupoGateway.insertarGrupo(datosGrupo);
     }
 
@@ -70,7 +76,38 @@ public class GrupoServicio implements IGrupoServicio {
         if (!grupoGateway.existeGrupo(categoria, curso, anio, iterable)) {
             throw new NoExisteExcepcion("no existe el objetivo a actualizar");
         }
+        // La regla se evalua sobre los valores FINALES: lo que trae el body, combinado
+        // con lo que ya tenia la fila para los campos que el body no envia (null).
+        Grupo actual = grupoGateway.obtenerGrupo(categoria, curso, anio, iterable);
+        LocalDate fechaCreacionFinal = datosGrupo.getFechaCreacion() != null
+                ? datosGrupo.getFechaCreacion() : actual.getFechaCreacion();
+        LocalDate fechaFinalizacionFinal = datosGrupo.getFechaFinalizacion() != null
+                ? datosGrupo.getFechaFinalizacion() : actual.getFechaFinalizacion();
+        LocalDate fechaAperturaFinal = datosGrupo.getFechaInscripcionApertura() != null
+                ? datosGrupo.getFechaInscripcionApertura() : actual.getFechaInscripcionApertura();
+        LocalDate fechaCierreFinal = datosGrupo.getFechaIncripcionCierre() != null
+                ? datosGrupo.getFechaIncripcionCierre() : actual.getFechaIncripcionCierre();
+        validarFechasGrupo(fechaCreacionFinal, fechaFinalizacionFinal, fechaAperturaFinal, fechaCierreFinal);
         return grupoGateway.actualizarGrupo(categoria, curso, anio, iterable, datosGrupo);
+    }
+
+    // R1: fechaFinalizacion no puede ser anterior a fechaCreacion.
+    // R2: fechaIncripcionCierre no puede ser anterior a fechaInscripcionApertura.
+    // Si cualquiera de las dos fechas de una regla es null, esa regla no aplica.
+    private void validarFechasGrupo(LocalDate fechaCreacion, LocalDate fechaFinalizacion,
+            LocalDate fechaInscripcionApertura, LocalDate fechaIncripcionCierre) {
+        if (fechaCreacion != null && fechaFinalizacion != null && fechaFinalizacion.isBefore(fechaCreacion)) {
+            throw new FechasGrupoInvalidasExcepcion(
+                    "La fecha de finalizacion (" + fechaFinalizacion
+                            + ") no puede ser anterior a la fecha de creacion (" + fechaCreacion + ")");
+        }
+        if (fechaInscripcionApertura != null && fechaIncripcionCierre != null
+                && fechaIncripcionCierre.isBefore(fechaInscripcionApertura)) {
+            throw new FechasGrupoInvalidasExcepcion(
+                    "La fecha de cierre de inscripciones (" + fechaIncripcionCierre
+                            + ") no puede ser anterior a la fecha de apertura de inscripciones ("
+                            + fechaInscripcionApertura + ")");
+        }
     }
 
     public Grupo eliminarGrupo(String categoria, String curso, Integer anio, Integer iterable) {

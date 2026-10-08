@@ -24,6 +24,7 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -236,5 +237,43 @@ class PerfilGatewayTest {
         ArgumentCaptor<AlumnoEntidad> captor = ArgumentCaptor.forClass(AlumnoEntidad.class);
         verify(repoAlumno).save(captor.capture());
         assertEquals(ALM_COD, captor.getValue().getAlm_codigo());
+    }
+
+    // ── actualizarPerfil (SCRUM-182) ────────────────────────────────────────
+
+    // La violacion de UQ_PERFIL_CORREO solo se dispara en el flush -- por eso el
+    // gateway usa saveAndFlush() (no save()) dentro del try/catch. Un save() mockeado
+    // "normal" no distinguiria este matiz, asi que el mock se arma sobre
+    // saveAndFlush() especificamente.
+    @Test
+    void actualizarPerfil_correoYaUsadoPorOtroPerfil_lanzaYaExisteElementoExcepcion() {
+        when(repoPerfil.existsById(ID)).thenReturn(true);
+        when(repoPerfil.findById(ID)).thenReturn(Optional.of(entidadBase()));
+        when(repoPerfil.saveAndFlush(any(PerfilEntidad.class)))
+                .thenThrow(new DataIntegrityViolationException("Duplicate entry for key UQ_PERFIL_CORREO"));
+
+        Perfil datosActualizar = new Perfil();
+        datosActualizar.setNombre(NOMBRE);
+        datosActualizar.setCorreo("correo-de-otro-perfil@unicauca.edu.co");
+
+        assertThrows(YaExisteElementoExcepcion.class,
+                () -> perfilGateway.actualizarPerfil(ID, datosActualizar));
+    }
+
+    @Test
+    void actualizarPerfil_correoSinCambios_actualizaCorrectamente() {
+        when(repoPerfil.existsById(ID)).thenReturn(true);
+        when(repoPerfil.findById(ID)).thenReturn(Optional.of(entidadBase()));
+        when(repoPerfil.saveAndFlush(any(PerfilEntidad.class))).thenReturn(entidadBase());
+        when(mapper.map(any(PerfilEntidad.class), eq(Perfil.class))).thenReturn(perfilBase());
+
+        Perfil datosActualizar = new Perfil();
+        datosActualizar.setNombre(NOMBRE);
+        datosActualizar.setCorreo(CORREO); // el mismo correo que ya tenia -- no debe fallar
+
+        Perfil resultado = perfilGateway.actualizarPerfil(ID, datosActualizar);
+
+        assertNotNull(resultado);
+        assertEquals(CORREO, resultado.getCorreo());
     }
 }
