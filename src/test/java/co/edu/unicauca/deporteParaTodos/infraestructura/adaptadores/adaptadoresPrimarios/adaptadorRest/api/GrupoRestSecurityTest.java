@@ -36,7 +36,10 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import co.edu.unicauca.deporteParaTodos.dominio.excepciones.FechasGrupoInvalidasExcepcion;
 
 // PUT /api/v2/grupo -- solo Coordinador puede actualizar un grupo (@PreAuthorize).
 @SpringBootTest(classes = deporteParaTodos.class, properties = {
@@ -118,6 +121,48 @@ class GrupoRestSecurityTest {
                 .content(BODY_SIN_INSTRUCTOR)
                 .header("Authorization", "Bearer " + buildJwt("Coordinador", "coord1")))
                 .andExpect(status().isOk());
+    }
+
+    // Fechas invalidas (validadas en GrupoServicio) -> FechasGrupoInvalidasExcepcion
+    // -> RestExceptionHandler la mapea a 422, con cuerpo JSON que incluye "mensaje".
+    @Test
+    void putGrupo_fechasInvalidas_retorna422ConMensajeDeError() throws Exception {
+        when(servicio.actualizarGrupo(anyString(), anyString(), anyInt(), anyInt(), any()))
+                .thenThrow(new FechasGrupoInvalidasExcepcion(
+                        "La fecha de finalizacion (2026-01-01) no puede ser anterior a la fecha de creacion (2026-02-01)"));
+
+        mockMvc.perform(put("/api/v2/grupo")
+                .param("categoria", "cat1").param("curso", "cur1")
+                .param("anio", "2026").param("iterable", "1")
+                .contentType("application/json")
+                .content(BODY_SIN_INSTRUCTOR)
+                .header("Authorization", "Bearer " + buildJwt("Coordinador", "coord1")))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.mensaje").exists())
+                .andExpect(jsonPath("$.mensaje").value(org.hamcrest.Matchers.containsString(
+                        "no puede ser anterior a la fecha de creacion")));
+    }
+
+    // Confirma que el mensaje de error ya NO lleva el prefijo generico de
+    // InscripcionesCerradasExcepcion ("inscripciones ... cerradas") que se usaba antes
+    // de crear FechasGrupoInvalidasExcepcion -- ese prefijo era semanticamente
+    // incorrecto para un error de fechas de grupo.
+    @Test
+    void putGrupo_fechasInvalidas_elMensajeNoMencionaInscripcionesCerradas() throws Exception {
+        when(servicio.actualizarGrupo(anyString(), anyString(), anyInt(), anyInt(), any()))
+                .thenThrow(new FechasGrupoInvalidasExcepcion(
+                        "La fecha de cierre de inscripciones (2026-01-01) no puede ser anterior "
+                                + "a la fecha de apertura de inscripciones (2026-02-01)"));
+
+        mockMvc.perform(put("/api/v2/grupo")
+                .param("categoria", "cat1").param("curso", "cur1")
+                .param("anio", "2026").param("iterable", "1")
+                .contentType("application/json")
+                .content(BODY_SIN_INSTRUCTOR)
+                .header("Authorization", "Bearer " + buildJwt("Coordinador", "coord1")))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.mensaje").value(org.hamcrest.Matchers.not(
+                        org.hamcrest.Matchers.containsStringIgnoringCase("inscripciones de este curso estan cerradas"))));
     }
 
     // DELETE /api/v2/grupo -- solo Coordinador puede eliminar un grupo (@PreAuthorize).

@@ -2,6 +2,7 @@ package co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadores
 
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.DependenciaFallida;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.NoExisteExcepcion;
+import co.edu.unicauca.deporteParaTodos.dominio.excepciones.NoProcesableEntidadException;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Grupo;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresSecundarios.persistenciaSQL.entidades.GrupoEntidad;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresSecundarios.persistenciaSQL.entidades.ids.CursoId;
@@ -112,6 +113,19 @@ class GrupoGatewayTest {
         ArgumentCaptor<GrupoEntidad> captor = ArgumentCaptor.forClass(GrupoEntidad.class);
         verify(repoGrupo).save(captor.capture());
         assertEquals(2, captor.getValue().getPeriodo());
+    }
+
+    // SonarCloud javabugs:S2259: datosGrupo se desreferenciaba sin validar null.
+    // GrupoServicio.insertarGrupo() tolera explicitamente un Grupo null y lo
+    // reenvia tal cual -- este test ejercita el Gateway REAL (sin mocks de
+    // IGrupoGateway, a diferencia de GrupoServicioTest) para confirmar que ya no
+    // lanza NullPointerException sino una excepcion de negocio clara.
+    @Test
+    void insertarGrupo_datosGrupoNulo_lanzaNoProcesableEntidadException() {
+        assertThrows(NoProcesableEntidadException.class,
+                () -> grupoGateway.insertarGrupo(null));
+        verify(repoCategoria, never()).existsById(any());
+        verify(repoGrupo, never()).save(any());
     }
 
     // ── obtenerGrupoConLock ─────────────────────────────────────────────────
@@ -290,6 +304,50 @@ class GrupoGatewayTest {
         Grupo resultado = grupoGateway.actualizarGrupo(CATEGORIA, CURSO, 2026, 1, datos);
 
         assertEquals(LocalDate.of(2026, 12, 31), resultado.getFechaFinalizacion());
+    }
+
+    // fechaInscripcionApertura/fechaIncripcionCierre: antes del fix, actualizarGrupo()
+    // nunca las leia de datosGrupo -- el PUT respondia 200 pero la fila quedaba
+    // intacta. Mismo criterio null=conserva que cupos/fechaCreacion/fechaFinalizacion.
+    @Test
+    void actualizarGrupo_conFechasDeInscripcionEnviadas_lasPersiste() {
+        when(repoImagen.existsById(1)).thenReturn(true);
+        when(repoInstructor.existsByIdPerfilAndEliminado("ins-actual", 0)).thenReturn(true);
+        when(repoGrupo.findById(any(GrupoId.class))).thenReturn(java.util.Optional.of(entidadExistente(1, "ins-actual")));
+        when(repoGrupo.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        Grupo datos = new Grupo();
+        datos.setImagenGrupo(1);
+        datos.setIdInstructor("ins-actual");
+        datos.setFechaInscripcionApertura(LocalDate.of(2026, 2, 1));
+        datos.setFechaIncripcionCierre(LocalDate.of(2026, 2, 28));
+
+        Grupo resultado = grupoGateway.actualizarGrupo(CATEGORIA, CURSO, 2026, 1, datos);
+
+        assertEquals(LocalDate.of(2026, 2, 1), resultado.getFechaInscripcionApertura());
+        assertEquals(LocalDate.of(2026, 2, 28), resultado.getFechaIncripcionCierre());
+    }
+
+    @Test
+    void actualizarGrupo_sinFechasDeInscripcion_conservaLasActuales() {
+        when(repoImagen.existsById(1)).thenReturn(true);
+        when(repoInstructor.existsByIdPerfilAndEliminado("ins-actual", 0)).thenReturn(true);
+        GrupoEntidad existente = entidadExistente(1, "ins-actual");
+        existente.setFechaInscripcionApertura(LocalDate.of(2025, 1, 1));
+        existente.setFechaIncripcionCierre(LocalDate.of(2025, 1, 31));
+        when(repoGrupo.findById(any(GrupoId.class))).thenReturn(java.util.Optional.of(existente));
+        when(repoGrupo.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        Grupo datos = new Grupo();
+        datos.setImagenGrupo(1);
+        datos.setIdInstructor("ins-actual");
+        datos.setFechaInscripcionApertura(null);
+        datos.setFechaIncripcionCierre(null);
+
+        Grupo resultado = grupoGateway.actualizarGrupo(CATEGORIA, CURSO, 2026, 1, datos);
+
+        assertEquals(LocalDate.of(2025, 1, 1), resultado.getFechaInscripcionApertura());
+        assertEquals(LocalDate.of(2025, 1, 31), resultado.getFechaIncripcionCierre());
     }
 
     // ── existeGrupoEliminado ─────────────────────────────────────────────────

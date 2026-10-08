@@ -21,6 +21,7 @@ import co.edu.unicauca.deporteParaTodos.infraestructura.controladorExcepciones.e
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.CuposAgotadosExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.DependenciaFallida;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.ErrorInternoException;
+import co.edu.unicauca.deporteParaTodos.dominio.excepciones.FechasGrupoInvalidasExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.InscripcionesCerradasExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.InsercionFallidaExepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.LimiteCursosExcepcion;
@@ -305,6 +306,16 @@ public class RestExceptionHandler {
         @ExceptionHandler(LimiteCursosExcepcion.class)
         public ResponseEntity<Error> GenericException(final HttpServletRequest req, final LimiteCursosExcepcion ex) {
                 logExcepcion("LimiteCursosExcepcion", req, ex);
+                return buildDomainErrorResponse(req,
+                                ex != null ? ex.getCodigo()       : "",
+                                ex != null ? ex.getLlaveMensaje() : "",
+                                ex != null ? ex.getMessage()      : "",
+                                HttpStatus.UNPROCESSABLE_ENTITY);
+        }
+
+        @ExceptionHandler(FechasGrupoInvalidasExcepcion.class)
+        public ResponseEntity<Error> GenericException(final HttpServletRequest req, final FechasGrupoInvalidasExcepcion ex) {
+                logExcepcion("FechasGrupoInvalidasExcepcion", req, ex);
                 return buildDomainErrorResponse(req,
                                 ex != null ? ex.getCodigo()       : "",
                                 ex != null ? ex.getLlaveMensaje() : "",
