@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Base64;
@@ -120,6 +121,13 @@ class InscripcionVentanaFechasIT {
     @Autowired
     private JdbcTemplate jdbc;
 
+    // "hoy" se calcula con el MISMO Clock (America/Bogota) que usa la app para la
+    // regla EstadoVentanaInscripcion -- antes usaba LocalDate.now() (zona del
+    // sistema/runner, UTC en CI), que entre 19:00 y 24:00 de Bogota ya es "manana"
+    // y hacia que "cierre ayer" significara en realidad "cierre hoy" para la regla.
+    @Autowired
+    private Clock clock;
+
     private Integer imagenId;
 
     // SCRUM-177: insertarGrupo() calcula anio/iterable en el servidor e ignora lo que
@@ -154,7 +162,7 @@ class InscripcionVentanaFechasIT {
             categoriaCursoServicio.insertarCategoria(categoria);
         }
 
-        LocalDate hoy = LocalDate.now();
+        LocalDate hoy = LocalDate.now(clock);
 
         grupoCierreAyer = crearGrupoConVentana(CURSO_CIERRE_AYER, null, hoy.minusDays(1));
         grupoCierreHoy = crearGrupoConVentana(CURSO_CIERRE_HOY, null, hoy);
@@ -190,7 +198,7 @@ class InscripcionVentanaFechasIT {
         grupo.setImagenGrupo(imagenId);
         grupo.setIdInstructor(INSTRUCTOR_SEED_ID);
         grupo.setCupos(5);
-        grupo.setFechaCreacion(LocalDate.now());
+        grupo.setFechaCreacion(LocalDate.now(clock));
         grupo.setFechaInscripcionApertura(apertura);
         grupo.setFechaIncripcionCierre(cierre);
         grupo.setPeriodo(1);
@@ -235,7 +243,7 @@ class InscripcionVentanaFechasIT {
 
         Grupo grupoCerrado = grupoServicio.obtenerGrupoPorId(
                 CATEGORIA, CURSO_AUTO_PROMOCION, grupoNuevo.getAnio(), grupoNuevo.getIterable());
-        grupoCerrado.setFechaIncripcionCierre(LocalDate.now().minusDays(1));
+        grupoCerrado.setFechaIncripcionCierre(LocalDate.now(clock).minusDays(1));
         grupoServicio.actualizarGrupo(
                 CATEGORIA, CURSO_AUTO_PROMOCION, grupoNuevo.getAnio(), grupoNuevo.getIterable(), grupoCerrado);
         return grupoCerrado;
