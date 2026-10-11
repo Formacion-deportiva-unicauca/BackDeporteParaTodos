@@ -6,6 +6,7 @@ import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IGrupoGateway;
+import co.edu.unicauca.deporteParaTodos.dominio.modelo.EstadoVentanaInscripcion;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Grupo;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresSecundarios.persistenciaSQL.entidades.GrupoEntidad;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresSecundarios.persistenciaSQL.entidades.ids.CursoId;
@@ -63,9 +64,16 @@ public class GrupoGateway implements IGrupoGateway {
                 .collect(Collectors.toList());
     }
 
-    public List<Grupo> obtenerGruposInscripcionDisponible() {
-        return repoGrupo.obtenerGruposConInscripcionDisponibleNativo().stream()
+    // SCRUM-185: antes usaba CURRENT_DATE de MySQL en una query nativa aparte
+    // (obtenerGruposConInscripcionDisponibleNativo, eliminada); ahora filtra en Java
+    // con la MISMA regla (EstadoVentanaInscripcion) que usa InscripcionServicio.inscribir(),
+    // con "hoy" recibido como parametro (lo calcula GrupoServicio con el Clock inyectable).
+    @Override
+    public List<Grupo> obtenerGruposInscripcionDisponible(LocalDate hoy) {
+        return repoGrupo.findByEliminado(0).stream()
                 .map(GrupoMapper::toDominio)
+                .filter(g -> EstadoVentanaInscripcion.calcular(
+                        g.getFechaInscripcionApertura(), g.getFechaIncripcionCierre(), hoy) == EstadoVentanaInscripcion.ABIERTAS)
                 .collect(Collectors.toList());
     }
 

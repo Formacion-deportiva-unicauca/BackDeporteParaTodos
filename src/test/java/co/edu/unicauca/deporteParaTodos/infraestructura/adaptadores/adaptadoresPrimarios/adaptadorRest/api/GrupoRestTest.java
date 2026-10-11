@@ -16,10 +16,15 @@ import org.springframework.http.converter.json.MappingJackson2HttpMessageConvert
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
+import java.time.Clock;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -30,6 +35,9 @@ class GrupoRestTest {
     @Mock
     private IGrupoServicio servicio;
 
+    @Mock
+    private Clock clock;
+
     @InjectMocks
     private GrupoRest grupoRest;
 
@@ -38,6 +46,12 @@ class GrupoRestTest {
 
     @BeforeEach
     void setUp() {
+        // SCRUM-185: GrupoRest ahora necesita un Clock para calcular inscripcionesAbiertas/
+        // motivoInscripcion en cada respuesta -- lenient() porque no es el foco de estos tests.
+        lenient().when(clock.instant())
+                .thenReturn(LocalDate.of(2026, 6, 15).atStartOfDay(ZoneId.of("America/Bogota")).toInstant());
+        lenient().when(clock.getZone()).thenReturn(ZoneId.of("America/Bogota"));
+
         objectMapper = new ObjectMapper();
         objectMapper.registerModule(new JavaTimeModule());
         MappingJackson2HttpMessageConverter converter = new MappingJackson2HttpMessageConverter();
@@ -141,5 +155,35 @@ class GrupoRestTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.categoria").value("Recreativo"))
                 .andExpect(jsonPath("$.curso").value("Natacion"));
+    }
+
+    // SCRUM-185: inscripcionesAbiertas/motivoInscripcion son @JsonProperty(access =
+    // READ_ONLY) en GrupoDto -- un PUT /grupo que los traiga en el body debe
+    // responder 200 normalmente y Jackson debe ignorarlos al deserializar, sin que
+    // lleguen nunca a actualizarGrupo() (Grupo, el modelo de dominio, ni los tiene).
+    @Test
+    void putGrupo_bodyConCamposDeSoloLecturaFalsos_respondeOkYLosIgnora() throws Exception {
+        when(servicio.actualizarGrupo(anyString(), anyString(), anyInt(), anyInt(), any(Grupo.class)))
+                .thenReturn(grupoBase());
+
+        String body = "{\"imagenGrupo\":1,\"cupos\":20,\"fechaCreacion\":\"2025-01-15\","
+                + "\"inscripcionesAbiertas\":true,\"motivoInscripcion\":\"CERRADAS\"}";
+
+        mockMvc.perform(put("/api/v2/grupo")
+                        .param("categoria", "Recreativo")
+                        .param("curso", "Natacion")
+                        .param("anio", "2025")
+                        .param("iterable", "1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.categoria").value("Recreativo"));
+
+        // Confirma el efecto real de @JsonProperty(access = READ_ONLY): decodificando
+        // el MISMO json de entrada con el ObjectMapper de la app, los campos de solo
+        // lectura nunca se poblaron, sin importar el valor "falso" que trajera el body.
+        GrupoDto dtoDeserializado = objectMapper.readValue(body, GrupoDto.class);
+        assertFalse(dtoDeserializado.isInscripcionesAbiertas());
+        assertNull(dtoDeserializado.getMotivoInscripcion());
     }
 }

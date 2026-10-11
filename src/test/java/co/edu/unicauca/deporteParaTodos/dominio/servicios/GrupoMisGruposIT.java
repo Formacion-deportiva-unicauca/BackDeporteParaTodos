@@ -6,6 +6,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Base64;
@@ -75,7 +76,11 @@ class GrupoMisGruposIT {
     private static final String CURSO_A2 = "MisGruposIT-A2";
     private static final String CURSO_A3_ELIMINADO = "MisGruposIT-A3";
     private static final String CURSO_B1 = "MisGruposIT-B1";
-    private static final int ANIO = LocalDate.now().getYear();
+    // "hoy" se calcula con el MISMO Clock (America/Bogota) que usa la app para la
+    // regla EstadoVentanaInscripcion -- antes usaba LocalDate.now() (zona del
+    // sistema/runner, UTC en CI), que entre 19:00 y 24:00 de Bogota ya es "manana"
+    // y hacia que fechaInscripcionApertura pareciera una apertura futura.
+    private int ANIO;
     private static final String DEPORTE_SEED = "Natacion";
     private static final String TEST_SECRET = "dGVzdFNlY3JldEtleUZvckNJMTIzNDU2Nzg5MDEyMzQ1Njc4OTA=";
 
@@ -106,12 +111,17 @@ class GrupoMisGruposIT {
     @Autowired
     private MockMvc mockMvc;
 
+    @Autowired
+    private Clock clock;
+
     private Integer imagenId;
     private String instructorAId;
     private int iterableA1;
 
     @BeforeAll
     void crearFixtures() {
+        ANIO = LocalDate.now(clock).getYear();
+
         ImagenDto imagenDto = new ImagenDto();
         imagenDto.setNombre("imagen-misgrupos-it.png");
         imagenDto.setTipoArchivo("image/png");
@@ -147,8 +157,8 @@ class GrupoMisGruposIT {
         grupoA1.setImagenGrupo(imagenId);
         grupoA1.setIdInstructor(instructorAId);
         grupoA1.setCupos(1);
-        grupoA1.setFechaCreacion(LocalDate.now());
-        grupoA1.setFechaInscripcionApertura(LocalDate.now());
+        grupoA1.setFechaCreacion(LocalDate.now(clock));
+        grupoA1.setFechaInscripcionApertura(LocalDate.now(clock));
         grupoA1.setPeriodo(1);
         iterableA1 = grupoServicio.insertarGrupo(grupoA1).getIterable();
         insertarHorario(CURSO_A1, iterableA1, "LUNES", "08:00", "10:00");
@@ -161,8 +171,8 @@ class GrupoMisGruposIT {
         grupoA2.setImagenGrupo(imagenId);
         grupoA2.setIdInstructor(instructorAId);
         grupoA2.setCupos(5);
-        grupoA2.setFechaCreacion(LocalDate.now());
-        grupoA2.setFechaInscripcionApertura(LocalDate.now());
+        grupoA2.setFechaCreacion(LocalDate.now(clock));
+        grupoA2.setFechaInscripcionApertura(LocalDate.now(clock));
         grupoA2.setPeriodo(1);
         grupoServicio.insertarGrupo(grupoA2);
 
@@ -173,8 +183,8 @@ class GrupoMisGruposIT {
         grupoA3.setImagenGrupo(imagenId);
         grupoA3.setIdInstructor(instructorAId);
         grupoA3.setCupos(5);
-        grupoA3.setFechaCreacion(LocalDate.now());
-        grupoA3.setFechaInscripcionApertura(LocalDate.now());
+        grupoA3.setFechaCreacion(LocalDate.now(clock));
+        grupoA3.setFechaInscripcionApertura(LocalDate.now(clock));
         grupoA3.setPeriodo(1);
         int iterableA3 = grupoServicio.insertarGrupo(grupoA3).getIterable();
         try {
@@ -190,8 +200,8 @@ class GrupoMisGruposIT {
         grupoB1.setImagenGrupo(imagenId);
         grupoB1.setIdInstructor(instructorBId);
         grupoB1.setCupos(5);
-        grupoB1.setFechaCreacion(LocalDate.now());
-        grupoB1.setFechaInscripcionApertura(LocalDate.now());
+        grupoB1.setFechaCreacion(LocalDate.now(clock));
+        grupoB1.setFechaInscripcionApertura(LocalDate.now(clock));
         grupoB1.setPeriodo(1);
         grupoServicio.insertarGrupo(grupoB1);
 

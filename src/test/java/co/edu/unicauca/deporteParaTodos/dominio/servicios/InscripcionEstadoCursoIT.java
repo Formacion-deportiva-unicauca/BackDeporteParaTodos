@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Base64;
@@ -70,7 +71,11 @@ class InscripcionEstadoCursoIT {
     private static final String CURSO_INACTIVO = "InscripcionEstadoCursoIT-Inactivo";
     private static final String CURSO_ACTIVO = "InscripcionEstadoCursoIT-Activo";
     // GrupoGateway.insertarGrupo() ignora el anio pedido y crea el grupo en el anio ACTUAL.
-    private static final int ANIO = LocalDate.now().getYear();
+    // "hoy" se calcula con el MISMO Clock (America/Bogota) que usa la app para la
+    // regla EstadoVentanaInscripcion -- antes usaba LocalDate.now() (zona del
+    // sistema/runner, UTC en CI), que entre 19:00 y 24:00 de Bogota ya es "manana"
+    // y hacia que fechaInscripcionApertura pareciera una apertura futura.
+    private int ANIO;
     private static final int ITERABLE = 1;
     private static final String DEPORTE_SEED = "Natacion";
     private static final String INSTRUCTOR_SEED_ID = "2";
@@ -96,6 +101,9 @@ class InscripcionEstadoCursoIT {
     @Autowired
     private MockMvc mockMvc;
 
+    @Autowired
+    private Clock clock;
+
     private Integer imagenId;
 
     // Grupo y alumno dedicados al escenario de promoverManualmente(), creados frescos
@@ -109,6 +117,8 @@ class InscripcionEstadoCursoIT {
 
     @BeforeAll
     void crearFixtures() {
+        ANIO = LocalDate.now(clock).getYear();
+
         ImagenDto imagenDto = new ImagenDto();
         imagenDto.setNombre("imagen-inscripcion-estado-curso-it.png");
         imagenDto.setTipoArchivo("image/png");
@@ -165,8 +175,8 @@ class InscripcionEstadoCursoIT {
         grupo.setImagenGrupo(imagenId);
         grupo.setIdInstructor(INSTRUCTOR_SEED_ID);
         grupo.setCupos(1);
-        grupo.setFechaCreacion(LocalDate.now());
-        grupo.setFechaInscripcionApertura(LocalDate.now());
+        grupo.setFechaCreacion(LocalDate.now(clock));
+        grupo.setFechaInscripcionApertura(LocalDate.now(clock));
         grupo.setPeriodo(1);
         iterablePromocion = grupoServicio.insertarGrupo(grupo).getIterable();
 
@@ -215,8 +225,8 @@ class InscripcionEstadoCursoIT {
             grupo.setImagenGrupo(imagenId);
             grupo.setIdInstructor(INSTRUCTOR_SEED_ID);
             grupo.setCupos(cupos);
-            grupo.setFechaCreacion(LocalDate.now());
-            grupo.setFechaInscripcionApertura(LocalDate.now());
+            grupo.setFechaCreacion(LocalDate.now(clock));
+            grupo.setFechaInscripcionApertura(LocalDate.now(clock));
             grupo.setPeriodo(1);
             grupoServicio.insertarGrupo(grupo);
         }

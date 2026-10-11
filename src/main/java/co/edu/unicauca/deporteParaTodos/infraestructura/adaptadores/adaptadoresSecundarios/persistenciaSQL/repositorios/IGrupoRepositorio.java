@@ -16,17 +16,6 @@ public interface IGrupoRepositorio extends CrudRepository<GrupoEntidad, GrupoId>
     List<GrupoEntidad> findByEliminado(Integer eliminado);
     List<GrupoEntidad> findByCategoriaAndCursoAndEliminado(String categoria, String curso, Integer eliminado);
 
-    /**
-     * Obtiene los grupos disponibles para la inscripcion
-     * @return
-     */
-    @Query(value = "SELECT * FROM tbl_grupo " +
-               "WHERE meta_eliminado = 0 AND " +
-               "grp_fecha_inscrip_apertura <= CURRENT_DATE AND " +
-               "(grp_fecha_inscrip_cierre IS NULL OR grp_fecha_inscrip_cierre >= CURRENT_DATE)", 
-       nativeQuery = true)
-    List<GrupoEntidad> obtenerGruposConInscripcionDisponibleNativo();
-
     @Query(value = """
     SELECT DISTINCT g.*
     FROM tbl_grupo g

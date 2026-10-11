@@ -20,6 +20,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDate;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -375,5 +376,69 @@ class GrupoGatewayTest {
         when(repoGrupo.findById(any(GrupoId.class))).thenReturn(java.util.Optional.empty());
 
         assertFalse(grupoGateway.existeGrupoEliminado(CATEGORIA, CURSO, 2026, 1));
+    }
+
+    // ── obtenerGruposInscripcionDisponible (SCRUM-185) ──────────────────────
+    // Antes filtraba con CURRENT_DATE de MySQL en una query nativa aparte; ahora
+    // filtra en Java con EstadoVentanaInscripcion sobre findByEliminado(0), la misma
+    // regla que usa InscripcionServicio.inscribir(). "hoy" lo recibe como parametro.
+
+    private GrupoEntidad entidadConVentana(String iterable, LocalDate apertura, LocalDate cierre) {
+        GrupoEntidad e = new GrupoEntidad();
+        e.setCategoria(CATEGORIA);
+        e.setCurso(CURSO);
+        e.setAnio(2026);
+        e.setIterable(Integer.parseInt(iterable));
+        e.setCupos(10);
+        e.setPeriodo(1);
+        e.setEliminado(0);
+        e.setFechaInscripcionApertura(apertura);
+        e.setFechaIncripcionCierre(cierre);
+        return e;
+    }
+
+    @Test
+    void obtenerGruposInscripcionDisponible_aperturaNull_incluyeElGrupo() {
+        LocalDate hoy = LocalDate.of(2026, 6, 15);
+        GrupoEntidad grupo = entidadConVentana("1", null, null);
+        when(repoGrupo.findByEliminado(0)).thenReturn(java.util.List.of(grupo));
+
+        List<Grupo> resultado = grupoGateway.obtenerGruposInscripcionDisponible(hoy);
+
+        assertEquals(1, resultado.size());
+    }
+
+    @Test
+    void obtenerGruposInscripcionDisponible_cierreAyer_excluyeElGrupo() {
+        LocalDate hoy = LocalDate.of(2026, 6, 15);
+        GrupoEntidad grupo = entidadConVentana("1", null, hoy.minusDays(1));
+        when(repoGrupo.findByEliminado(0)).thenReturn(java.util.List.of(grupo));
+
+        List<Grupo> resultado = grupoGateway.obtenerGruposInscripcionDisponible(hoy);
+
+        assertTrue(resultado.isEmpty());
+    }
+
+    @Test
+    void obtenerGruposInscripcionDisponible_cierreHoy_incluyeElGrupo() {
+        // Dia de cierre INCLUSIVO.
+        LocalDate hoy = LocalDate.of(2026, 6, 15);
+        GrupoEntidad grupo = entidadConVentana("1", null, hoy);
+        when(repoGrupo.findByEliminado(0)).thenReturn(java.util.List.of(grupo));
+
+        List<Grupo> resultado = grupoGateway.obtenerGruposInscripcionDisponible(hoy);
+
+        assertEquals(1, resultado.size());
+    }
+
+    @Test
+    void obtenerGruposInscripcionDisponible_aperturaFutura_excluyeElGrupo() {
+        LocalDate hoy = LocalDate.of(2026, 6, 15);
+        GrupoEntidad grupo = entidadConVentana("1", hoy.plusDays(5), null);
+        when(repoGrupo.findByEliminado(0)).thenReturn(java.util.List.of(grupo));
+
+        List<Grupo> resultado = grupoGateway.obtenerGruposInscripcionDisponible(hoy);
+
+        assertTrue(resultado.isEmpty());
     }
 }
