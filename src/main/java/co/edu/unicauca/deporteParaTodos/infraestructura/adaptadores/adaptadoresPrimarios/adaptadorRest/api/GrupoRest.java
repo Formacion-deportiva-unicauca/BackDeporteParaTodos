@@ -1,5 +1,7 @@
 package co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.api;
 
+import java.time.Clock;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -47,6 +49,9 @@ public class GrupoRest {
     @Autowired
     private IGrupoServicio servicio;
 
+    @Autowired
+    private Clock clock;
+
     @Operation(summary = "Obtiene todos los grupos del sistema sin discriminar su estado eliminado")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Grupos recuperados"),
@@ -54,8 +59,9 @@ public class GrupoRest {
     @GetMapping("/grupos")
     public ResponseEntity<List<GrupoDto>> obtenerCursos() {
         PeticionLogger.log(LOGGER, "GET", "/api/v2/grupos", "sin datos");
+        LocalDate hoy = LocalDate.now(clock);
         List<GrupoDto> dtos = servicio.obtenerTodosGrupos().stream()
-                .map(GrupoMapper::toDto)
+                .map(g -> GrupoMapper.toDto(g, hoy))
                 .collect(Collectors.toList());
         return new ResponseEntity<>(dtos, HttpStatus.OK);
     }
@@ -67,8 +73,9 @@ public class GrupoRest {
     @GetMapping("gruposNoEliminados")
     public ResponseEntity<List<GrupoDto>> obtenerCursosNoeliminados() {
         PeticionLogger.log(LOGGER, "GET", "/api/v2/gruposNoEliminados", "sin datos");
+        LocalDate hoy = LocalDate.now(clock);
         List<GrupoDto> dtos = servicio.obtenerGruposDisponibles().stream()
-                .map(GrupoMapper::toDto)
+                .map(g -> GrupoMapper.toDto(g, hoy))
                 .collect(Collectors.toList());
         return new ResponseEntity<>(dtos, HttpStatus.OK);
     }
@@ -80,8 +87,9 @@ public class GrupoRest {
     @GetMapping("gruposCurso")
     public ResponseEntity<List<GrupoDto>> obtenerGruposDe(@RequestParam String prmCategoria, @RequestParam String prmCurso) {
         PeticionLogger.log(LOGGER, "GET", "/api/v2/gruposCurso", "prmCategoria=" + prmCategoria + ", prmCurso=" + prmCurso);
+        LocalDate hoy = LocalDate.now(clock);
         List<GrupoDto> dtos = servicio.obtenerGruposDeCurso(prmCategoria, prmCurso).stream()
-                .map(GrupoMapper::toDto)
+                .map(g -> GrupoMapper.toDto(g, hoy))
                 .collect(Collectors.toList());
         return new ResponseEntity<>(dtos, HttpStatus.OK);
     }
@@ -93,8 +101,9 @@ public class GrupoRest {
     @GetMapping("/gruposInscripcion")
     public ResponseEntity<List<GrupoDto>> obtenerGruposInscripcion() {
         PeticionLogger.log(LOGGER, "GET", "/api/v2/gruposInscripcion", "sin datos");
+        LocalDate hoy = LocalDate.now(clock);
         List<GrupoDto> dtos = servicio.obtenerGruposInscripcionDisponible().stream()
-                .map(GrupoMapper::toDto)
+                .map(g -> GrupoMapper.toDto(g, hoy))
                 .collect(Collectors.toList());
         return new ResponseEntity<>(dtos, HttpStatus.OK);
     }
@@ -107,8 +116,9 @@ public class GrupoRest {
     @GetMapping("/gruposInstructor")
     public ResponseEntity<List<GrupoDto>> obtnerGruposInstructor(@RequestParam String idInstructor) {
         PeticionLogger.log(LOGGER, "GET", "/api/v2/gruposInstructor", "idInstructor=" + idInstructor);
+        LocalDate hoy = LocalDate.now(clock);
         List<GrupoDto> dtos = servicio.obtenerGruposInstructor(idInstructor).stream()
-                .map(GrupoMapper::toDto)
+                .map(g -> GrupoMapper.toDto(g, hoy))
                 .collect(Collectors.toList());
         return new ResponseEntity<>(dtos, HttpStatus.OK);
     }
@@ -123,7 +133,7 @@ public class GrupoRest {
         PeticionLogger.log(LOGGER, "POST", "/api/v2/grupo", dto);
         Grupo grupo = GrupoMapper.fromDto(dto);
         Grupo guardado = servicio.insertarGrupo(grupo);
-        return new ResponseEntity<>(GrupoMapper.toDto(guardado), HttpStatus.CREATED);
+        return new ResponseEntity<>(GrupoMapper.toDto(guardado, LocalDate.now(clock)), HttpStatus.CREATED);
     }
 
     @Operation(summary = "Actualiza un grupo existente. idInstructor null quita el instructor "
@@ -141,7 +151,7 @@ public class GrupoRest {
                 "categoria=" + categoria + ", curso=" + curso + ", anio=" + anio + ", iterable=" + iterable);
         Grupo datos = GrupoMapper.fromDto(dto);
         Grupo actualizado = servicio.actualizarGrupo(categoria, curso, anio, iterable, datos);
-        return new ResponseEntity<>(GrupoMapper.toDto(actualizado), HttpStatus.OK);
+        return new ResponseEntity<>(GrupoMapper.toDto(actualizado, LocalDate.now(clock)), HttpStatus.OK);
     }
 
     @Operation(summary = "Borrado lógico de un grupo: marca meta_eliminado=1. Retorna 409 si ya estaba eliminado.")
@@ -158,7 +168,7 @@ public class GrupoRest {
         PeticionLogger.log(LOGGER, "DELETE", "/api/v2/grupo",
                 "categoria=" + categoria + ", curso=" + curso + ", anio=" + anio + ", iterable=" + iterable);
         Grupo eliminado = servicio.eliminarGrupo(categoria, curso, anio, iterable);
-        return new ResponseEntity<>(GrupoMapper.toDto(eliminado), HttpStatus.OK);
+        return new ResponseEntity<>(GrupoMapper.toDto(eliminado, LocalDate.now(clock)), HttpStatus.OK);
     }
 
     @Operation(summary = "obtiene un grupo del sistema")
@@ -169,7 +179,7 @@ public class GrupoRest {
     public ResponseEntity<GrupoDto> obtenerGrupo(@RequestParam String categoria, @RequestParam String curso, @RequestParam Integer anio, @RequestParam Integer iterable) {
         PeticionLogger.log(LOGGER, "GET", "/api/v2/grupo", "categoria=" + categoria + ", curso=" + curso + ", anio=" + anio + ", iterable=" + iterable);
         Grupo grupo = servicio.obtenerGrupo(categoria, curso, anio, iterable);
-        return new ResponseEntity<>(GrupoMapper.toDto(grupo), HttpStatus.OK);
+        return new ResponseEntity<>(GrupoMapper.toDto(grupo, LocalDate.now(clock)), HttpStatus.OK);
     }
 
     @Operation(summary = "Grupos a cargo del Instructor autenticado (identidad tomada del JWT, nunca de un parametro de cliente)")

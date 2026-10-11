@@ -1,5 +1,6 @@
 package co.edu.unicauca.deporteParaTodos.dominio.servicios;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -36,6 +37,9 @@ public class GrupoServicio implements IGrupoServicio {
     @Autowired
     private IHorarioGateway horarioGateway;
 
+    @Autowired
+    private Clock clock;
+
     public List<Grupo> obtenerTodosGrupos() {
         return grupoGateway.obtenerTodosGrupos();
     }
@@ -49,7 +53,7 @@ public class GrupoServicio implements IGrupoServicio {
     }
 
     public List<Grupo> obtenerGruposInscripcionDisponible() {
-        return grupoGateway.obtenerGruposInscripcionDisponible();
+        return grupoGateway.obtenerGruposInscripcionDisponible(LocalDate.now(clock));
     }
 
     public List<Grupo> obtenerGruposInstructor(String idInstructor) {

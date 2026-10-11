@@ -1,5 +1,6 @@
 package co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida;
 
+import java.time.LocalDate;
 import java.util.List;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Grupo;
 
@@ -35,7 +36,9 @@ public interface IGrupoGateway {
      */
     public List<Grupo> obtenerGruposDeCurso(String categoria, String curso);
 
-    public List<Grupo> obtenerGruposInscripcionDisponible();
+    // SCRUM-185: "hoy" lo calcula el caller (GrupoServicio) con el Clock inyectable
+    // de America/Bogota -- el Gateway ya no usa CURRENT_DATE de MySQL para esto.
+    public List<Grupo> obtenerGruposInscripcionDisponible(LocalDate hoy);
 
     /***
      * Obtener los grupos asociados a un instructor

@@ -1,6 +1,7 @@
 package co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.api;
 
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosEntrada.IInscripcionServicio;
+import co.edu.unicauca.deporteParaTodos.dominio.excepciones.InscripcionFueraDeFechasExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Disponibilidad;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Inscripcion;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.InscripcionResumen;
@@ -91,6 +92,22 @@ class InscripcionRestSecurityTest {
                 .content("{\"alumnoId\":\"alum1\",\"categoria\":\"cat1\",\"curso\":\"cur1\",\"anio\":2026,\"iterable\":1}")
                 .header("Authorization", "Bearer " + buildJwt("Alumno", "alum1")))
                 .andExpect(status().isCreated());
+    }
+
+    // SCRUM-185: ventana de inscripcion del grupo -- 422 con mensaje legible, sin
+    // prefijo generico que lo contradiga ("<llaveMensaje>, <mensaje especifico>").
+    @Test
+    void inscribir_grupoFueraDeVentanaDeInscripcion_retorna422ConMensajeLegible() throws Exception {
+        when(servicio.inscribir(any(Inscripcion.class)))
+                .thenThrow(new InscripcionFueraDeFechasExcepcion("Las inscripciones de este grupo cerraron el 14/06/2026"));
+
+        mockMvc.perform(post("/api/v2/inscripcion")
+                .contentType("application/json")
+                .content("{\"alumnoId\":\"alum1\",\"categoria\":\"cat1\",\"curso\":\"cur1\",\"anio\":2026,\"iterable\":1}")
+                .header("Authorization", "Bearer " + buildJwt("Alumno", "alum1")))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.mensaje").value(
+                        org.hamcrest.Matchers.containsString("Las inscripciones de este grupo cerraron el 14/06/2026")));
     }
 
     // ── GET /validarInscripcion — BOLA: Alumno solo consulta su propio estado ─

@@ -4,6 +4,10 @@ import java.time.LocalDate;
 
 import org.springframework.format.annotation.DateTimeFormat;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+import co.edu.unicauca.deporteParaTodos.dominio.modelo.EstadoVentanaInscripcion;
+
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PastOrPresent;
@@ -50,4 +54,14 @@ public class GrupoDto {
     private @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaIncripcionCierre;
 
     private Integer periodo;
+
+    // SCRUM-185: campos calculados, SOLO de salida. @JsonProperty(access = READ_ONLY)
+    // hace que Jackson los IGNORE silenciosamente al deserializar un body de entrada
+    // (no solo que GrupoMapper.fromDto() no los lea) -- un valor enviado en POST/PUT
+    // /grupo nunca llega a poblar estos campos del DTO.
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    private boolean inscripcionesAbiertas;
+
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    private EstadoVentanaInscripcion motivoInscripcion;
 }

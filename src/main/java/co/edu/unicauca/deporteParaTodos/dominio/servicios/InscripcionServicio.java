@@ -1,7 +1,10 @@
 package co.edu.unicauca.deporteParaTodos.dominio.servicios;
 
 import java.sql.Timestamp;
+import java.time.Clock;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -15,6 +18,7 @@ import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IHorari
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IInscripcionGateway;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IInstructorGateway;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.CuposAgotadosExcepcion;
+import co.edu.unicauca.deporteParaTodos.dominio.excepciones.InscripcionFueraDeFechasExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.InscripcionesCerradasExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.LimiteCursosExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.NoExisteExcepcion;
@@ -23,6 +27,7 @@ import co.edu.unicauca.deporteParaTodos.dominio.modelo.Curso;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Disponibilidad;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.EstadoCurso;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.EstadoInscripciones;
+import co.edu.unicauca.deporteParaTodos.dominio.modelo.EstadoVentanaInscripcion;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Grupo;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Horario;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Inscripcion;
@@ -36,22 +41,26 @@ import java.util.List;
 @Service
 public class InscripcionServicio implements IInscripcionServicio {
 
+    private static final DateTimeFormatter FORMATO_FECHA = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+
     private final IInscripcionGateway gateway;
     private final ICursoGateway cursoGateway;
     private final IGrupoGateway grupoGateway;
     private final IHorarioGateway horarioGateway;
     private final IInstructorGateway instructorGateway;
+    private final Clock clock;
 
     @Value("${inscripciones.limite-cursos-alumno:3}")
     private int limiteCursosAlumno;
 
     public InscripcionServicio(IInscripcionGateway gateway, ICursoGateway cursoGateway, IGrupoGateway grupoGateway,
-            IHorarioGateway horarioGateway, IInstructorGateway instructorGateway) {
+            IHorarioGateway horarioGateway, IInstructorGateway instructorGateway, Clock clock) {
         this.gateway = gateway;
         this.cursoGateway = cursoGateway;
         this.grupoGateway = grupoGateway;
         this.horarioGateway = horarioGateway;
         this.instructorGateway = instructorGateway;
+        this.clock = clock;
     }
 
     @Override
@@ -79,6 +88,21 @@ public class InscripcionServicio implements IInscripcionServicio {
 
         Grupo grupo = grupoGateway.obtenerGrupoConLock(
                 datos.getCategoria(), datos.getCurso(), datos.getAnio(), datos.getIterable());
+
+        // SCRUM-185: ventana de inscripcion del grupo (apertura/cierre), evaluada con
+        // "hoy" en America/Bogota -- unica regla, la misma que usa el catalogo
+        // (GrupoServicio/GrupoGateway). Solo aplica a inscripciones NUEVAS: no se toca
+        // promoverManualmente() ni la promocion automatica desde la lista de espera.
+        LocalDate hoy = LocalDate.now(clock);
+        EstadoVentanaInscripcion estadoVentana = EstadoVentanaInscripcion.calcular(
+                grupo.getFechaInscripcionApertura(), grupo.getFechaIncripcionCierre(), hoy);
+        if (estadoVentana != EstadoVentanaInscripcion.ABIERTAS) {
+            String mensaje = estadoVentana == EstadoVentanaInscripcion.NO_ABIERTAS
+                    ? "Las inscripciones de este grupo abren el " + grupo.getFechaInscripcionApertura().format(FORMATO_FECHA)
+                    : "Las inscripciones de este grupo cerraron el " + grupo.getFechaIncripcionCierre().format(FORMATO_FECHA);
+            throw new InscripcionFueraDeFechasExcepcion(mensaje);
+        }
+
         if (grupo.getCupos() == null) {
             throw new CuposAgotadosExcepcion("El grupo no tiene cupos configurados");
         }

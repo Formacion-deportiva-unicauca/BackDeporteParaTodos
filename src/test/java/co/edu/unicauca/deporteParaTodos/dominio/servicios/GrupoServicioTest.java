@@ -14,13 +14,16 @@ import co.edu.unicauca.deporteParaTodos.dominio.modelo.InstructorGrupoResumen;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.FechasGrupoInvalidasExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.NoExisteExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.YaExisteElementoExcepcion;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.Clock;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -42,8 +45,22 @@ class GrupoServicioTest {
     @Mock
     private IHorarioGateway horarioGateway;
 
+    @Mock
+    private Clock clock;
+
     @InjectMocks
     private GrupoServicio grupoServicio;
+
+    private static final LocalDate HOY_FIJO = LocalDate.of(2026, 6, 15);
+
+    // SCRUM-185: GrupoServicio.obtenerGruposInscripcionDisponible() ahora necesita
+    // "hoy" del Clock inyectado. lenient() porque la mayoria de los tests de esta
+    // clase no llegan a ese codigo y no necesitan el stub.
+    @BeforeEach
+    void configurarClockPorDefecto() {
+        lenient().when(clock.instant()).thenReturn(HOY_FIJO.atStartOfDay(ZoneId.of("America/Bogota")).toInstant());
+        lenient().when(clock.getZone()).thenReturn(ZoneId.of("America/Bogota"));
+    }
 
     private static final String  CATEGORIA = "Recreativo";
     private static final String  CURSO     = "Natacion";
@@ -111,13 +128,13 @@ class GrupoServicioTest {
     // ──────────────────────────────────────────────────────────────────────────
 
     @Test
-    void obtenerGruposInscripcionDisponible_delegaAlGateway() {
-        when(grupoGateway.obtenerGruposInscripcionDisponible()).thenReturn(List.of(grupoModelo()));
+    void obtenerGruposInscripcionDisponible_delegaAlGatewayConHoyDelClock() {
+        when(grupoGateway.obtenerGruposInscripcionDisponible(HOY_FIJO)).thenReturn(List.of(grupoModelo()));
 
         List<Grupo> resultado = grupoServicio.obtenerGruposInscripcionDisponible();
 
         assertEquals(1, resultado.size());
-        verify(grupoGateway).obtenerGruposInscripcionDisponible();
+        verify(grupoGateway).obtenerGruposInscripcionDisponible(HOY_FIJO);
     }
 
     // ──────────────────────────────────────────────────────────────────────────

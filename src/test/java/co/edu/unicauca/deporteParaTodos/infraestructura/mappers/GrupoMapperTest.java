@@ -1,6 +1,7 @@
 package co.edu.unicauca.deporteParaTodos.infraestructura.mappers;
 
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.NoProcesableEntidadException;
+import co.edu.unicauca.deporteParaTodos.dominio.modelo.EstadoVentanaInscripcion;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Grupo;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.GrupoDto;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresSecundarios.persistenciaSQL.entidades.GrupoEntidad;
@@ -111,6 +112,48 @@ class GrupoMapperTest {
     @Test
     void toDto_grupoNulo_lanzaNoProcesableEntidadException() {
         assertThrows(NoProcesableEntidadException.class, () -> GrupoMapper.toDto(null));
+    }
+
+    // SCRUM-185: overload toDto(Grupo, LocalDate) agrega inscripcionesAbiertas/
+    // motivoInscripcion calculados con EstadoVentanaInscripcion -- misma regla que
+    // usa InscripcionServicio.inscribir() y el catalogo /gruposInscripcion.
+    @Test
+    void toDtoConHoy_ventanaAbierta_marcaInscripcionesAbiertas() {
+        Grupo grupo = grupoBase();
+        grupo.setFechaInscripcionApertura(null);
+        grupo.setFechaIncripcionCierre(null);
+        LocalDate hoy = LocalDate.of(2026, 6, 15);
+
+        GrupoDto resultado = GrupoMapper.toDto(grupo, hoy);
+
+        assertTrue(resultado.isInscripcionesAbiertas());
+        assertEquals(EstadoVentanaInscripcion.ABIERTAS, resultado.getMotivoInscripcion());
+    }
+
+    @Test
+    void toDtoConHoy_cierreAyer_marcaCerradas() {
+        LocalDate hoy = LocalDate.of(2026, 6, 15);
+        Grupo grupo = grupoBase();
+        grupo.setFechaInscripcionApertura(null);
+        grupo.setFechaIncripcionCierre(hoy.minusDays(1));
+
+        GrupoDto resultado = GrupoMapper.toDto(grupo, hoy);
+
+        assertFalse(resultado.isInscripcionesAbiertas());
+        assertEquals(EstadoVentanaInscripcion.CERRADAS, resultado.getMotivoInscripcion());
+    }
+
+    @Test
+    void toDtoConHoy_aperturaFutura_marcaNoAbiertas() {
+        LocalDate hoy = LocalDate.of(2026, 6, 15);
+        Grupo grupo = grupoBase();
+        grupo.setFechaInscripcionApertura(hoy.plusDays(5));
+        grupo.setFechaIncripcionCierre(null);
+
+        GrupoDto resultado = GrupoMapper.toDto(grupo, hoy);
+
+        assertFalse(resultado.isInscripcionesAbiertas());
+        assertEquals(EstadoVentanaInscripcion.NO_ABIERTAS, resultado.getMotivoInscripcion());
     }
 
     // ────────── fromDto ──────────

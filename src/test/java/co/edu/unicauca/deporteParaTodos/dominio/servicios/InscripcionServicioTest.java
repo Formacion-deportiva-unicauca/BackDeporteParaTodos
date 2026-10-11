@@ -5,7 +5,10 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 import java.sql.Timestamp;
+import java.time.Clock;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -22,6 +25,7 @@ import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IHorari
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IInscripcionGateway;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IInstructorGateway;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.CuposAgotadosExcepcion;
+import co.edu.unicauca.deporteParaTodos.dominio.excepciones.InscripcionFueraDeFechasExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.InscripcionesCerradasExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.LimiteCursosExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.NoExisteExcepcion;
@@ -59,12 +63,17 @@ class InscripcionServicioTest {
     @Mock
     private IInstructorGateway instructorGateway;
 
+    @Mock
+    private Clock clock;
+
     @InjectMocks
     private InscripcionServicio servicio;
 
     private Inscripcion datos;
     private Curso cursoAbierto;
     private Grupo grupoCon5Cupos;
+
+    private static final LocalDate HOY_FIJO = LocalDate.of(2026, 6, 15);
 
     @BeforeEach
     void setUp() {
@@ -75,6 +84,13 @@ class InscripcionServicioTest {
         cursoAbierto.setEstadoCurso(EstadoCurso.ACTIVO);
         grupoCon5Cupos = new Grupo();
         grupoCon5Cupos.setCupos(5);
+        // SCRUM-185: inscribir() ahora calcula "hoy" con el Clock inyectado. Las
+        // fechas de apertura/cierre de grupoCon5Cupos quedan null (abierto siempre),
+        // asi que el valor exacto de HOY_FIJO no afecta a los tests existentes --
+        // solo evita el NullPointerException al llamar LocalDate.now(clock).
+        // lenient() porque los tests que no llegan a inscribir() no necesitan el stub.
+        lenient().when(clock.instant()).thenReturn(HOY_FIJO.atStartOfDay(ZoneId.of("America/Bogota")).toInstant());
+        lenient().when(clock.getZone()).thenReturn(ZoneId.of("America/Bogota"));
     }
 
     // ── inscribir ─────────────────────────────────────────────────────────────
@@ -258,6 +274,92 @@ class InscripcionServicioTest {
         verify(gateway).guardarInscripcion(guardada.capture());
         assertEquals("EN_ESPERA", guardada.getValue().getEstado());
         assertNull(guardada.getValue().getFechaDesvinculacion());
+    }
+
+    // ── SCRUM-185: ventana de inscripcion del grupo ──────────────────────────────
+
+    @Test
+    void inscribir_grupoAunNoAbreInscripciones_lanzaInscripcionFueraDeFechasExcepcion() {
+        grupoCon5Cupos.setFechaInscripcionApertura(HOY_FIJO.plusDays(5));
+        when(cursoGateway.obtenerCurso("cat1", "cur1")).thenReturn(cursoAbierto);
+        when(grupoGateway.obtenerGrupoConLock("cat1", "cur1", 2026, 1)).thenReturn(grupoCon5Cupos);
+
+        InscripcionFueraDeFechasExcepcion ex = assertThrows(InscripcionFueraDeFechasExcepcion.class,
+                () -> servicio.inscribir(datos));
+
+        assertTrue(ex.getMessage().contains("abren el 20/06/2026"),
+                "mensaje real: " + ex.getMessage());
+        verify(gateway, never()).guardarInscripcion(any());
+        verify(gateway, never()).contarInscripcionesActivasGrupo(any(), any(), anyInt(), anyInt());
+    }
+
+    @Test
+    void inscribir_grupoYaCerroInscripciones_lanzaInscripcionFueraDeFechasExcepcion() {
+        grupoCon5Cupos.setFechaIncripcionCierre(HOY_FIJO.minusDays(1));
+        when(cursoGateway.obtenerCurso("cat1", "cur1")).thenReturn(cursoAbierto);
+        when(grupoGateway.obtenerGrupoConLock("cat1", "cur1", 2026, 1)).thenReturn(grupoCon5Cupos);
+
+        InscripcionFueraDeFechasExcepcion ex = assertThrows(InscripcionFueraDeFechasExcepcion.class,
+                () -> servicio.inscribir(datos));
+
+        assertTrue(ex.getMessage().contains("cerraron el 14/06/2026"),
+                "mensaje real: " + ex.getMessage());
+        verify(gateway, never()).guardarInscripcion(any());
+        verify(gateway, never()).contarInscripcionesActivasGrupo(any(), any(), anyInt(), anyInt());
+    }
+
+    @Test
+    void inscribir_cierreEsHoy_siguePermitiendoInscripcion() {
+        // Dia de cierre INCLUSIVO: hoy == cierre todavia debe permitir inscribirse.
+        grupoCon5Cupos.setFechaIncripcionCierre(HOY_FIJO);
+        Inscripcion guardada = new Inscripcion("alum1", "cat1", "cur1", 2026, 1,
+                Timestamp.from(Instant.now()), null, "INSCRITO");
+        when(cursoGateway.obtenerCurso("cat1", "cur1")).thenReturn(cursoAbierto);
+        when(grupoGateway.obtenerGrupoConLock("cat1", "cur1", 2026, 1)).thenReturn(grupoCon5Cupos);
+        when(gateway.contarInscripcionesActivasGrupo("cat1", "cur1", 2026, 1)).thenReturn(2L);
+        when(gateway.contarCursosActivosAlumno("alum1")).thenReturn(1L);
+        when(gateway.existeInscripcion("alum1", "cat1", "cur1", 2026, 1)).thenReturn(false);
+        when(gateway.guardarInscripcion(any())).thenReturn(guardada);
+
+        assertDoesNotThrow(() -> servicio.inscribir(datos));
+        verify(gateway).guardarInscripcion(any());
+    }
+
+    @Test
+    void inscribir_aperturaYCierreNull_siguePermitiendoInscripcion() {
+        // grupoCon5Cupos ya no setea ninguna fecha -- abierto desde siempre.
+        Inscripcion guardada = new Inscripcion("alum1", "cat1", "cur1", 2026, 1,
+                Timestamp.from(Instant.now()), null, "INSCRITO");
+        when(cursoGateway.obtenerCurso("cat1", "cur1")).thenReturn(cursoAbierto);
+        when(grupoGateway.obtenerGrupoConLock("cat1", "cur1", 2026, 1)).thenReturn(grupoCon5Cupos);
+        when(gateway.contarInscripcionesActivasGrupo("cat1", "cur1", 2026, 1)).thenReturn(2L);
+        when(gateway.contarCursosActivosAlumno("alum1")).thenReturn(1L);
+        when(gateway.existeInscripcion("alum1", "cat1", "cur1", 2026, 1)).thenReturn(false);
+        when(gateway.guardarInscripcion(any())).thenReturn(guardada);
+
+        assertDoesNotThrow(() -> servicio.inscribir(datos));
+        verify(gateway).guardarInscripcion(any());
+    }
+
+    // Alcance explicito del ticket: SOLO inscripciones NUEVAS. promoverManualmente()
+    // (mover de lista de espera a INSCRITO) NO debe quedar bloqueado por la ventana
+    // de fechas del grupo, aunque el grupo ya haya cerrado inscripciones.
+    @Test
+    void promoverManualmente_grupoConInscripcionesCerradas_noQuedaBloqueado() {
+        grupoCon5Cupos.setFechaIncripcionCierre(HOY_FIJO.minusDays(30));
+        Inscripcion promovida = new Inscripcion("alum1", "cat1", "cur1", 2026, 1,
+                Timestamp.from(Instant.now()), null, "INSCRITO");
+        when(cursoGateway.obtenerCurso("cat1", "cur1")).thenReturn(cursoAbierto);
+        when(gateway.existeEnEspera("alum1", "cat1", "cur1", 2026, 1)).thenReturn(true);
+        when(grupoGateway.obtenerGrupoConLock("cat1", "cur1", 2026, 1)).thenReturn(grupoCon5Cupos);
+        when(gateway.contarInscripcionesActivasGrupo("cat1", "cur1", 2026, 1)).thenReturn(2L);
+        when(gateway.promoverInscripcion("alum1", "cat1", "cur1", 2026, 1)).thenReturn(promovida);
+
+        Inscripcion resultado = assertDoesNotThrow(
+                () -> servicio.promoverManualmente("alum1", "cat1", "cur1", 2026, 1));
+
+        assertNotNull(resultado);
+        assertEquals("INSCRITO", resultado.getEstado());
     }
 
     // ── validarInscripcion ────────────────────────────────────────────────────

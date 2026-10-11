@@ -1,5 +1,8 @@
 package co.edu.unicauca.deporteParaTodos.infraestructura.mappers;
 
+import java.time.LocalDate;
+
+import co.edu.unicauca.deporteParaTodos.dominio.modelo.EstadoVentanaInscripcion;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Grupo;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.NoProcesableEntidadException;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.GrupoDto;
@@ -70,6 +73,18 @@ public class GrupoMapper {
         } catch (Exception e) {
             throw new NoProcesableEntidadException("No fue posible convertir Grupo a DTO: " + e.getMessage());
         }
+    }
+
+    // SCRUM-185: agrega inscripcionesAbiertas/motivoInscripcion, calculados con la
+    // misma regla (EstadoVentanaInscripcion) que usa InscripcionServicio.inscribir()
+    // y el catalogo -- nunca se persisten, se derivan en el momento de la respuesta.
+    public static GrupoDto toDto(Grupo grupo, LocalDate hoy) {
+        GrupoDto dto = toDto(grupo);
+        EstadoVentanaInscripcion estado = EstadoVentanaInscripcion.calcular(
+                grupo.getFechaInscripcionApertura(), grupo.getFechaIncripcionCierre(), hoy);
+        dto.setInscripcionesAbiertas(estado == EstadoVentanaInscripcion.ABIERTAS);
+        dto.setMotivoInscripcion(estado);
+        return dto;
     }
 
     public static Grupo fromDto(GrupoDto dto) {
