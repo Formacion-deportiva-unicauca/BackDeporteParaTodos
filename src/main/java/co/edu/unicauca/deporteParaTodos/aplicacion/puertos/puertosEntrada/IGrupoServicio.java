@@ -16,4 +16,10 @@ public interface IGrupoServicio {
     public Grupo eliminarGrupo(String categoria, String curso, Integer anio, Integer iterable);
     public Grupo obtenerGrupo(String categoria, String curso, Integer anio, Integer iterable);
     public List<InstructorGrupoResumen> obtenerMisGrupos(String idInstructor);
+
+    // SCRUM-78 (HE-13 HU-02): igual que obtenerMisGrupos(), pero el idInstructor lo
+    // manda el cliente (Coordinador consultando a otro instructor) y por eso se
+    // valida explicitamente -- lanza NoExisteExcepcion si no existe o esta
+    // eliminado logicamente.
+    public List<InstructorGrupoResumen> obtenerGruposDeInstructor(String idInstructor);
 }

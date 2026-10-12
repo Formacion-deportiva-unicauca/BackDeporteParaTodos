@@ -203,6 +203,8 @@
 								<exclude>**/GrupoMisGruposIT.java</exclude>
 								<exclude>**/AlumnoActualizarCorreoIT.java</exclude>
 								<exclude>**/InscripcionVentanaFechasIT.java</exclude>
+								<exclude>**/GrupoInstructorIT.java</exclude>
+								<exclude>**/InstructorActualizarIT.java</exclude>
 							</excludes>
 						</configuration>
 					</plugin>

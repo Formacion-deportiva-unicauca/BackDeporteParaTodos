@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosEntrada.IGrupoServicio;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Grupo;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.InstructorGrupoResumen;
+import co.edu.unicauca.deporteParaTodos.dominio.utils.LogSanitizer;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.GrupoDto;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.InstructorGrupoResumenDto;
 import co.edu.unicauca.deporteParaTodos.infraestructura.logs.PeticionLogger;
@@ -193,8 +194,32 @@ public class GrupoRest {
         if (idInstructor == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
-        PeticionLogger.log(LOGGER, "GET", "/api/v2/grupo/misGrupos", idInstructor);
+        // Sonar java:S5145 (log forging): idInstructor viene del claim perf_id del
+        // JWT -- se sanea CR/LF SOLO para el log; la llamada de negocio usa el
+        // valor original sin tocar.
+        PeticionLogger.log(LOGGER, "GET", "/api/v2/grupo/misGrupos", LogSanitizer.sanitizar(idInstructor));
         List<InstructorGrupoResumen> lista = servicio.obtenerMisGrupos(idInstructor);
+        List<InstructorGrupoResumenDto> dtos = lista.stream()
+                .map(InstructorGrupoResumenDto::fabricarDeModelo)
+                .collect(Collectors.toList());
+        return new ResponseEntity<>(dtos, HttpStatus.OK);
+    }
+
+    @Operation(summary = "Grupos a cargo de un instructor especifico, consultado por un Coordinador "
+            + "(a diferencia de misGrupos, el idInstructor lo manda el cliente y se valida)")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Grupos recuperados (lista vacia si no tiene ninguno)"),
+        @ApiResponse(responseCode = "404", description = "El instructor no existe o esta eliminado logicamente"),
+    })
+    @PreAuthorize("hasAuthority('Coordinador')")
+    @GetMapping("/grupo/instructor")
+    public ResponseEntity<List<InstructorGrupoResumenDto>> gruposDeInstructor(@RequestParam String idInstructor) {
+        // Sonar java:S5145 (log forging): idInstructor es un @RequestParam crudo --
+        // se sanea CR/LF SOLO para el log; la llamada de negocio usa el valor
+        // original sin tocar.
+        PeticionLogger.log(LOGGER, "GET", "/api/v2/grupo/instructor",
+                "idInstructor=" + LogSanitizer.sanitizar(idInstructor));
+        List<InstructorGrupoResumen> lista = servicio.obtenerGruposDeInstructor(idInstructor);
         List<InstructorGrupoResumenDto> dtos = lista.stream()
                 .map(InstructorGrupoResumenDto::fabricarDeModelo)
                 .collect(Collectors.toList());

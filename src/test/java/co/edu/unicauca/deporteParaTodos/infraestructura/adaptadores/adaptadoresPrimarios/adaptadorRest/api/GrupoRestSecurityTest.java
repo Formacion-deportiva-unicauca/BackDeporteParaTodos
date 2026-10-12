@@ -3,12 +3,16 @@ package co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadores
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosEntrada.IGrupoServicio;
 import co.edu.unicauca.deporteParaTodos.deporteParaTodos;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Grupo;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.OctetSequenceKey;
 import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -27,6 +31,8 @@ import java.time.LocalDate;
 import java.util.Base64;
 import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -270,5 +276,135 @@ class GrupoRestSecurityTest {
 
         verify(servicio).obtenerMisGrupos("ins1");
         verify(servicio, never()).obtenerMisGrupos("ins2");
+    }
+
+    // ── GET /api/v2/grupo/instructor — SCRUM-78 (HE-13 HU-02): solo Coordinador,
+    // idInstructor lo manda el cliente (a diferencia de misGrupos, que usa el JWT) ──
+
+    @Test
+    void gruposDeInstructor_rolCoordinador_retorna200() throws Exception {
+        when(servicio.obtenerGruposDeInstructor("ins1")).thenReturn(List.of());
+
+        mockMvc.perform(get("/api/v2/grupo/instructor")
+                .param("idInstructor", "ins1")
+                .header("Authorization", "Bearer " + buildJwt("Coordinador", "coord1")))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void gruposDeInstructor_rolInstructor_retorna403() throws Exception {
+        mockMvc.perform(get("/api/v2/grupo/instructor")
+                .param("idInstructor", "ins1")
+                .header("Authorization", "Bearer " + buildJwt("Instructor", "ins1")))
+                .andExpect(status().isForbidden());
+
+        verify(servicio, never()).obtenerGruposDeInstructor(any());
+    }
+
+    @Test
+    void gruposDeInstructor_rolAlumno_retorna403() throws Exception {
+        mockMvc.perform(get("/api/v2/grupo/instructor")
+                .param("idInstructor", "ins1")
+                .header("Authorization", "Bearer " + buildJwt("Alumno", "alum1")))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void gruposDeInstructor_sinToken_retorna401() throws Exception {
+        mockMvc.perform(get("/api/v2/grupo/instructor")
+                .param("idInstructor", "ins1"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void gruposDeInstructor_idInexistente_retorna404() throws Exception {
+        when(servicio.obtenerGruposDeInstructor("desconocido"))
+                .thenThrow(new co.edu.unicauca.deporteParaTodos.dominio.excepciones.NoExisteExcepcion(
+                        "No existe el instructor con el identificador desconocido"));
+
+        mockMvc.perform(get("/api/v2/grupo/instructor")
+                .param("idInstructor", "desconocido")
+                .header("Authorization", "Bearer " + buildJwt("Coordinador", "coord1")))
+                .andExpect(status().isNotFound());
+    }
+
+    // Parametro idInstructor faltante -- 400 habitual del proyecto (Spring responde
+    // por defecto ante un @RequestParam requerido ausente, sin handler custom).
+    @Test
+    void gruposDeInstructor_sinParametroIdInstructor_retorna400() throws Exception {
+        mockMvc.perform(get("/api/v2/grupo/instructor")
+                .header("Authorization", "Bearer " + buildJwt("Coordinador", "coord1")))
+                .andExpect(status().isBadRequest());
+
+        verify(servicio, never()).obtenerGruposDeInstructor(any());
+    }
+
+    // Sonar java:S5145 (log forging): idInstructor es un parametro de query crudo
+    // del cliente en GrupoRest.gruposDeInstructor() (PeticionLogger.log). A
+    // diferencia de la variable de ruta de InstructoresRest, aqui no hay
+    // re-codificacion de URL que esquivar: MockMvc .param(nombre, valor) entrega el
+    // valor del parametro directamente al controller (asi llega un %0d%0a ya
+    // decodificado por el servidor real). Medicion: se compara, con un
+    // ListAppender de Logback en GrupoRest.class, el numero de lineas
+    // (getFormattedMessage().lines()) del ultimo log contra una peticion de
+    // control sin CRLF -- igual criterio que en InstructorRestSecurityTest.
+    @Test
+    void gruposDeInstructor_idInstructorConCRLF_noAumentaElNumeroDeLineasDelLog() throws Exception {
+        when(servicio.obtenerGruposDeInstructor(any())).thenReturn(List.of());
+        Logger logbackLogger = (Logger) LoggerFactory.getLogger(GrupoRest.class);
+        ListAppender<ILoggingEvent> appender = new ListAppender<>();
+        appender.start();
+        logbackLogger.addAppender(appender);
+        try {
+            mockMvc.perform(get("/api/v2/grupo/instructor")
+                    .param("idInstructor", "ins1")
+                    .header("Authorization", "Bearer " + buildJwt("Coordinador", "coord1")))
+                    .andExpect(status().isOk());
+            long lineasControl = appender.list.get(appender.list.size() - 1).getFormattedMessage().lines().count();
+
+            mockMvc.perform(get("/api/v2/grupo/instructor")
+                    .param("idInstructor", "ins1\r\nFAKE-LOG-LINE")
+                    .header("Authorization", "Bearer " + buildJwt("Coordinador", "coord1")))
+                    .andExpect(status().isOk());
+            String mensajeAtaque = appender.list.get(appender.list.size() - 1).getFormattedMessage();
+
+            assertEquals(lineasControl, mensajeAtaque.lines().count(),
+                    "idInstructor con CRLF no puede agregar lineas al log frente a la peticion de control");
+            assertTrue(mensajeAtaque.contains("ins1__FAKE-LOG-LINE"),
+                    "el valor sanitizado (CR/LF -> _, uno por cada caracter) debe seguir siendo identificable");
+        } finally {
+            logbackLogger.detachAppender(appender);
+        }
+    }
+
+    // Sonar java:S5145 (log forging): en misGrupos() idInstructor viene del claim
+    // perf_id del JWT, no de un parametro HTTP -- se inyecta directo en el claim
+    // (los claims de un JWT son valores JSON normales, un \r\n ahi es perfectamente
+    // valido una vez decodificado). Mismo criterio de medicion que arriba.
+    @Test
+    void misGrupos_perfIdDelJwtConCRLF_noAumentaElNumeroDeLineasDelLog() throws Exception {
+        when(servicio.obtenerMisGrupos(any())).thenReturn(List.of());
+        Logger logbackLogger = (Logger) LoggerFactory.getLogger(GrupoRest.class);
+        ListAppender<ILoggingEvent> appender = new ListAppender<>();
+        appender.start();
+        logbackLogger.addAppender(appender);
+        try {
+            mockMvc.perform(get("/api/v2/grupo/misGrupos")
+                    .header("Authorization", "Bearer " + buildJwt("Instructor", "ins1")))
+                    .andExpect(status().isOk());
+            long lineasControl = appender.list.get(appender.list.size() - 1).getFormattedMessage().lines().count();
+
+            mockMvc.perform(get("/api/v2/grupo/misGrupos")
+                    .header("Authorization", "Bearer " + buildJwt("Instructor", "ins1\r\nFAKE-LOG-LINE")))
+                    .andExpect(status().isOk());
+            String mensajeAtaque = appender.list.get(appender.list.size() - 1).getFormattedMessage();
+
+            assertEquals(lineasControl, mensajeAtaque.lines().count(),
+                    "el claim perf_id con CRLF no puede agregar lineas al log frente a la peticion de control");
+            assertTrue(mensajeAtaque.contains("ins1__FAKE-LOG-LINE"),
+                    "el valor sanitizado (CR/LF -> _, uno por cada caracter) debe seguir siendo identificable");
+        } finally {
+            logbackLogger.detachAppender(appender);
+        }
     }
 }

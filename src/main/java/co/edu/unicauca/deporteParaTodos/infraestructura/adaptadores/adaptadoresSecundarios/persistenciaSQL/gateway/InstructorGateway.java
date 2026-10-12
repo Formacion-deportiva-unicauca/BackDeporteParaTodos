@@ -62,6 +62,11 @@ public class InstructorGateway implements IInstructorGateway {
     }
 
     @Override
+    public boolean existeInstructorActivo(String instructorId) {
+        return repoInstructor.existsByIdPerfilAndEliminado(instructorId, 0);
+    }
+
+    @Override
     public Instructor insertarInstructor(Instructor datosInstructor) {
         throw new NoImplementadoException();
     }
@@ -73,11 +78,6 @@ public class InstructorGateway implements IInstructorGateway {
             return entidadRecuperada.map(this::mapearEntidadADominio);
         }
         return Optional.empty();
-    }
-
-    @Override
-    public Instructor actualizarInstructor(String instructorId, Instructor datosInstructor) {
-        throw new NoImplementadoException();
     }
 
     @Override
