@@ -12,6 +12,7 @@ import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IInstru
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IPerfilGateway;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Instructor;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Perfil;
+import co.edu.unicauca.deporteParaTodos.dominio.utils.LogSanitizer;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.InstructorDto;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.PerfilDto;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.ErrorInternoException;
@@ -89,9 +90,18 @@ public class InstructorServicio implements IInstructorServicio {
         // Rastro de auditoria: solo si el correo realmente cambia (sin distinguir
         // mayusculas, con trim) -- y solo identificadores en el mensaje, nunca
         // datos personales (correo/nombre).
+        // Seguridad (Sonar java:S5145, log forging): NO se usa `instructorId` crudo
+        // (viene directo de la variable de ruta del PUT) -- se usa
+        // actual.getInst_codigo(), tomado de la entidad YA CARGADA de BD
+        // (repoInstructor.findById dentro de obtenerInstructor()), rompiendo el flujo
+        // de dato tainted directo HTTP->log. Ademas, por si el propio valor
+        // (sea el de BD o el claim del JWT) llegara a contener CR/LF, se sanitiza
+        // antes de registrar para que un id/claim con saltos de linea no pueda
+        // forjar lineas de log falsas.
         if (correoActual != null && correoNuevo != null
                 && !correoActual.trim().equalsIgnoreCase(correoNuevo.trim())) {
-            LOGGER.info("correo del instructor {} modificado por {}", instructorId, idCoordinador);
+            LOGGER.info("correo del instructor {} modificado por {}",
+                    LogSanitizer.sanitizar(actual.getInst_codigo()), LogSanitizer.sanitizar(idCoordinador));
         }
 
         // Respuesta construida desde `actual` (preserva sexo/tipoId/imagen/id reales)

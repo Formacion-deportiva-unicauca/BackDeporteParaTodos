@@ -359,6 +359,37 @@ class InstructorServicioTest {
         assertFalse(mensaje.contains(NOMBRE_NUEVO), "no debe contener el nombre");
     }
 
+    // Seguridad (Sonar java:S5145, log forging): un id (o claim del coordinador)
+    // con CR/LF no puede forjar lineas de log falsas ni partir la linea de
+    // auditoria en varias -- debe sanitizarse a "_" antes de registrar.
+    @Test
+    void actualizarInstructor_idConSaltosDeLinea_noProduceLogMultilineaYSinCorreos() {
+        String idConCrlf = "98765432\r\nFAKE LOG LINE: acceso concedido\n";
+        String coordinadorConCrlf = "coord-99\nFAKE LOG LINE: otra inyeccion";
+        Instructor actualConIdSucio = instructorConPerfil();
+        actualConIdSucio.setInst_codigo(idConCrlf);
+        when(instructorsGateway.existeInstructorActivo(ID)).thenReturn(true);
+        when(instructorsGateway.obtenerInstructor(ID)).thenReturn(Optional.of(actualConIdSucio));
+        Perfil perfilActualizado = new Perfil();
+        perfilActualizado.setCorreo(CORREO_NUEVO);
+        when(perfilGateway.actualizarPerfil(eq(ID), any(Perfil.class))).thenReturn(perfilActualizado);
+
+        instructorServicio.actualizarInstructor(ID, datosActualizar(NOMBRE_NUEVO, CORREO_NUEVO), coordinadorConCrlf);
+
+        assertEquals(1, logAppender.list.size(),
+                "un id/claim con saltos de linea no debe producir mas de UNA linea de log");
+        String mensaje = logAppender.list.get(0).getFormattedMessage();
+        assertFalse(mensaje.contains("\r"), "no debe quedar ningun retorno de carro crudo");
+        assertFalse(mensaje.contains("\n"), "no debe quedar ningun salto de linea crudo");
+        assertEquals(1, mensaje.lines().count(), "la linea de auditoria debe seguir siendo UNA sola linea");
+        assertTrue(mensaje.contains("98765432__FAKE LOG LINE: acceso concedido_"),
+                "el id sanitizado (CR/LF -> _, uno por cada caracter) debe seguir siendo identificable");
+        assertTrue(mensaje.contains("coord-99_FAKE LOG LINE: otra inyeccion"),
+                "el claim del coordinador sanitizado debe seguir siendo identificable");
+        assertFalse(mensaje.toLowerCase().contains(CORREO.toLowerCase()), "no debe contener el correo anterior");
+        assertFalse(mensaje.toLowerCase().contains(CORREO_NUEVO.toLowerCase()), "no debe contener el correo nuevo");
+    }
+
     @Test
     void actualizarInstructor_correoNoCambia_noEmiteNingunLog() {
         when(instructorsGateway.existeInstructorActivo(ID)).thenReturn(true);

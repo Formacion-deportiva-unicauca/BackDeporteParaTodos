@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosEntrada.IGrupoServicio;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Grupo;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.InstructorGrupoResumen;
+import co.edu.unicauca.deporteParaTodos.dominio.utils.LogSanitizer;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.GrupoDto;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.InstructorGrupoResumenDto;
 import co.edu.unicauca.deporteParaTodos.infraestructura.logs.PeticionLogger;
@@ -193,7 +194,10 @@ public class GrupoRest {
         if (idInstructor == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
-        PeticionLogger.log(LOGGER, "GET", "/api/v2/grupo/misGrupos", idInstructor);
+        // Sonar java:S5145 (log forging): idInstructor viene del claim perf_id del
+        // JWT -- se sanea CR/LF SOLO para el log; la llamada de negocio usa el
+        // valor original sin tocar.
+        PeticionLogger.log(LOGGER, "GET", "/api/v2/grupo/misGrupos", LogSanitizer.sanitizar(idInstructor));
         List<InstructorGrupoResumen> lista = servicio.obtenerMisGrupos(idInstructor);
         List<InstructorGrupoResumenDto> dtos = lista.stream()
                 .map(InstructorGrupoResumenDto::fabricarDeModelo)
@@ -210,7 +214,11 @@ public class GrupoRest {
     @PreAuthorize("hasAuthority('Coordinador')")
     @GetMapping("/grupo/instructor")
     public ResponseEntity<List<InstructorGrupoResumenDto>> gruposDeInstructor(@RequestParam String idInstructor) {
-        PeticionLogger.log(LOGGER, "GET", "/api/v2/grupo/instructor", "idInstructor=" + idInstructor);
+        // Sonar java:S5145 (log forging): idInstructor es un @RequestParam crudo --
+        // se sanea CR/LF SOLO para el log; la llamada de negocio usa el valor
+        // original sin tocar.
+        PeticionLogger.log(LOGGER, "GET", "/api/v2/grupo/instructor",
+                "idInstructor=" + LogSanitizer.sanitizar(idInstructor));
         List<InstructorGrupoResumen> lista = servicio.obtenerGruposDeInstructor(idInstructor);
         List<InstructorGrupoResumenDto> dtos = lista.stream()
                 .map(InstructorGrupoResumenDto::fabricarDeModelo)

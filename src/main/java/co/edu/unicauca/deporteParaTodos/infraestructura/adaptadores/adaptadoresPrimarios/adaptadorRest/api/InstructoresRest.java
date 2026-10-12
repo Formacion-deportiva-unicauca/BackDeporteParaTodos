@@ -21,6 +21,7 @@ import co.edu.unicauca.deporteParaTodos.dominio.modelo.Perfil;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.InstructorDto;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.InstructorRequest;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.PerfilDto;
+import co.edu.unicauca.deporteParaTodos.dominio.utils.LogSanitizer;
 import co.edu.unicauca.deporteParaTodos.infraestructura.logs.PeticionLogger;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -103,7 +104,11 @@ public class InstructoresRest {
         if (idCoordinador == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
-        PeticionLogger.log(LOGGER, "PUT", "/api/v2/instructor/" + id, "id: " + id);
+        // Sonar java:S5145 (log forging): id es una variable de ruta cruda del
+        // cliente -- se sanea CR/LF antes de interpolarla en el log (aparece dos
+        // veces en esta linea: en "Direccion" y en "Datos entrantes").
+        String idSaneado = LogSanitizer.sanitizar(id);
+        PeticionLogger.log(LOGGER, "PUT", "/api/v2/instructor/" + idSaneado, "id: " + idSaneado);
 
         Perfil perfil = new Perfil();
         perfil.setNombre(request.getNombre().trim());
