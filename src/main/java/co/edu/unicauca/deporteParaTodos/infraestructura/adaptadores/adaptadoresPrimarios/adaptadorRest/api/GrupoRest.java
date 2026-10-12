@@ -200,4 +200,21 @@ public class GrupoRest {
                 .collect(Collectors.toList());
         return new ResponseEntity<>(dtos, HttpStatus.OK);
     }
+
+    @Operation(summary = "Grupos a cargo de un instructor especifico, consultado por un Coordinador "
+            + "(a diferencia de misGrupos, el idInstructor lo manda el cliente y se valida)")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Grupos recuperados (lista vacia si no tiene ninguno)"),
+        @ApiResponse(responseCode = "404", description = "El instructor no existe o esta eliminado logicamente"),
+    })
+    @PreAuthorize("hasAuthority('Coordinador')")
+    @GetMapping("/grupo/instructor")
+    public ResponseEntity<List<InstructorGrupoResumenDto>> gruposDeInstructor(@RequestParam String idInstructor) {
+        PeticionLogger.log(LOGGER, "GET", "/api/v2/grupo/instructor", "idInstructor=" + idInstructor);
+        List<InstructorGrupoResumen> lista = servicio.obtenerGruposDeInstructor(idInstructor);
+        List<InstructorGrupoResumenDto> dtos = lista.stream()
+                .map(InstructorGrupoResumenDto::fabricarDeModelo)
+                .collect(Collectors.toList());
+        return new ResponseEntity<>(dtos, HttpStatus.OK);
+    }
 }

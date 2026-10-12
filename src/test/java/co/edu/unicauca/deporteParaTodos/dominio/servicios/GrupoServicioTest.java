@@ -4,6 +4,7 @@ import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.ICursoG
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IGrupoGateway;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IHorarioGateway;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IInscripcionGateway;
+import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IInstructorGateway;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.ConteoInscripcionGrupo;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Curso;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.EstadoCurso;
@@ -44,6 +45,9 @@ class GrupoServicioTest {
 
     @Mock
     private IHorarioGateway horarioGateway;
+
+    @Mock
+    private IInstructorGateway instructorGateway;
 
     @Mock
     private Clock clock;
@@ -519,5 +523,66 @@ class GrupoServicioTest {
 
         assertEquals(1, resultado.size());
         assertEquals(EstadoCurso.INACTIVO, resultado.get(0).getEstadoCurso());
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // obtenerGruposDeInstructor (SCRUM-78, HE-13 HU-02)
+    // GET /grupo/instructor?idInstructor= -- a diferencia de misGrupos() (identidad
+    // SIEMPRE del JWT, nunca validada porque es el propio usuario), aqui el id lo
+    // manda el cliente (Coordinador consultando a OTRO instructor), asi que debe
+    // validarse antes de construir la respuesta. Reutiliza obtenerMisGrupos() para
+    // el armado real -- no se duplica esa logica.
+    // ──────────────────────────────────────────────────────────────────────────
+
+    @Test
+    void obtenerGruposDeInstructor_instructorExistenteConGrupos_delegaAObtenerMisGrupos() {
+        Grupo grupo = grupoModelo();
+        Curso curso = new Curso();
+        curso.setEstadoCurso(EstadoCurso.ACTIVO);
+        curso.setEstadoInscripciones(EstadoInscripciones.ABIERTO);
+        when(instructorGateway.existeInstructorActivo("INS001")).thenReturn(true);
+        when(grupoGateway.obtenerGruposInstructor("INS001")).thenReturn(List.of(grupo));
+        when(inscripcionGateway.contarInscripcionesPorInstructor("INS001")).thenReturn(List.of());
+        when(cursoGateway.obtenerCurso(CATEGORIA, CURSO)).thenReturn(curso);
+        when(horarioGateway.listarHorariosPorGrupo(CATEGORIA, CURSO, ANIO, ITERABLE)).thenReturn(List.of());
+
+        List<InstructorGrupoResumen> resultado = grupoServicio.obtenerGruposDeInstructor("INS001");
+
+        assertEquals(1, resultado.size());
+        assertEquals(CURSO, resultado.get(0).getCurso());
+    }
+
+    @Test
+    void obtenerGruposDeInstructor_instructorExistenteSinGrupos_retornaListaVacia() {
+        when(instructorGateway.existeInstructorActivo("INS001")).thenReturn(true);
+        when(grupoGateway.obtenerGruposInstructor("INS001")).thenReturn(List.of());
+
+        List<InstructorGrupoResumen> resultado = grupoServicio.obtenerGruposDeInstructor("INS001");
+
+        assertNotNull(resultado);
+        assertTrue(resultado.isEmpty());
+    }
+
+    @Test
+    void obtenerGruposDeInstructor_instructorInexistente_lanzaNoExisteExcepcionSinConsultarGrupos() {
+        when(instructorGateway.existeInstructorActivo("desconocido")).thenReturn(false);
+
+        assertThrows(NoExisteExcepcion.class,
+                () -> grupoServicio.obtenerGruposDeInstructor("desconocido"));
+
+        verify(grupoGateway, never()).obtenerGruposInstructor(any());
+        verify(inscripcionGateway, never()).contarInscripcionesPorInstructor(any());
+    }
+
+    @Test
+    void obtenerGruposDeInstructor_instructorEliminado_lanzaNoExisteExcepcionSinConsultarGrupos() {
+        // existeInstructorActivo() ya filtra eliminado=1 -- desde el punto de vista
+        // de este servicio, eliminado e inexistente son el mismo caso (false).
+        when(instructorGateway.existeInstructorActivo("eliminado1")).thenReturn(false);
+
+        assertThrows(NoExisteExcepcion.class,
+                () -> grupoServicio.obtenerGruposDeInstructor("eliminado1"));
+
+        verify(grupoGateway, never()).obtenerGruposInstructor(any());
     }
 }

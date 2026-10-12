@@ -276,4 +276,29 @@ class PerfilGatewayTest {
         assertNotNull(resultado);
         assertEquals(CORREO, resultado.getCorreo());
     }
+
+    // HALLAZGO (verificacion SCRUM-79/139), documentado -- NO corregido aqui: usa
+    // el ModelMapper REAL (sin mockear, a diferencia de todos los tests de arriba)
+    // para comprobar el mapeo generico PerfilEntidad -> Perfil (plano, sin anidar).
+    // Ya se sabia que ModelMapper generico fallaba en el caso ANIDADO
+    // (Instructor.perfil, por los getters irregulares de PerfilEntidad:
+    // getPerf_Sexo() con S mayuscula, getPerfcorreo() sin guion bajo). Esto
+    // confirma que TAMBIEN falla en el caso PLANO -- y peor de lo esperado: solo
+    // "sexo" sobrevive; nombre, correo, tipoId e imagen vienen null. Esto es lo
+    // que retorna PerfilGateway.actualizarPerfil() a cualquier caller que confie
+    // en su valor de vuelta (ver el fix en InstructorServicio.actualizarInstructor,
+    // que deja de depender de este valor por esto mismo).
+    @Test
+    void hallazgo_modelMapperRealGenerico_mapeaEntidadAPerfilPlano_pierdeTodoMenosSexo() {
+        ModelMapper real = new ModelMapper();
+        PerfilEntidad entidad = entidadBase();
+
+        Perfil resultado = real.map(entidad, Perfil.class);
+
+        assertEquals(SEXO, resultado.getSexo(), "unico campo que sobrevive el mapeo generico plano");
+        assertNull(resultado.getNombre(), "HALLAZGO: nombre se pierde en el mapeo generico plano");
+        assertNull(resultado.getCorreo(), "HALLAZGO: correo se pierde en el mapeo generico plano");
+        assertNull(resultado.getTipoId(), "HALLAZGO: tipoId se pierde en el mapeo generico plano");
+        assertNull(resultado.getImagen(), "HALLAZGO: imagen se pierde en el mapeo generico plano");
+    }
 }

@@ -13,7 +13,10 @@ public interface IInstructorServicio {
 
     public InstructorDto obtenerInstructor(String instructorId);
 
-    public Instructor actualizarInstructor(String instructorId, Instructor datosInstructor);
+    // SCRUM-79 (HE-14 HU-01): idCoordinador llega como parametro explicito (sale
+    // del claim perf_id del JWT en el controller) -- el dominio no depende de
+    // Spring Security. Se usa SOLO para el rastro de auditoria del correo.
+    public Instructor actualizarInstructor(String instructorId, Instructor datosInstructor, String idCoordinador);
 
     public Instructor eliminarInstructor(String instructorId);
 

@@ -271,4 +271,65 @@ class GrupoRestSecurityTest {
         verify(servicio).obtenerMisGrupos("ins1");
         verify(servicio, never()).obtenerMisGrupos("ins2");
     }
+
+    // ── GET /api/v2/grupo/instructor — SCRUM-78 (HE-13 HU-02): solo Coordinador,
+    // idInstructor lo manda el cliente (a diferencia de misGrupos, que usa el JWT) ──
+
+    @Test
+    void gruposDeInstructor_rolCoordinador_retorna200() throws Exception {
+        when(servicio.obtenerGruposDeInstructor("ins1")).thenReturn(List.of());
+
+        mockMvc.perform(get("/api/v2/grupo/instructor")
+                .param("idInstructor", "ins1")
+                .header("Authorization", "Bearer " + buildJwt("Coordinador", "coord1")))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void gruposDeInstructor_rolInstructor_retorna403() throws Exception {
+        mockMvc.perform(get("/api/v2/grupo/instructor")
+                .param("idInstructor", "ins1")
+                .header("Authorization", "Bearer " + buildJwt("Instructor", "ins1")))
+                .andExpect(status().isForbidden());
+
+        verify(servicio, never()).obtenerGruposDeInstructor(any());
+    }
+
+    @Test
+    void gruposDeInstructor_rolAlumno_retorna403() throws Exception {
+        mockMvc.perform(get("/api/v2/grupo/instructor")
+                .param("idInstructor", "ins1")
+                .header("Authorization", "Bearer " + buildJwt("Alumno", "alum1")))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void gruposDeInstructor_sinToken_retorna401() throws Exception {
+        mockMvc.perform(get("/api/v2/grupo/instructor")
+                .param("idInstructor", "ins1"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void gruposDeInstructor_idInexistente_retorna404() throws Exception {
+        when(servicio.obtenerGruposDeInstructor("desconocido"))
+                .thenThrow(new co.edu.unicauca.deporteParaTodos.dominio.excepciones.NoExisteExcepcion(
+                        "No existe el instructor con el identificador desconocido"));
+
+        mockMvc.perform(get("/api/v2/grupo/instructor")
+                .param("idInstructor", "desconocido")
+                .header("Authorization", "Bearer " + buildJwt("Coordinador", "coord1")))
+                .andExpect(status().isNotFound());
+    }
+
+    // Parametro idInstructor faltante -- 400 habitual del proyecto (Spring responde
+    // por defecto ante un @RequestParam requerido ausente, sin handler custom).
+    @Test
+    void gruposDeInstructor_sinParametroIdInstructor_retorna400() throws Exception {
+        mockMvc.perform(get("/api/v2/grupo/instructor")
+                .header("Authorization", "Bearer " + buildJwt("Coordinador", "coord1")))
+                .andExpect(status().isBadRequest());
+
+        verify(servicio, never()).obtenerGruposDeInstructor(any());
+    }
 }

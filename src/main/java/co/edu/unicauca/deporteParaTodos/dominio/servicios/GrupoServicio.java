@@ -13,6 +13,7 @@ import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.ICursoG
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IGrupoGateway;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IHorarioGateway;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IInscripcionGateway;
+import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IInstructorGateway;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.ConteoInscripcionGrupo;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Curso;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Grupo;
@@ -36,6 +37,9 @@ public class GrupoServicio implements IGrupoServicio {
 
     @Autowired
     private IHorarioGateway horarioGateway;
+
+    @Autowired
+    private IInstructorGateway instructorGateway;
 
     @Autowired
     private Clock clock;
@@ -164,5 +168,13 @@ public class GrupoServicio implements IGrupoServicio {
 
     private String claveGrupo(String categoria, String curso, int anio, int iterable) {
         return categoria + "|" + curso + "|" + anio + "|" + iterable;
+    }
+
+    @Override
+    public List<InstructorGrupoResumen> obtenerGruposDeInstructor(String idInstructor) {
+        if (!instructorGateway.existeInstructorActivo(idInstructor)) {
+            throw new NoExisteExcepcion("No existe el instructor con el identificador " + idInstructor);
+        }
+        return obtenerMisGrupos(idInstructor);
     }
 }

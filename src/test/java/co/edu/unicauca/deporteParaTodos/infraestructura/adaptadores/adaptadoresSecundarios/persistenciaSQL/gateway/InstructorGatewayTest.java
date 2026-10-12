@@ -171,4 +171,29 @@ class InstructorGatewayTest {
         verify(repoAlumno).save(any(AlumnoEntidad.class));
         verify(repoInstructor).save(any(InstructorEntidad.class));
     }
+
+    // SCRUM-78 (HE-13 HU-02): GET /grupo/instructor?idInstructor= necesita distinguir
+    // "no existe" de "existe pero eliminado logicamente" en una sola consulta -- reusa
+    // el mismo repoInstructor.existsByIdPerfilAndEliminado(id, 0) que ya usan
+    // GrupoGateway.insertarGrupo()/actualizarGrupo() para validar el instructor asignado.
+    @Test
+    void existeInstructorActivo_existenteYNoEliminado_retornaTrue() {
+        when(repoInstructor.existsByIdPerfilAndEliminado(PERF_ID, 0)).thenReturn(true);
+
+        assertTrue(instructorGateway.existeInstructorActivo(PERF_ID));
+    }
+
+    @Test
+    void existeInstructorActivo_eliminadoLogicamente_retornaFalse() {
+        when(repoInstructor.existsByIdPerfilAndEliminado(PERF_ID, 0)).thenReturn(false);
+
+        assertFalse(instructorGateway.existeInstructorActivo(PERF_ID));
+    }
+
+    @Test
+    void existeInstructorActivo_noExistente_retornaFalse() {
+        when(repoInstructor.existsByIdPerfilAndEliminado("desconocido", 0)).thenReturn(false);
+
+        assertFalse(instructorGateway.existeInstructorActivo("desconocido"));
+    }
 }

@@ -1,6 +1,7 @@
 package co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresSecundarios.persistenciaSQL.gateway;
 
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Alumno;
+import co.edu.unicauca.deporteParaTodos.dominio.modelo.Perfil;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresSecundarios.persistenciaSQL.repositorios.IAlumnoRepositorio;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresSecundarios.persistenciaSQL.repositorios.IPerfilRepositorio;
 import org.junit.jupiter.api.Test;
@@ -97,5 +98,36 @@ class AlumnoGatewayTest {
         List<Alumno> resultado = alumnoGateway.obtenerAlumnosGrupo("Recreativo", "Natacion", 2025, 1);
 
         assertTrue(resultado.isEmpty());
+    }
+
+    // HALLAZGO (verificacion SCRUM-79/139, solo documentado -- NO corregido aqui a
+    // peticion explicita): actualizarAlumno() construye la respuesta "desde memoria"
+    // (comentario en el propio metodo) reusando el Perfil de ENTRADA que PUT
+    // /alumnos/{id} arma con SOLO nombre/correo -- sexo/tipoid/imagen NUNCA se
+    // setean ahi, asi que llegan null. Tampoco se setean eliminadoestado/alm_codigo
+    // en el Alumno de salida. El 200 de PUT /alumnos/{id} pierde esos 5 campos en
+    // el cuerpo de la respuesta, aunque la fila en BD (tbl_perfil/tbl_alumno) queda
+    // intacta -- mismo tipo de bug que se encontro en InstructorServicio.actualizarInstructor,
+    // pero por un mecanismo distinto (aqui no es ModelMapper, es que el objeto de
+    // entrada nunca cargo esos campos).
+    @Test
+    void actualizarAlumno_soloEnviaNombreYCorreo_laRespuestaPierdeSexoTipoidImagenCodigoYEliminadoestado() {
+        Perfil perfilDeEntradaSoloNombreYCorreo = new Perfil();
+        perfilDeEntradaSoloNombreYCorreo.setNombre("Juan Actualizado");
+        perfilDeEntradaSoloNombreYCorreo.setCorreo("juan.nuevo@unicauca.edu.co");
+        // sexo/tipoId/imagen quedan null -- asi los construye AlumnoRest.actualizarAlumno().
+        Alumno datosAlumno = new Alumno();
+        datosAlumno.setTipoAlumno("Estudiante");
+        datosAlumno.setPerfil(perfilDeEntradaSoloNombreYCorreo);
+
+        Alumno resultado = alumnoGateway.actualizarAlumno("12345678", datosAlumno);
+
+        assertEquals("Juan Actualizado", resultado.getPerfil().getNombre(), "nombre si se refleja (es lo que se edito)");
+        assertEquals("juan.nuevo@unicauca.edu.co", resultado.getPerfil().getCorreo(), "correo si se refleja (es lo que se edito)");
+        assertNull(resultado.getPerfil().getSexo(), "HALLAZGO: sexo real en BD se preserva, pero la RESPUESTA lo pierde");
+        assertNull(resultado.getPerfil().getTipoId(), "HALLAZGO: tipoId real en BD se preserva, pero la RESPUESTA lo pierde");
+        assertNull(resultado.getPerfil().getImagen(), "HALLAZGO: imagen real en BD se preserva, pero la RESPUESTA lo pierde");
+        assertNull(resultado.getAlm_codigo(), "HALLAZGO: alm_codigo real en BD se preserva, pero la RESPUESTA lo pierde");
+        assertNull(resultado.getEliminadoestado(), "HALLAZGO: eliminadoestado real en BD se preserva, pero la RESPUESTA lo pierde");
     }
 }
