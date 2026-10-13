@@ -2,13 +2,18 @@ package co.edu.unicauca.deporteParaTodos.dominio.servicios;
 
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IInstructorGateway;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IPerfilGateway;
+import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IPlazoCargaAtencionesGateway;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.ListadoVacioExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.NoExisteExcepcion;
+import co.edu.unicauca.deporteParaTodos.dominio.excepciones.PlazoCargaInvalidoExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.YaExisteElementoExcepcion;
+import co.edu.unicauca.deporteParaTodos.dominio.modelo.EstadoReporte;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Instructor;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Perfil;
+import co.edu.unicauca.deporteParaTodos.dominio.modelo.PlazoCargaAtenciones;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.InstructorDto;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.PerfilDto;
+import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.PlazoCargaDto;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
@@ -21,7 +26,11 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.slf4j.LoggerFactory;
 
+import java.time.Clock;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -37,8 +46,25 @@ class InstructorServicioTest {
     @Mock
     private IPerfilGateway perfilGateway;
 
+    @Mock
+    private IPlazoCargaAtencionesGateway plazoCargaGateway;
+
+    @Mock
+    private Clock clock;
+
     @InjectMocks
     private InstructorServicio instructorServicio;
+
+    // SCRUM-80: periodo academico 2 (mes >= 7) para el 2026-10-12, igual patron
+    // de GrupoServicioTest -- lenient() porque no todos los tests de esta clase
+    // usan el Clock.
+    private static final LocalDate HOY_FIJO = LocalDate.of(2026, 10, 12);
+
+    @BeforeEach
+    void configurarClockPorDefecto() {
+        lenient().when(clock.instant()).thenReturn(HOY_FIJO.atStartOfDay(ZoneId.of("America/Bogota")).toInstant());
+        lenient().when(clock.getZone()).thenReturn(ZoneId.of("America/Bogota"));
+    }
 
     // SCRUM-79: captura el log real de ch.qos.logback (no se mockea el Logger
     // estatico de la clase) para confirmar el rastro de auditoria del correo.
@@ -418,5 +444,168 @@ class InstructorServicioTest {
                 ID, datosActualizar(NOMBRE_NUEVO, correoConEspaciosYMayusculas), ID_COORDINADOR);
 
         assertTrue(logAppender.list.isEmpty());
+    }
+
+    // ── asignarPlazoCarga / obtenerPlazosCarga (SCRUM-80, HE-14 HU-02) ──────
+
+    private static final String ID_INSTRUCTOR_B = "ins-b";
+
+    @Test
+    void asignarPlazoCarga_instructorActivoFechaFutura_hacenUpsertConElPeriodoVigente() {
+        LocalDate fechaLimite = HOY_FIJO.plusDays(10);
+        when(instructorsGateway.existeInstructorActivo(ID)).thenReturn(true);
+        when(plazoCargaGateway.upsertPlazo(any(PlazoCargaAtenciones.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(plazoCargaGateway.contarClasesConAsistenciaPorInstructor(2026, 2)).thenReturn(Map.of());
+
+        PlazoCargaDto resultado = instructorServicio.asignarPlazoCarga(ID, fechaLimite, ID_COORDINADOR);
+
+        assertEquals(ID, resultado.getIdInstructor());
+        assertEquals(2026, resultado.getAnio());
+        assertEquals(2, resultado.getPeriodo());
+        assertEquals(fechaLimite.toString(), resultado.getFechaLimite());
+        assertEquals(EstadoReporte.PENDIENTE.name(), resultado.getEstadoReporte());
+        assertFalse(resultado.isPlazoVencido());
+
+        verify(plazoCargaGateway).upsertPlazo(argThat(datos ->
+                datos.getIdInstructor().equals(ID)
+                        && datos.getAnio() == 2026
+                        && datos.getPeriodo() == 2
+                        && datos.getFechaLimite().equals(fechaLimite)
+                        && datos.getIdCoordinador().equals(ID_COORDINADOR)
+                        && datos.getFechaAsignacion() != null));
+    }
+
+    @Test
+    void asignarPlazoCarga_fechaIgualAHoy_esValidaPorDiaInclusivo() {
+        when(instructorsGateway.existeInstructorActivo(ID)).thenReturn(true);
+        when(plazoCargaGateway.upsertPlazo(any(PlazoCargaAtenciones.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(plazoCargaGateway.contarClasesConAsistenciaPorInstructor(2026, 2)).thenReturn(Map.of());
+
+        PlazoCargaDto resultado = assertDoesNotThrow(
+                () -> instructorServicio.asignarPlazoCarga(ID, HOY_FIJO, ID_COORDINADOR));
+
+        assertEquals(EstadoReporte.PENDIENTE.name(), resultado.getEstadoReporte());
+    }
+
+    @Test
+    void asignarPlazoCarga_fechaAnteriorAHoy_lanzaPlazoCargaInvalidoExcepcionSinUpsert() {
+        when(instructorsGateway.existeInstructorActivo(ID)).thenReturn(true);
+
+        assertThrows(PlazoCargaInvalidoExcepcion.class, () -> instructorServicio.asignarPlazoCarga(
+                ID, HOY_FIJO.minusDays(1), ID_COORDINADOR));
+
+        verify(plazoCargaGateway, never()).upsertPlazo(any());
+    }
+
+    @Test
+    void asignarPlazoCarga_instructorInexistente_lanzaNoExisteExcepcionSinUpsert() {
+        when(instructorsGateway.existeInstructorActivo("desconocido")).thenReturn(false);
+
+        assertThrows(NoExisteExcepcion.class, () -> instructorServicio.asignarPlazoCarga(
+                "desconocido", HOY_FIJO.plusDays(1), ID_COORDINADOR));
+
+        verify(plazoCargaGateway, never()).upsertPlazo(any());
+    }
+
+    @Test
+    void asignarPlazoCarga_instructorEliminado_lanzaNoExisteExcepcionSinUpsert() {
+        when(instructorsGateway.existeInstructorActivo("elim-1")).thenReturn(false);
+
+        assertThrows(NoExisteExcepcion.class, () -> instructorServicio.asignarPlazoCarga(
+                "elim-1", HOY_FIJO.plusDays(1), ID_COORDINADOR));
+
+        verify(plazoCargaGateway, never()).upsertPlazo(any());
+    }
+
+    @Test
+    void asignarPlazoCarga_mismoValorDosVeces_esIdempotente() {
+        LocalDate fechaLimite = HOY_FIJO.plusDays(5);
+        when(instructorsGateway.existeInstructorActivo(ID)).thenReturn(true);
+        when(plazoCargaGateway.upsertPlazo(any(PlazoCargaAtenciones.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(plazoCargaGateway.contarClasesConAsistenciaPorInstructor(2026, 2)).thenReturn(Map.of());
+
+        PlazoCargaDto primero = instructorServicio.asignarPlazoCarga(ID, fechaLimite, ID_COORDINADOR);
+        PlazoCargaDto segundo = instructorServicio.asignarPlazoCarga(ID, fechaLimite, ID_COORDINADOR);
+
+        assertEquals(primero.getFechaLimite(), segundo.getFechaLimite());
+        verify(plazoCargaGateway, times(2)).upsertPlazo(any(PlazoCargaAtenciones.class));
+    }
+
+    // Auditoria: log INFO con solo ids y la fecha -- nunca correos ni nombres.
+    @Test
+    void asignarPlazoCarga_casoFeliz_emiteUnLogInfoConSoloIdentificadoresYFecha() {
+        LocalDate fechaLimite = HOY_FIJO.plusDays(10);
+        when(instructorsGateway.existeInstructorActivo(ID)).thenReturn(true);
+        when(plazoCargaGateway.upsertPlazo(any(PlazoCargaAtenciones.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(plazoCargaGateway.contarClasesConAsistenciaPorInstructor(2026, 2)).thenReturn(Map.of());
+
+        instructorServicio.asignarPlazoCarga(ID, fechaLimite, ID_COORDINADOR);
+
+        assertEquals(1, logAppender.list.size());
+        String mensaje = logAppender.list.get(0).getFormattedMessage();
+        assertTrue(mensaje.contains(ID));
+        assertTrue(mensaje.contains(ID_COORDINADOR));
+        assertTrue(mensaje.contains(fechaLimite.toString()));
+    }
+
+    // Sonar java:S5145 (log forging): instructorId/idCoordinador con CR/LF no
+    // pueden forjar lineas de log falsas en la auditoria del plazo de carga.
+    @Test
+    void asignarPlazoCarga_idsConSaltosDeLinea_noProduceLogMultilinea() {
+        String idConCrlf = ID + "\r\nFAKE LOG LINE";
+        String coordinadorConCrlf = ID_COORDINADOR + "\nOTRA INYECCION";
+        LocalDate fechaLimite = HOY_FIJO.plusDays(10);
+        when(instructorsGateway.existeInstructorActivo(idConCrlf)).thenReturn(true);
+        when(plazoCargaGateway.upsertPlazo(any(PlazoCargaAtenciones.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(plazoCargaGateway.contarClasesConAsistenciaPorInstructor(2026, 2)).thenReturn(Map.of());
+
+        instructorServicio.asignarPlazoCarga(idConCrlf, fechaLimite, coordinadorConCrlf);
+
+        assertEquals(1, logAppender.list.size());
+        String mensaje = logAppender.list.get(0).getFormattedMessage();
+        assertEquals(1, mensaje.lines().count());
+        assertFalse(mensaje.contains("\r"));
+        assertFalse(mensaje.contains("\n"));
+    }
+
+    @Test
+    void obtenerPlazosCarga_unInstructorConPlazoYOtroSinPlazo_retornaUnElementoPorInstructorActivo() {
+        Instructor instructorA = instructorConPerfil();
+        Instructor instructorB = new Instructor();
+        instructorB.setInst_codigo(ID_INSTRUCTOR_B);
+        when(instructorsGateway.obtenerInstructores()).thenReturn(List.of(instructorA, instructorB));
+
+        PlazoCargaAtenciones plazoA = new PlazoCargaAtenciones();
+        plazoA.setIdInstructor(ID);
+        plazoA.setAnio(2026);
+        plazoA.setPeriodo(2);
+        plazoA.setFechaLimite(HOY_FIJO.minusDays(1));
+        when(plazoCargaGateway.obtenerPlazosPorPeriodo(2026, 2)).thenReturn(Map.of(ID, plazoA));
+        when(plazoCargaGateway.contarClasesConAsistenciaPorInstructor(2026, 2)).thenReturn(Map.of(ID, 2));
+
+        List<PlazoCargaDto> resultado = instructorServicio.obtenerPlazosCarga();
+
+        assertEquals(2, resultado.size());
+        PlazoCargaDto dtoA = resultado.stream().filter(d -> d.getIdInstructor().equals(ID)).findFirst().orElseThrow();
+        assertEquals(EstadoReporte.GENERADO.name(), dtoA.getEstadoReporte(),
+                "tiene clases con asistencia -> GENERADO aunque el plazo este vencido");
+        assertTrue(dtoA.isPlazoVencido(), "plazoVencido es independiente del estado GENERADO");
+        assertEquals(2, dtoA.getClasesConAsistencia());
+
+        PlazoCargaDto dtoB = resultado.stream().filter(d -> d.getIdInstructor().equals(ID_INSTRUCTOR_B)).findFirst().orElseThrow();
+        assertEquals(EstadoReporte.SIN_PLAZO.name(), dtoB.getEstadoReporte());
+        assertNull(dtoB.getFechaLimite());
+        assertEquals(0, dtoB.getClasesConAsistencia());
+    }
+
+    @Test
+    void obtenerPlazosCarga_sinInstructoresActivos_retornaListaVacia() {
+        when(instructorsGateway.obtenerInstructores()).thenReturn(List.of());
+
+        List<PlazoCargaDto> resultado = instructorServicio.obtenerPlazosCarga();
+
+        assertTrue(resultado.isEmpty());
+        verify(plazoCargaGateway, never()).obtenerPlazosPorPeriodo(anyInt(), anyInt());
+        verify(plazoCargaGateway, never()).contarClasesConAsistenciaPorInstructor(anyInt(), anyInt());
     }
 }

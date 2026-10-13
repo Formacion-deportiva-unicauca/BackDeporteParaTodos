@@ -24,6 +24,7 @@ import co.edu.unicauca.deporteParaTodos.dominio.excepciones.ErrorInternoExceptio
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.FechasGrupoInvalidasExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.InscripcionFueraDeFechasExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.InscripcionesCerradasExcepcion;
+import co.edu.unicauca.deporteParaTodos.dominio.excepciones.PlazoCargaInvalidoExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.InsercionFallidaExepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.LimiteCursosExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.ListadoVacioExcepcion;
@@ -327,6 +328,16 @@ public class RestExceptionHandler {
         @ExceptionHandler(InscripcionFueraDeFechasExcepcion.class)
         public ResponseEntity<Error> GenericException(final HttpServletRequest req, final InscripcionFueraDeFechasExcepcion ex) {
                 logExcepcion("InscripcionFueraDeFechasExcepcion", req, ex);
+                return buildDomainErrorResponse(req,
+                                ex != null ? ex.getCodigo()       : "",
+                                ex != null ? ex.getLlaveMensaje() : "",
+                                ex != null ? ex.getMessage()      : "",
+                                HttpStatus.UNPROCESSABLE_ENTITY);
+        }
+
+        @ExceptionHandler(PlazoCargaInvalidoExcepcion.class)
+        public ResponseEntity<Error> GenericException(final HttpServletRequest req, final PlazoCargaInvalidoExcepcion ex) {
+                logExcepcion("PlazoCargaInvalidoExcepcion", req, ex);
                 return buildDomainErrorResponse(req,
                                 ex != null ? ex.getCodigo()       : "",
                                 ex != null ? ex.getLlaveMensaje() : "",

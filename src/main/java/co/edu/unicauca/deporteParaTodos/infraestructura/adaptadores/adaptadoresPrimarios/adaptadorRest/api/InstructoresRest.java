@@ -21,6 +21,8 @@ import co.edu.unicauca.deporteParaTodos.dominio.modelo.Perfil;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.InstructorDto;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.InstructorRequest;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.PerfilDto;
+import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.PlazoCargaDto;
+import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.PlazoCargaRequest;
 import co.edu.unicauca.deporteParaTodos.dominio.utils.LogSanitizer;
 import co.edu.unicauca.deporteParaTodos.infraestructura.logs.PeticionLogger;
 import io.swagger.v3.oas.annotations.Operation;
@@ -133,6 +135,53 @@ public class InstructoresRest {
         PeticionLogger.log(LOGGER, "DELETE", "/api/v2/instructor", "instructorId: " + instructorId);
         Instructor eliminado = servicioInstructor.eliminarInstructor(instructorId);
         return new ResponseEntity<>(InstructorDto.fabricarDeModelo(eliminado), HttpStatus.OK);
+    }
+
+    // ── SCRUM-80 (HE-14 HU-02): plazo de carga de atenciones ─────────────────
+
+    @Operation(summary = "Lista, para cada instructor activo, el plazo de carga de atenciones y el "
+            + "estado del reporte del periodo academico vigente")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Listado de plazos de carga")
+    })
+    @PreAuthorize("hasAuthority('Coordinador')")
+    @GetMapping("/instructores/plazos-carga")
+    public ResponseEntity<List<PlazoCargaDto>> obtenerPlazosCarga() {
+        PeticionLogger.log(LOGGER, "GET", "/api/v2/instructores/plazos-carga", "sin datos");
+        List<PlazoCargaDto> respuesta = servicioInstructor.obtenerPlazosCarga();
+        return new ResponseEntity<>(respuesta, HttpStatus.OK);
+    }
+
+    @Operation(summary = "Asigna o reemplaza (upsert) el plazo de carga de atenciones del periodo "
+            + "academico vigente para un instructor")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Plazo asignado o reemplazado"),
+            @ApiResponse(responseCode = "400", description = "fechaLimite ausente o con formato invalido"),
+            @ApiResponse(responseCode = "404", description = "El id no es un instructor activo"),
+            @ApiResponse(responseCode = "422", description = "La fecha limite es anterior a hoy")
+    })
+    @PreAuthorize("hasAuthority('Coordinador')")
+    @PutMapping("/instructor/{id}/plazo-carga")
+    public ResponseEntity<PlazoCargaDto> asignarPlazoCarga(
+            @PathVariable String id,
+            @RequestBody @Valid PlazoCargaRequest request,
+            @AuthenticationPrincipal Jwt jwt) {
+        String idCoordinador = jwt != null ? jwt.getClaimAsString("perf_id") : null;
+        if (idCoordinador == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        // Sonar java:S5145 (log forging): id es una variable de ruta cruda del
+        // cliente -- se sanea CR/LF antes de interpolarla en el log. fechaLimite
+        // tambien se sanea por politica (todo valor del cliente que se registra
+        // pasa por LogSanitizer), aunque al ser un LocalDate ya validado/parseado
+        // por Jackson no puede traer CR/LF en la practica -- ver nota en
+        // InstructorServicio.asignarPlazoCarga().
+        String idSaneado = LogSanitizer.sanitizar(id);
+        String fechaLimiteSaneada = LogSanitizer.sanitizar(String.valueOf(request.getFechaLimite()));
+        PeticionLogger.log(LOGGER, "PUT", "/api/v2/instructor/" + idSaneado + "/plazo-carga",
+                "id: " + idSaneado + ", fechaLimite: " + fechaLimiteSaneada);
+        PlazoCargaDto respuesta = servicioInstructor.asignarPlazoCarga(id, request.getFechaLimite(), idCoordinador);
+        return new ResponseEntity<>(respuesta, HttpStatus.OK);
     }
 
 }

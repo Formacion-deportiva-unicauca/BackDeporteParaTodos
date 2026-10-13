@@ -2,8 +2,10 @@ package co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadores
 
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosEntrada.IInstructorServicio;
 import co.edu.unicauca.deporteParaTodos.deporteParaTodos;
+import co.edu.unicauca.deporteParaTodos.dominio.excepciones.PlazoCargaInvalidoExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Instructor;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Perfil;
+import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.PlazoCargaDto;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
@@ -33,6 +35,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.Base64;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -41,9 +44,11 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -331,6 +336,259 @@ class InstructorRestSecurityTest {
             mockMvc.perform(put(uriConCrlf)
                     .contentType("application/json")
                     .content(BODY_VALIDO)
+                    .header("Authorization", "Bearer " + buildJwt("Coordinador", "coord1")))
+                    .andExpect(status().isOk());
+            String mensajeAtaque = appender.list.get(appender.list.size() - 1).getFormattedMessage();
+            long lineasAtaque = mensajeAtaque.lines().count();
+
+            assertEquals(lineasControl, lineasAtaque,
+                    "el id con %0d%0a no puede agregar lineas al log frente a la peticion de control");
+            assertTrue(mensajeAtaque.contains("ins1__FAKE-LOG-LINE"),
+                    "el id sanitizado (CR/LF -> _) debe seguir siendo identificable en el log");
+        } finally {
+            logbackLogger.detachAppender(appender);
+        }
+    }
+
+    // ── GET /api/v2/instructores/plazos-carga — SCRUM-80 (HE-14 HU-02) ──────
+
+    @Test
+    void obtenerPlazosCarga_rolCoordinador_retorna200() throws Exception {
+        PlazoCargaDto dto = new PlazoCargaDto("ins1", 2026, 2, null, "SIN_PLAZO", false, 0);
+        when(servicio.obtenerPlazosCarga()).thenReturn(java.util.List.of(dto));
+
+        mockMvc.perform(get("/api/v2/instructores/plazos-carga")
+                .header("Authorization", "Bearer " + buildJwt("Coordinador", "coord1")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].idInstructor").value("ins1"))
+                .andExpect(jsonPath("$[0].estadoReporte").value("SIN_PLAZO"));
+    }
+
+    @Test
+    void obtenerPlazosCarga_rolInstructor_retorna403() throws Exception {
+        mockMvc.perform(get("/api/v2/instructores/plazos-carga")
+                .header("Authorization", "Bearer " + buildJwt("Instructor", "ins1")))
+                .andExpect(status().isForbidden());
+
+        verify(servicio, never()).obtenerPlazosCarga();
+    }
+
+    @Test
+    void obtenerPlazosCarga_rolAlumno_retorna403() throws Exception {
+        mockMvc.perform(get("/api/v2/instructores/plazos-carga")
+                .header("Authorization", "Bearer " + buildJwt("Alumno", "alum1")))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void obtenerPlazosCarga_sinToken_retorna401() throws Exception {
+        mockMvc.perform(get("/api/v2/instructores/plazos-carga"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    // ── PUT /api/v2/instructor/{id}/plazo-carga — SCRUM-80 (HE-14 HU-02) ─────
+
+    private PlazoCargaDto plazoDeEjemplo(String fechaLimite) {
+        return new PlazoCargaDto("ins1", 2026, 2, fechaLimite, "PENDIENTE", false, 0);
+    }
+
+    @Test
+    void asignarPlazoCarga_rolCoordinador_retorna200() throws Exception {
+        when(servicio.asignarPlazoCarga(eq("ins1"), any(LocalDate.class), eq("coord1")))
+                .thenReturn(plazoDeEjemplo("2026-12-01"));
+
+        mockMvc.perform(put("/api/v2/instructor/ins1/plazo-carga")
+                .contentType("application/json")
+                .content("{\"fechaLimite\":\"2026-12-01\"}")
+                .header("Authorization", "Bearer " + buildJwt("Coordinador", "coord1")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.idInstructor").value("ins1"))
+                .andExpect(jsonPath("$.fechaLimite").value("2026-12-01"))
+                .andExpect(jsonPath("$.estadoReporte").value("PENDIENTE"));
+
+        verify(servicio).asignarPlazoCarga(eq("ins1"), eq(LocalDate.of(2026, 12, 1)), eq("coord1"));
+    }
+
+    @Test
+    void asignarPlazoCarga_rolInstructor_retorna403() throws Exception {
+        mockMvc.perform(put("/api/v2/instructor/ins1/plazo-carga")
+                .contentType("application/json")
+                .content("{\"fechaLimite\":\"2026-12-01\"}")
+                .header("Authorization", "Bearer " + buildJwt("Instructor", "ins1")))
+                .andExpect(status().isForbidden());
+
+        verify(servicio, never()).asignarPlazoCarga(any(), any(), any());
+    }
+
+    @Test
+    void asignarPlazoCarga_rolAlumno_retorna403() throws Exception {
+        mockMvc.perform(put("/api/v2/instructor/ins1/plazo-carga")
+                .contentType("application/json")
+                .content("{\"fechaLimite\":\"2026-12-01\"}")
+                .header("Authorization", "Bearer " + buildJwt("Alumno", "alum1")))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void asignarPlazoCarga_sinToken_retorna401() throws Exception {
+        mockMvc.perform(put("/api/v2/instructor/ins1/plazo-carga")
+                .contentType("application/json")
+                .content("{\"fechaLimite\":\"2026-12-01\"}"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void asignarPlazoCarga_coordinadorSinClaimPerfId_retorna401() throws Exception {
+        byte[] keyBytes = Base64.getDecoder().decode(TEST_SECRET);
+        SecretKey key = new SecretKeySpec(keyBytes, "HmacSHA256");
+        JWKSource<SecurityContext> source = new ImmutableJWKSet<>(new JWKSet(new OctetSequenceKey.Builder(key).build()));
+        JwtClaimsSet claims = JwtClaimsSet.builder()
+                .subject("test@unicauca.edu.co")
+                .issuedAt(Instant.now())
+                .expiresAt(Instant.now().plusSeconds(3600))
+                .claim("rol", "Coordinador")
+                .build();
+        String jwtSinPerfId = new NimbusJwtEncoder(source)
+                .encode(JwtEncoderParameters.from(JwsHeader.with(MacAlgorithm.HS256).build(), claims))
+                .getTokenValue();
+
+        mockMvc.perform(put("/api/v2/instructor/ins1/plazo-carga")
+                .contentType("application/json")
+                .content("{\"fechaLimite\":\"2026-12-01\"}")
+                .header("Authorization", "Bearer " + jwtSinPerfId))
+                .andExpect(status().isUnauthorized());
+
+        verify(servicio, never()).asignarPlazoCarga(any(), any(), any());
+    }
+
+    @Test
+    void asignarPlazoCarga_instructorInexistente_retorna404() throws Exception {
+        when(servicio.asignarPlazoCarga(eq("desconocido"), any(LocalDate.class), eq("coord1")))
+                .thenThrow(new co.edu.unicauca.deporteParaTodos.dominio.excepciones.NoExisteExcepcion(
+                        "No existe el instructor con el identificador desconocido"));
+
+        mockMvc.perform(put("/api/v2/instructor/desconocido/plazo-carga")
+                .contentType("application/json")
+                .content("{\"fechaLimite\":\"2026-12-01\"}")
+                .header("Authorization", "Bearer " + buildJwt("Coordinador", "coord1")))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void asignarPlazoCarga_fechaLimiteAusente_retorna400() throws Exception {
+        mockMvc.perform(put("/api/v2/instructor/ins1/plazo-carga")
+                .contentType("application/json")
+                .content("{}")
+                .header("Authorization", "Bearer " + buildJwt("Coordinador", "coord1")))
+                .andExpect(status().isBadRequest());
+
+        verify(servicio, never()).asignarPlazoCarga(any(), any(), any());
+    }
+
+    @Test
+    void asignarPlazoCarga_fechaLimiteFormatoInvalido_retorna400() throws Exception {
+        mockMvc.perform(put("/api/v2/instructor/ins1/plazo-carga")
+                .contentType("application/json")
+                .content("{\"fechaLimite\":\"no-es-una-fecha\"}")
+                .header("Authorization", "Bearer " + buildJwt("Coordinador", "coord1")))
+                .andExpect(status().isBadRequest());
+
+        verify(servicio, never()).asignarPlazoCarga(any(), any(), any());
+    }
+
+    @Test
+    void asignarPlazoCarga_fechaAnteriorAHoy_retorna422ConMensajeLegible() throws Exception {
+        when(servicio.asignarPlazoCarga(eq("ins1"), any(LocalDate.class), eq("coord1")))
+                .thenThrow(new PlazoCargaInvalidoExcepcion(
+                        "La fecha limite 2020-01-01 no puede ser anterior a hoy (2026-10-12)"));
+
+        mockMvc.perform(put("/api/v2/instructor/ins1/plazo-carga")
+                .contentType("application/json")
+                .content("{\"fechaLimite\":\"2020-01-01\"}")
+                .header("Authorization", "Bearer " + buildJwt("Coordinador", "coord1")))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.mensaje").value(
+                        org.hamcrest.Matchers.containsString("no puede ser anterior a hoy")));
+    }
+
+    // Cuerpo con campos extra (p.ej. "idInstructor" distinto del de la ruta):
+    // PlazoCargaRequest solo declara fechaLimite, Jackson ignora el resto -- no
+    // pueden cambiar nada. Se verifica que el servicio recibe el id de la RUTA.
+    @Test
+    void asignarPlazoCarga_cuerpoConCamposExtra_losIgnora() throws Exception {
+        when(servicio.asignarPlazoCarga(eq("ins1"), any(LocalDate.class), eq("coord1")))
+                .thenReturn(plazoDeEjemplo("2026-12-01"));
+
+        mockMvc.perform(put("/api/v2/instructor/ins1/plazo-carga")
+                .contentType("application/json")
+                .content("{\"idInstructor\":\"otro-id\",\"fechaLimite\":\"2026-12-01\",\"anio\":1999}")
+                .header("Authorization", "Bearer " + buildJwt("Coordinador", "coord1")))
+                .andExpect(status().isOk());
+
+        verify(servicio).asignarPlazoCarga(eq("ins1"), eq(LocalDate.of(2026, 12, 1)), eq("coord1"));
+        verify(servicio, never()).asignarPlazoCarga(eq("otro-id"), any(), any());
+    }
+
+    // Idempotente: el mismo valor dos veces seguidas responde 200 ambas veces
+    // (el servicio hace upsert; aqui solo se confirma que el controller no trata
+    // la segunda llamada distinto -- sin 409 ni otro codigo).
+    @Test
+    void asignarPlazoCarga_mismoValorDosVecesSeguidas_retorna200AmbasVeces() throws Exception {
+        when(servicio.asignarPlazoCarga(eq("ins1"), any(LocalDate.class), eq("coord1")))
+                .thenReturn(plazoDeEjemplo("2026-12-01"));
+
+        for (int i = 0; i < 2; i++) {
+            mockMvc.perform(put("/api/v2/instructor/ins1/plazo-carga")
+                    .contentType("application/json")
+                    .content("{\"fechaLimite\":\"2026-12-01\"}")
+                    .header("Authorization", "Bearer " + buildJwt("Coordinador", "coord1")))
+                    .andExpect(status().isOk());
+        }
+
+        verify(servicio, times(2)).asignarPlazoCarga(eq("ins1"), eq(LocalDate.of(2026, 12, 1)), eq("coord1"));
+    }
+
+    // Sonar java:S5145 (log forging): a diferencia de id (String crudo de la
+    // ruta), fechaLimite es un LocalDate -- Jackson lo valida/parsea ANTES de
+    // que el controller se ejecute. Un %0d%0a dentro del valor rompe el formato
+    // ISO_LOCAL_DATE, asi que la peticion nunca llega a loguearse ni a
+    // ejecutarse: responde 400 (HttpMessageNotReadableException, ya manejado
+    // globalmente) en vez de generar una linea de log con el ataque adentro.
+    // Por eso aqui NO aplica el mismo test de "conteo de lineas control vs
+    // ataque" que usamos para id -- no hay ninguna linea de log que comparar,
+    // el ataque queda cortado en el binding, un paso antes de llegar al log.
+    @Test
+    void asignarPlazoCarga_fechaLimiteConCRLF_nuncaLlegaAEjecutarseNiALoguearse_retorna400() throws Exception {
+        mockMvc.perform(put("/api/v2/instructor/ins1/plazo-carga")
+                .contentType("application/json")
+                .content("{\"fechaLimite\":\"2026-12-01%0d%0aFAKE-LOG-LINE\"}")
+                .header("Authorization", "Bearer " + buildJwt("Coordinador", "coord1")))
+                .andExpect(status().isBadRequest());
+
+        verify(servicio, never()).asignarPlazoCarga(any(), any(), any());
+    }
+
+    // Sonar java:S5145 (log forging): el id de la ruta se interpola en el log de
+    // este enduevo endpoint tambien -- mismo criterio que actualizarInstructor().
+    @Test
+    void asignarPlazoCarga_idConCRLFEnLaRuta_noAumentaElNumeroDeLineasDelLog() throws Exception {
+        when(servicio.asignarPlazoCarga(any(), any(), any())).thenReturn(plazoDeEjemplo("2026-12-01"));
+        Logger logbackLogger = (Logger) LoggerFactory.getLogger(InstructoresRest.class);
+        ListAppender<ILoggingEvent> appender = new ListAppender<>();
+        appender.start();
+        logbackLogger.addAppender(appender);
+        try {
+            mockMvc.perform(put("/api/v2/instructor/ins1/plazo-carga")
+                    .contentType("application/json")
+                    .content("{\"fechaLimite\":\"2026-12-01\"}")
+                    .header("Authorization", "Bearer " + buildJwt("Coordinador", "coord1")))
+                    .andExpect(status().isOk());
+            long lineasControl = appender.list.get(appender.list.size() - 1).getFormattedMessage().lines().count();
+
+            java.net.URI uriConCrlf = new java.net.URI("/api/v2/instructor/ins1%0d%0aFAKE-LOG-LINE/plazo-carga");
+            mockMvc.perform(put(uriConCrlf)
+                    .contentType("application/json")
+                    .content("{\"fechaLimite\":\"2026-12-01\"}")
                     .header("Authorization", "Bearer " + buildJwt("Coordinador", "coord1")))
                     .andExpect(status().isOk());
             String mensajeAtaque = appender.list.get(appender.list.size() - 1).getFormattedMessage();
