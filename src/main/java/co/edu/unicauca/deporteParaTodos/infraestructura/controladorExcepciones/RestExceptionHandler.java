@@ -24,6 +24,7 @@ import co.edu.unicauca.deporteParaTodos.dominio.excepciones.ErrorInternoExceptio
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.FechasGrupoInvalidasExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.InscripcionFueraDeFechasExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.InscripcionesCerradasExcepcion;
+import co.edu.unicauca.deporteParaTodos.dominio.excepciones.PlazoCargaInvalidoExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.InsercionFallidaExepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.LimiteCursosExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.ListadoVacioExcepcion;
@@ -141,10 +142,11 @@ public class RestExceptionHandler {
                 logExcepcion("ListadoVacioExcepcion", req, ex);
                 final Error error = ErrorUtils.crearError(
                                 CodigoError.LISTADO_VACIO.getCodigo(),
-                                String.format("%s, %s", CodigoError.LISTADO_VACIO.getLlaveMensaje(), ex.getMessage()),
+                                String.format("%s, %s", CodigoError.LISTADO_VACIO.getLlaveMensaje(),
+                                                ex != null ? ex.getMessage() : ""),
                                 HttpStatus.OK.value())
-                                .setUrl(req.getRequestURL().toString())
-                                .setMetodo(req.getMethod());
+                                .setUrl(req != null ? req.getRequestURL().toString() : "")
+                                .setMetodo(req != null ? req.getMethod() : "");
 
                 return new ResponseEntity<Error>(error, HttpStatus.OK);
         }
@@ -154,11 +156,11 @@ public class RestExceptionHandler {
         public ResponseEntity<Error> GenericException(final HttpServletRequest req, final NoExisteExcepcion ex) {
                 logExcepcion("NoExisteExcepcion", req, ex);
                 final Error error = ErrorUtils.crearError(
-                                ex.getCodigo(),
-                                ex.getLlaveMensaje() +": "+ ex.getMessage(),
+                                ex != null ? ex.getCodigo() : "",
+                                (ex != null ? ex.getLlaveMensaje() : "") + ": " + (ex != null ? ex.getMessage() : ""),
                                 HttpStatus.NOT_FOUND.value())
-                                .setUrl(req.getRequestURL().toString())
-                                .setMetodo(req.getMethod());
+                                .setUrl(req != null ? req.getRequestURL().toString() : "")
+                                .setMetodo(req != null ? req.getMethod() : "");
                 return new ResponseEntity<Error>(error, HttpStatus.NOT_FOUND);
         }
 
@@ -174,11 +176,12 @@ public class RestExceptionHandler {
                         final ArchivoNoConvertibleExcepcion ex) {
                 logExcepcion("ArchivoNoConvertibleExcepcion", req, ex);
                 final Error error = ErrorUtils.crearError(
-                                ex.getCodigo(),
-                                String.format("%s, %s", ex.getLlaveMensaje(), ex.getMessage()),
+                                ex != null ? ex.getCodigo() : "",
+                                String.format("%s, %s", ex != null ? ex.getLlaveMensaje() : "",
+                                                ex != null ? ex.getMessage() : ""),
                                 HttpStatus.BAD_REQUEST.value())
-                                .setUrl(req.getRequestURL().toString())
-                                .setMetodo(req.getMethod());
+                                .setUrl(req != null ? req.getRequestURL().toString() : "")
+                                .setMetodo(req != null ? req.getMethod() : "");
                 return new ResponseEntity<Error>(error, HttpStatus.BAD_REQUEST);
         }
 
@@ -190,11 +193,12 @@ public class RestExceptionHandler {
         public ResponseEntity<Error> GenericException(final HttpServletRequest req, final InsercionFallidaExepcion ex) {
                 logExcepcion("InsercionFallidaExepcion", req, ex);
                 final Error error = ErrorUtils.crearError(
-                                ex.getCodigo(),
-                                String.format("%s, %s", ex.getLlaveMensaje(), ex.getMessage()),
+                                ex != null ? ex.getCodigo() : "",
+                                String.format("%s, %s", ex != null ? ex.getLlaveMensaje() : "",
+                                                ex != null ? ex.getMessage() : ""),
                                 HttpStatus.NOT_MODIFIED.value())
-                                .setUrl(req.getRequestURL().toString())
-                                .setMetodo(req.getMethod());
+                                .setUrl(req != null ? req.getRequestURL().toString() : "")
+                                .setMetodo(req != null ? req.getMethod() : "");
                 return new ResponseEntity<Error>(error, HttpStatus.CONFLICT);
         }
 
@@ -203,10 +207,12 @@ public class RestExceptionHandler {
                         final YaExisteElementoExcepcion ex) {
                 logExcepcion("YaExisteElementoExcepcion", req, ex);
                 final Error error = ErrorUtils
-                                .crearError(ex.getCodigo(),
-                                                String.format("%s, %s", ex.getLlaveMensaje(), ex.getMessage()),
+                                .crearError(ex != null ? ex.getCodigo() : "",
+                                                String.format("%s, %s", ex != null ? ex.getLlaveMensaje() : "",
+                                                                ex != null ? ex.getMessage() : ""),
                                                 HttpStatus.CONFLICT.value())
-                                .setUrl(req.getRequestURL().toString()).setMetodo(req.getMethod());
+                                .setUrl(req != null ? req.getRequestURL().toString() : "")
+                                .setMetodo(req != null ? req.getMethod() : "");
                 return new ResponseEntity<Error>(error, HttpStatus.CONFLICT);
         }
 
@@ -215,10 +221,12 @@ public class RestExceptionHandler {
                         final NoImplementadoException ex) {
                 logExcepcion("NoImplementadoException", req, ex);
                 final Error error = ErrorUtils
-                                .crearError(ex.getCodigo(),
-                                                String.format("%s, %s", ex.getLlaveMensaje(), ex.getMessage()),
+                                .crearError(ex != null ? ex.getCodigo() : "",
+                                                String.format("%s, %s", ex != null ? ex.getLlaveMensaje() : "",
+                                                                ex != null ? ex.getMessage() : ""),
                                                 HttpStatus.NOT_IMPLEMENTED.value())
-                                .setUrl(req.getRequestURL().toString()).setMetodo(req.getMethod());
+                                .setUrl(req != null ? req.getRequestURL().toString() : "")
+                                .setMetodo(req != null ? req.getMethod() : "");
                 return new ResponseEntity<Error>(error, HttpStatus.NOT_IMPLEMENTED);
         }
 
@@ -226,13 +234,14 @@ public class RestExceptionHandler {
         public ResponseEntity<Error> GenericException(final HttpServletRequest req, final NoConvertibleException ex){
                 logExcepcion("NoConvertibleException", req, ex);
                 HttpStatusCode codigoHttp = HttpStatus.NOT_ACCEPTABLE;
-                String mensaje = String.format("%s, %s", ex.getLlaveMensaje(), ex.getMessage());
+                String mensaje = String.format("%s, %s", ex != null ? ex.getLlaveMensaje() : "",
+                                ex != null ? ex.getMessage() : "");
 
-                final Error error = ErrorUtils.crearError(ex.getCodigo(),mensaje,codigoHttp.value());
+                final Error error = ErrorUtils.crearError(ex != null ? ex.getCodigo() : "", mensaje, codigoHttp.value());
 
-                error.setUrl(req.getRequestURL().toString());
-                error.setMetodo(req.getMethod());
-                
+                error.setUrl(req != null ? req.getRequestURL().toString() : "");
+                error.setMetodo(req != null ? req.getMethod() : "");
+
                 return new ResponseEntity<Error>(error, codigoHttp);
         }
 
@@ -240,13 +249,14 @@ public class RestExceptionHandler {
         public ResponseEntity<Error> GenericException(final HttpServletRequest req, final ErrorInternoException ex){
                 logExcepcion("ErrorInternoException", req, ex);
                 HttpStatusCode codigoHttp = HttpStatus.INTERNAL_SERVER_ERROR;
-                String mensaje = String.format("%s, %s", ex.getLlaveMensaje(), ex.getMessage());
+                String mensaje = String.format("%s, %s", ex != null ? ex.getLlaveMensaje() : "",
+                                ex != null ? ex.getMessage() : "");
 
-                final Error error = ErrorUtils.crearError(ex.getCodigo(),mensaje,codigoHttp.value());
+                final Error error = ErrorUtils.crearError(ex != null ? ex.getCodigo() : "", mensaje, codigoHttp.value());
 
-                error.setUrl(req.getRequestURL().toString());
-                error.setMetodo(req.getMethod());
-                
+                error.setUrl(req != null ? req.getRequestURL().toString() : "");
+                error.setMetodo(req != null ? req.getMethod() : "");
+
                 return new ResponseEntity<Error>(error, codigoHttp);
         }
 
@@ -260,13 +270,14 @@ public class RestExceptionHandler {
         public ResponseEntity<Error> GenericException(final HttpServletRequest req, final DependenciaFallida ex){
                 logExcepcion("DependenciaFallida", req, ex);
                 HttpStatusCode codigoHttp = HttpStatus.FAILED_DEPENDENCY;
-                String mensaje = String.format("%s, %s", ex.getLlaveMensaje(), ex.getMessage());
+                String mensaje = String.format("%s, %s", ex != null ? ex.getLlaveMensaje() : "",
+                                ex != null ? ex.getMessage() : "");
 
-                final Error error = ErrorUtils.crearError(ex.getCodigo(),mensaje,codigoHttp.value());
+                final Error error = ErrorUtils.crearError(ex != null ? ex.getCodigo() : "", mensaje, codigoHttp.value());
 
-                error.setUrl(req.getRequestURL().toString());
-                error.setMetodo(req.getMethod());
-                
+                error.setUrl(req != null ? req.getRequestURL().toString() : "");
+                error.setMetodo(req != null ? req.getMethod() : "");
+
                 return new ResponseEntity<Error>(error, codigoHttp);
         }
 
@@ -274,12 +285,13 @@ public class RestExceptionHandler {
         public ResponseEntity<Error> GenericException(final HttpServletRequest req, final NoProcesableEntidadException ex){
                 logExcepcion("NoProcesableEntidadException", req, ex);
                 HttpStatusCode codigoHttp = HttpStatus.INTERNAL_SERVER_ERROR;
-                String mensaje = String.format("%s, %s", ex.getLlaveMensaje(), ex.getMessage());
+                String mensaje = String.format("%s, %s", ex != null ? ex.getLlaveMensaje() : "",
+                                ex != null ? ex.getMessage() : "");
 
-                final Error error = ErrorUtils.crearError(ex.getCodigo(),mensaje,codigoHttp.value());
+                final Error error = ErrorUtils.crearError(ex != null ? ex.getCodigo() : "", mensaje, codigoHttp.value());
 
-                error.setUrl(req.getRequestURL().toString());
-                error.setMetodo(req.getMethod());
+                error.setUrl(req != null ? req.getRequestURL().toString() : "");
+                error.setMetodo(req != null ? req.getMethod() : "");
 
                 return new ResponseEntity<Error>(error, codigoHttp);
         }
@@ -327,6 +339,16 @@ public class RestExceptionHandler {
         @ExceptionHandler(InscripcionFueraDeFechasExcepcion.class)
         public ResponseEntity<Error> GenericException(final HttpServletRequest req, final InscripcionFueraDeFechasExcepcion ex) {
                 logExcepcion("InscripcionFueraDeFechasExcepcion", req, ex);
+                return buildDomainErrorResponse(req,
+                                ex != null ? ex.getCodigo()       : "",
+                                ex != null ? ex.getLlaveMensaje() : "",
+                                ex != null ? ex.getMessage()      : "",
+                                HttpStatus.UNPROCESSABLE_ENTITY);
+        }
+
+        @ExceptionHandler(PlazoCargaInvalidoExcepcion.class)
+        public ResponseEntity<Error> GenericException(final HttpServletRequest req, final PlazoCargaInvalidoExcepcion ex) {
+                logExcepcion("PlazoCargaInvalidoExcepcion", req, ex);
                 return buildDomainErrorResponse(req,
                                 ex != null ? ex.getCodigo()       : "",
                                 ex != null ? ex.getLlaveMensaje() : "",

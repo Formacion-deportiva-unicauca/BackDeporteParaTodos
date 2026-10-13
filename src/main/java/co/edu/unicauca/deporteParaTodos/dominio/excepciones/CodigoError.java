@@ -23,6 +23,7 @@ public enum CodigoError {
         LIMITE_CURSOS_ALUMNO("GC-0014", "El alumno ha alcanzado el limite de cursos activos"),
         FECHAS_GRUPO_INVALIDAS("GC-0015", "Las fechas del grupo no son validas"),
         INSCRIPCION_FUERA_DE_FECHAS("GC-0016", "La inscripcion no esta disponible en este momento"),
+        PLAZO_CARGA_INVALIDO("GC-0017", "La fecha limite de plazo de carga no es valida"),
         ;
 
         private final String codigo;

@@ -54,6 +54,7 @@ DROP TABLE IF EXISTS tbl_alumno;
 DROP TABLE IF EXISTS tbl_grupo;
 DROP TABLE IF EXISTS tbl_curso;
 DROP TABLE IF EXISTS tbl_coordinador;
+DROP TABLE IF EXISTS tbl_plazo_carga_atenciones;
 DROP TABLE IF EXISTS tbl_instructor;
 DROP TABLE IF EXISTS tbl_programa;
 DROP TABLE IF EXISTS tbl_facultad;
@@ -132,6 +133,30 @@ CREATE TABLE tbl_instructor (
     PERF_ID        VARCHAR(50) NOT NULL,
     CONSTRAINT FK_INSTRUCTOR_PERFIL FOREIGN KEY (PERF_ID) REFERENCES tbl_perfil (PERF_ID) ON DELETE CASCADE,
     CONSTRAINT PF_TBL_INSTRUCTOR    PRIMARY KEY (PERF_ID)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+-- tbl_plazo_carga_atenciones
+-- SCRUM-80 (HE-14 HU-02): plazo de carga de atenciones que el Coordinador
+-- asigna a un instructor para un periodo (PLZ_ANIO, PLZ_PERIODO) especifico
+-- del periodo academico (misma regla de periodo que GRP_PERIODO: 1 o 2).
+-- FK_PLAZO_CARGA_INSTRUCTOR: mismo criterio que FK_GRUPO_INSTRUCTOR/
+-- FK_CLASE_INSTRUCTOR -- RESTRICT (el instructor no se borra fisicamente).
+-- PLZ_COORDINADOR guarda solo el identificador del coordinador que asigno/
+-- reemplazo el plazo (rastro de auditoria); sin FK, igual que otras columnas
+-- de solo-identificador en el esquema (p.ej. no hay FK de auditoria en
+-- tbl_asistencia hacia quien la registro).
+-- --------------------------------------------------------
+CREATE TABLE tbl_plazo_carga_atenciones (
+    META_ELIMINADO       INT          NOT NULL DEFAULT 0,
+    PERF_ID              VARCHAR(50)  NOT NULL,
+    PLZ_ANIO             BIGINT       NOT NULL,
+    PLZ_PERIODO          TINYINT      NOT NULL,
+    PLZ_FECHA_LIMITE     DATE         NOT NULL,
+    PLZ_COORDINADOR      VARCHAR(50)  NOT NULL,
+    PLZ_FECHA_ASIGNACION DATETIME     NOT NULL,
+    CONSTRAINT FK_PLAZO_CARGA_INSTRUCTOR      FOREIGN KEY (PERF_ID) REFERENCES tbl_instructor (PERF_ID) ON DELETE RESTRICT,
+    CONSTRAINT PK_TBL_PLAZO_CARGA_ATENCIONES  PRIMARY KEY (PERF_ID, PLZ_ANIO, PLZ_PERIODO)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------

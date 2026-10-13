@@ -100,7 +100,13 @@ public class CursoServicio implements ICursoServicio {
         if (!cursoGateway.existeCurso(categoria, nombreCurso)) {
             throw new NoExisteExcepcion("El curso a eliminar no existe");
         }
+        // SonarCloud javabugs:S2259: existeCurso() y obtenerCurso() son 2 consultas
+        // separadas -- si el curso desaparece justo entre ambas (TOCTOU), obtenerCurso()
+        // retorna null y el contrato del metodo no garantiza lo contrario.
         Curso actual = cursoGateway.obtenerCurso(categoria, nombreCurso);
+        if (actual == null) {
+            throw new NoExisteExcepcion("El curso a eliminar no existe");
+        }
         if (EstadoCurso.INACTIVO.equals(actual.getEstadoCurso())) {
             throw new YaExisteElementoExcepcion("El curso ya se encuentra eliminado");
         }

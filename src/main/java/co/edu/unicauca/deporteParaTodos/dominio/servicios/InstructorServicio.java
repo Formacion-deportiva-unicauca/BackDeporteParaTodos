@@ -1,7 +1,11 @@
 package co.edu.unicauca.deporteParaTodos.dominio.servicios;
 
+import java.time.Clock;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,13 +14,18 @@ import org.springframework.transaction.annotation.Transactional;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosEntrada.IInstructorServicio;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IInstructorGateway;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IPerfilGateway;
+import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IPlazoCargaAtencionesGateway;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Instructor;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Perfil;
+import co.edu.unicauca.deporteParaTodos.dominio.modelo.PeriodoAcademico;
+import co.edu.unicauca.deporteParaTodos.dominio.modelo.PlazoCargaAtenciones;
 import co.edu.unicauca.deporteParaTodos.dominio.utils.LogSanitizer;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.InstructorDto;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.PerfilDto;
+import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.PlazoCargaDto;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.ErrorInternoException;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.ListadoVacioExcepcion;
+import co.edu.unicauca.deporteParaTodos.dominio.excepciones.PlazoCargaInvalidoExcepcion;
 import co.edu.unicauca.deporteParaTodos.infraestructura.mappers.PerfilMapper;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.NoExisteExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.YaExisteElementoExcepcion;
@@ -31,6 +40,12 @@ public class InstructorServicio implements IInstructorServicio {
 
     @Autowired
     private IPerfilGateway perfilGateway;
+
+    @Autowired
+    private IPlazoCargaAtencionesGateway plazoCargaGateway;
+
+    @Autowired
+    private Clock clock;
 
     @Override
     public List<InstructorDto> obtenerInstructores() {
@@ -159,6 +174,81 @@ public class InstructorServicio implements IInstructorServicio {
         }
 
         return respuesta;
+    }
+
+    // SCRUM-80 (HE-14 HU-02): un elemento por instructor ACTIVO, para el periodo
+    // vigente (Clock inyectado). UNA consulta agrupada para los plazos y OTRA
+    // para los conteos de clases-con-asistencia -- nunca una consulta por
+    // instructor (evita N+1 con N instructores).
+    @Override
+    public List<PlazoCargaDto> obtenerPlazosCarga() {
+        List<Instructor> activos = instructorsGateway.obtenerInstructores();
+        if (activos.isEmpty()) {
+            return List.of();
+        }
+        LocalDate hoy = LocalDate.now(clock);
+        PeriodoAcademico vigente = PeriodoAcademico.vigente(clock);
+        Map<String, PlazoCargaAtenciones> plazosPorInstructor =
+                plazoCargaGateway.obtenerPlazosPorPeriodo(vigente.getAnio(), vigente.getPeriodo());
+        Map<String, Integer> conteosPorInstructor =
+                plazoCargaGateway.contarClasesConAsistenciaPorInstructor(vigente.getAnio(), vigente.getPeriodo());
+
+        List<PlazoCargaDto> resultado = new ArrayList<>();
+        for (Instructor instructor : activos) {
+            String idInstructor = instructor.getInst_codigo();
+            PlazoCargaAtenciones plazo = plazosPorInstructor.get(idInstructor);
+            if (plazo == null) {
+                plazo = new PlazoCargaAtenciones();
+                plazo.setIdInstructor(idInstructor);
+                plazo.setAnio(vigente.getAnio());
+                plazo.setPeriodo(vigente.getPeriodo());
+            }
+            int clasesConAsistencia = conteosPorInstructor.getOrDefault(idInstructor, 0);
+            resultado.add(PlazoCargaDto.fabricarDeModelo(plazo, clasesConAsistencia, hoy));
+        }
+        return resultado;
+    }
+
+    // Upsert: crea o REEMPLAZA el plazo del periodo vigente -- el periodo lo
+    // calcula el servidor con el Clock, el cliente solo manda fechaLimite.
+    // idCoordinador llega como parametro explicito (claim del JWT en el
+    // controller), igual que actualizarInstructor().
+    @Override
+    public PlazoCargaDto asignarPlazoCarga(String instructorId, LocalDate fechaLimite, String idCoordinador) {
+        if (!instructorsGateway.existeInstructorActivo(instructorId)) {
+            throw new NoExisteExcepcion("No existe el instructor con el identificador " + instructorId);
+        }
+        LocalDate hoy = LocalDate.now(clock);
+        if (fechaLimite.isBefore(hoy)) {
+            throw new PlazoCargaInvalidoExcepcion(
+                    "La fecha limite " + fechaLimite + " no puede ser anterior a hoy (" + hoy + ")");
+        }
+        PeriodoAcademico vigente = PeriodoAcademico.vigente(clock);
+
+        PlazoCargaAtenciones datos = new PlazoCargaAtenciones();
+        datos.setIdInstructor(instructorId);
+        datos.setAnio(vigente.getAnio());
+        datos.setPeriodo(vigente.getPeriodo());
+        datos.setFechaLimite(fechaLimite);
+        datos.setIdCoordinador(idCoordinador);
+        datos.setFechaAsignacion(LocalDateTime.now(clock));
+
+        PlazoCargaAtenciones guardado = plazoCargaGateway.upsertPlazo(datos);
+
+        // Rastro de auditoria: solo identificadores y la fecha -- nunca correos ni
+        // nombres. Los 3 valores se sanitizan por politica (Sonar java:S5145, log
+        // forging): instructorId/idCoordinador son Strings crudos del cliente;
+        // fechaLimite es un LocalDate ya validado/parseado por Jackson (un valor
+        // con CR/LF nunca llega a convertirse en LocalDate -- Jackson responde 400
+        // antes), pero se sanea igual por consistencia con la politica.
+        LOGGER.info("plazo de carga del instructor {} asignado hasta {} por {}",
+                LogSanitizer.sanitizar(instructorId), LogSanitizer.sanitizar(String.valueOf(fechaLimite)),
+                LogSanitizer.sanitizar(idCoordinador));
+
+        int clasesConAsistencia = plazoCargaGateway
+                .contarClasesConAsistenciaPorInstructor(vigente.getAnio(), vigente.getPeriodo())
+                .getOrDefault(instructorId, 0);
+        return PlazoCargaDto.fabricarDeModelo(guardado, clasesConAsistencia, hoy);
     }
 
 }

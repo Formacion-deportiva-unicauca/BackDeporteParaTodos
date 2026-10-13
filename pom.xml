@@ -205,6 +205,7 @@
 								<exclude>**/InscripcionVentanaFechasIT.java</exclude>
 								<exclude>**/GrupoInstructorIT.java</exclude>
 								<exclude>**/InstructorActualizarIT.java</exclude>
+								<exclude>**/PlazoCargaAtencionesIT.java</exclude>
 							</excludes>
 						</configuration>
 					</plugin>

@@ -33,8 +33,11 @@ public class AsistenciaServicio implements IAsistenciaServicio {
 
     @Override
     public List<Asistencia> obtenerAsistencias() {
+        // SonarCloud javabugs:S2259: obtenerAsistencias() no esta implementado en
+        // el gateway y retorna null (no una lista vacia) -- se guarda contra eso
+        // en vez de confiar en que el contrato del metodo garantice un valor no nulo.
         List<Asistencia> asistencias = asistenciaGateway.obtenerAsistencias();
-        if (asistencias.isEmpty()) {
+        if (asistencias == null || asistencias.isEmpty()) {
             throw new ListadoVacioExcepcion("No hay registro de asistencias");
         }
         return asistencias;
