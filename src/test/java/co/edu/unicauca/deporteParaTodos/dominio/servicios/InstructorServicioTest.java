@@ -60,19 +60,19 @@ class InstructorServicioTest {
     // usan el Clock.
     private static final LocalDate HOY_FIJO = LocalDate.of(2026, 10, 12);
 
-    @BeforeEach
-    void configurarClockPorDefecto() {
-        lenient().when(clock.instant()).thenReturn(HOY_FIJO.atStartOfDay(ZoneId.of("America/Bogota")).toInstant());
-        lenient().when(clock.getZone()).thenReturn(ZoneId.of("America/Bogota"));
-    }
-
     // SCRUM-79: captura el log real de ch.qos.logback (no se mockea el Logger
     // estatico de la clase) para confirmar el rastro de auditoria del correo.
     private ListAppender<ILoggingEvent> logAppender;
     private Logger logbackLogger;
 
+    // SonarCloud java:S8745: una sola clase no puede declarar mas de un metodo
+    // @BeforeEach -- se fusionan aqui la configuracion del Clock (SCRUM-80) y la
+    // captura de logs (SCRUM-79), antes en metodos separados.
     @BeforeEach
-    void capturarLogs() {
+    void configurarMocksYCapturarLogs() {
+        lenient().when(clock.instant()).thenReturn(HOY_FIJO.atStartOfDay(ZoneId.of("America/Bogota")).toInstant());
+        lenient().when(clock.getZone()).thenReturn(ZoneId.of("America/Bogota"));
+
         logbackLogger = (Logger) LoggerFactory.getLogger(InstructorServicio.class);
         logAppender = new ListAppender<>();
         logAppender.start();
