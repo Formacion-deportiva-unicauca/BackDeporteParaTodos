@@ -35,6 +35,34 @@ class AsistenciaServicioTest {
     @InjectMocks
     private AsistenciaServicio servicio;
 
+    // SonarCloud javabugs:S2259: AsistenciaGateway.obtenerAsistencias() esta sin
+    // implementar y retorna null (no una lista vacia) -- antes de este fix,
+    // asistencias.isEmpty() reventaba con NullPointerException real en vez de
+    // la ListadoVacioExcepcion de negocio esperada.
+    @Test
+    void obtenerAsistencias_gatewayRetornaNull_lanzaListadoVacioExcepcionSinNpe() {
+        when(asistenciaGateway.obtenerAsistencias()).thenReturn(null);
+
+        assertThrows(ListadoVacioExcepcion.class, () -> servicio.obtenerAsistencias());
+    }
+
+    @Test
+    void obtenerAsistencias_listaVacia_lanzaListadoVacioExcepcion() {
+        when(asistenciaGateway.obtenerAsistencias()).thenReturn(List.of());
+
+        assertThrows(ListadoVacioExcepcion.class, () -> servicio.obtenerAsistencias());
+    }
+
+    @Test
+    void obtenerAsistencias_conDatos_retornaLaLista() {
+        Asistencia asistencia = new Asistencia("perf1", 10, 0);
+        when(asistenciaGateway.obtenerAsistencias()).thenReturn(List.of(asistencia));
+
+        List<Asistencia> resultado = servicio.obtenerAsistencias();
+
+        assertEquals(1, resultado.size());
+    }
+
     @Test
     void obtenerAtencionesPorClase_exitoso_retornaListaDtos() {
         Asistencia asistencia = new Asistencia("perf1", 10, 0);

@@ -118,6 +118,21 @@ class CursoServicioTest {
         verify(cursoGateway, never()).eliminarCursoPermanente(any(), any());
     }
 
+    // SonarCloud javabugs:S2259: existeCurso() y obtenerCurso() son 2 consultas
+    // separadas (TOCTOU) -- si el curso desaparece justo entre ambas,
+    // obtenerCurso() retorna null y actual.getEstadoCurso() reventaba con NPE
+    // real en vez de la NoExisteExcepcion de negocio esperada.
+    @Test
+    void eliminarCursoPermanente_obtenerCursoRetornaNull_lanzaNoExisteExcepcionSinNpe() {
+        when(cursoGateway.existeCurso(CATEGORIA, NOMBRE)).thenReturn(true);
+        when(cursoGateway.obtenerCurso(CATEGORIA, NOMBRE)).thenReturn(null);
+
+        assertThrows(NoExisteExcepcion.class,
+            () -> cursoServicio.eliminarCursoPermanente(CATEGORIA, NOMBRE));
+
+        verify(cursoGateway, never()).eliminarCursoPermanente(any(), any());
+    }
+
     // --- cursosDeCategoria (regresión) ---
 
     @Test

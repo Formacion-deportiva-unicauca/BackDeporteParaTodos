@@ -44,8 +44,11 @@ public class PerfilServicio implements IPerfilServicio {
 
     @Override
     public Perfil actualizarPerfil(String perfilId, Perfil datosPerfil) {
+       // SonarCloud java:S2789: Optional NUNCA es null por contrato -- el guard
+       // "== null" era codigo muerto que nunca protegia nada; un perfil
+       // inexistente (Optional.empty()) pasaba de largo hasta el gateway.
        Optional<Perfil> perfilExistente = perfilGateway.obtenerPerfil(perfilId);
-       if (perfilExistente == null) {
+       if (perfilExistente.isEmpty()) {
         throw new NoExisteExcepcion("No existe el perfil con el identificador " + perfilId);
        }
        return perfilGateway.actualizarPerfil(perfilId, datosPerfil);
