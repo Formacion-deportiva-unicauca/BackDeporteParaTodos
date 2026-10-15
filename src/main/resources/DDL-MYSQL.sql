@@ -285,6 +285,10 @@ CREATE TABLE tbl_clase (
     GRP_ITERABLE         BIGINT       NOT NULL,
     CUR_NOMBRE           VARCHAR(100) NOT NULL,
     CAT_TITULO           VARCHAR(100) NOT NULL,
+    -- SCRUM-80 (rediseno, 15 oct 2026, bloque 2 de 3): obligatoria SOLO cuando
+    -- el grupo no tiene franja de horario ese dia de la semana (lo valida
+    -- ClaseServicio, no una restriccion de BD, porque depende de tbl_horario).
+    CLS_JUSTIFICACION    VARCHAR(500),
     CONSTRAINT FK_CLASE_INSTRUCTOR FOREIGN KEY (PERF_ID)                                        REFERENCES tbl_instructor (PERF_ID)                                    ON DELETE SET NULL,
     CONSTRAINT FK_CLASE_GRUPO      FOREIGN KEY (CAT_TITULO, CUR_NOMBRE, GRP_ANIO, GRP_ITERABLE) REFERENCES tbl_grupo (CAT_TITULO, CUR_NOMBRE, GRP_ANIO, GRP_ITERABLE) ON DELETE RESTRICT,
     CONSTRAINT PK_TBL_CLASE        PRIMARY KEY (CLS_CODIGO)

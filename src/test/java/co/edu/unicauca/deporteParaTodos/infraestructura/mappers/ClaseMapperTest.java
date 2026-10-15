@@ -167,4 +167,25 @@ class ClaseMapperTest {
     void fromDto_dtoNulo_lanzaNoProcesableEntidadException() {
         assertThrows(NoProcesableEntidadException.class, () -> ClaseMapper.fromDto(null));
     }
+
+    // SCRUM-80 (rediseno, bloque 2): CLS_JUSTIFICACION, columna nueva de tbl_clase.
+    @Test
+    void justificacion_seMapeaEnLosCuatroSentidos() {
+        ClaseEntidad entidad = entidadBase();
+        entidad.setJustificacion("sin horario ese dia, clase de recuperacion");
+        assertEquals("sin horario ese dia, clase de recuperacion", ClaseMapper.toDominio(entidad).getJustificacion());
+
+        Clase modelo = claseBase();
+        modelo.setJustificacion("justificacion de dominio");
+        assertEquals("justificacion de dominio", ClaseMapper.toEntidad(modelo).getJustificacion());
+        assertEquals("justificacion de dominio", ClaseMapper.toDto(modelo).getJustificacion());
+
+        ClaseDto dto = new ClaseDto();
+        dto.setCategoria(CATEGORIA);
+        dto.setCurso(CURSO);
+        dto.setAnio(ANIO);
+        dto.setIterable(ITERABLE);
+        dto.setJustificacion("justificacion del dto");
+        assertEquals("justificacion del dto", ClaseMapper.fromDto(dto).getJustificacion());
+    }
 }

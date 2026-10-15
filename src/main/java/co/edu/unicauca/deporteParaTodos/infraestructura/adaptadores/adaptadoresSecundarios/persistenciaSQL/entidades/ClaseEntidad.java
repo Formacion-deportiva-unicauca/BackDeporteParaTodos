@@ -62,4 +62,7 @@ public class ClaseEntidad {
     @Column(name="META_ELIMINADO")
     private Integer eliminado;
 
+    @Column(name = "CLS_JUSTIFICACION")
+    private String justificacion;
+
 }

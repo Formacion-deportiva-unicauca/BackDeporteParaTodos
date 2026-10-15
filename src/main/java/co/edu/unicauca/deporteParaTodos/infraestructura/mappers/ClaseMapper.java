@@ -23,6 +23,7 @@ public class ClaseMapper {
             modelo.setMinutos(entidad.getMinutos());
             modelo.setObservacion(entidad.getObservacion());
             modelo.setEliminado(entidad.getEliminado());
+            modelo.setJustificacion(entidad.getJustificacion());
             return modelo;
         } catch (Exception e) {
             throw new NoProcesableEntidadException("No fue posible convertir ClaseEntidad a dominio: " + e.getMessage());
@@ -43,6 +44,7 @@ public class ClaseMapper {
             entidad.setMinutos(clase.getMinutos());
             entidad.setObservacion(clase.getObservacion());
             entidad.setEliminado(clase.getEliminado());
+            entidad.setJustificacion(clase.getJustificacion());
             return entidad;
         } catch (Exception e) {
             throw new NoProcesableEntidadException("No fue posible convertir Clase a entidad: " + e.getMessage());
@@ -63,6 +65,7 @@ public class ClaseMapper {
             dto.setMinutos(clase.getMinutos());
             dto.setObservacion(clase.getObservacion());
             dto.setEliminado(clase.getEliminado());
+            dto.setJustificacion(clase.getJustificacion());
             return dto;
         } catch (Exception e) {
             throw new NoProcesableEntidadException("No fue posible convertir Clase a DTO: " + e.getMessage());
@@ -83,6 +86,7 @@ public class ClaseMapper {
             modelo.setMinutos(dto.getMinutos());
             modelo.setObservacion(dto.getObservacion());
             modelo.setEliminado(dto.getEliminado());
+            modelo.setJustificacion(dto.getJustificacion());
             return modelo;
         } catch (Exception e) {
             throw new NoProcesableEntidadException("No fue posible convertir ClaseDto a dominio: " + e.getMessage());

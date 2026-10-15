@@ -34,4 +34,9 @@ public class Clase {
     private String observacion;
 
     private Integer eliminado;
+
+    // SCRUM-80 (rediseno, bloque 2): obligatoria SOLO si el grupo no tiene
+    // franja de horario ese dia (CalculadoraDuracionClase.Resultado sin
+    // franjas validas) -- ver ClaseServicio.insertarClase().
+    private String justificacion;
 }

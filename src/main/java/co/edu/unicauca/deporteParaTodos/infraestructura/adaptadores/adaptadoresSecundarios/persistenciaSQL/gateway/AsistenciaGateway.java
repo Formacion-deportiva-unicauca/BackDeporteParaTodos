@@ -89,4 +89,16 @@ public class AsistenciaGateway implements IAsistenciaGateway {
         AsistenciaEntidad guardada = repoAsistencia.save(entidad);
         return AsistenciaMapper.toDominio(guardada);
     }
+
+    @Override
+    public Asistencia reactivarAsistencia(String perfId, int clsId) {
+        AsistenciaId idAsistencia = new AsistenciaId();
+        idAsistencia.setPerfilId(perfId);
+        idAsistencia.setClaseCodigo(clsId);
+        AsistenciaEntidad entidad = repoAsistencia.findById(idAsistencia)
+                .orElseThrow(() -> new NoExisteExcepcion("La asistencia no existe"));
+        entidad.setEliminado(0);
+        AsistenciaEntidad guardada = repoAsistencia.save(entidad);
+        return AsistenciaMapper.toDominio(guardada);
+    }
 }

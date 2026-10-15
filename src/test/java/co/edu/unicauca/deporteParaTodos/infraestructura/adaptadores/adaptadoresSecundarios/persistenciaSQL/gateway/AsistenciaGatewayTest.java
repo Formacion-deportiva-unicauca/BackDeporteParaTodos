@@ -139,4 +139,31 @@ class AsistenciaGatewayTest {
         assertNotNull(resultado);
         assertEquals(1, resultado.getEliminado());
     }
+
+    // --- reactivarAsistencia (SCRUM-80, rediseno bloque 2) ---
+    // PASO 0 (caracterizacion, AsistenciaServicioTest): existeAsistencia() usa
+    // existsById() y NO distingue META_ELIMINADO -- una fila eliminada
+    // logicamente nunca se reactivaba. Este metodo nuevo la reactiva (eliminado=0).
+
+    @Test
+    void reactivarAsistencia_encontrada_marcaEliminado0YRetorna() {
+        AsistenciaEntidad entidadEliminada = entidadActiva();
+        entidadEliminada.setEliminado(1);
+        AsistenciaEntidad entidadReactivada = entidadActiva();
+        entidadReactivada.setEliminado(0);
+        when(repoAsistencia.findById(any(AsistenciaId.class))).thenReturn(Optional.of(entidadEliminada));
+        when(repoAsistencia.save(any(AsistenciaEntidad.class))).thenReturn(entidadReactivada);
+
+        Asistencia resultado = asistenciaGateway.reactivarAsistencia(PERF_ID, CLASE_ID);
+
+        assertNotNull(resultado);
+        assertEquals(0, resultado.getEliminado());
+    }
+
+    @Test
+    void reactivarAsistencia_noEncontrada_lanzaNoExisteExcepcion() {
+        when(repoAsistencia.findById(any(AsistenciaId.class))).thenReturn(Optional.empty());
+
+        assertThrows(NoExisteExcepcion.class, () -> asistenciaGateway.reactivarAsistencia(PERF_ID, CLASE_ID));
+    }
 }

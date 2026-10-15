@@ -20,6 +20,8 @@ import co.edu.unicauca.deporteParaTodos.infraestructura.logs.PeticionLogger;
 import co.edu.unicauca.deporteParaTodos.infraestructura.mappers.ClaseMapper;
 import io.swagger.v3.oas.annotations.Operation;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -71,14 +73,25 @@ public class ClaseRest {
         @ApiResponse(responseCode = "201", description = "Clase registrada correctamente"),
         @ApiResponse(responseCode = "200", description = "Ya existia una clase para ese grupo en esa fecha; se reutiliza")
     })
-    @PreAuthorize("hasAnyAuthority('Instructor','Coordinador')")
+    // SCRUM-80 (rediseno, bloque 2): 'Administrador' se agrega aqui porque la
+    // regla de negocio lo exime del limite de plazo igual que a 'Coordinador'
+    // -- sin esto en el @PreAuthorize, un Administrador nunca llegaria al
+    // controller (403) y la excepcion seria inalcanzable en la practica.
+    @PreAuthorize("hasAnyAuthority('Instructor','Coordinador','Administrador')")
     @PostMapping("/claseGrupo")
-    public ResponseEntity<ClaseDto> postClase(@RequestBody @Valid ClaseDto entidad) {
+    public ResponseEntity<ClaseDto> postClase(
+            @RequestBody @Valid ClaseDto entidad,
+            @AuthenticationPrincipal Jwt jwt) {
+        String perfIdLlamador = jwt != null ? jwt.getClaimAsString("perf_id") : null;
+        if (perfIdLlamador == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        String rolLlamador = jwt.getClaimAsString("rol");
         PeticionLogger.log(LOGGER, "POST", "/api/v2/claseGrupo", entidad);
         Clase modelo = ClaseMapper.fromDto(entidad);
         boolean yaExistiaClaseHoy = servicioClase.existeClaseEnFecha(
                 modelo.getCategoria(), modelo.getCurso(), modelo.getAnio(), modelo.getIterable(), modelo.getFecha());
-        Clase claseResultado = servicioClase.insertarClase(modelo);
+        Clase claseResultado = servicioClase.insertarClase(modelo, perfIdLlamador, rolLlamador);
         HttpStatus status = yaExistiaClaseHoy ? HttpStatus.OK : HttpStatus.CREATED;
         return new ResponseEntity<>(ClaseMapper.toDto(claseResultado), status);
     }
@@ -86,15 +99,22 @@ public class ClaseRest {
     @Operation(summary = "Marca una clase como eliminada")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Clase eliminada logicamente"),
-        @ApiResponse(responseCode = "404", description = "La clase no existe")
+        @ApiResponse(responseCode = "404", description = "La clase no existe"),
+        @ApiResponse(responseCode = "422", description = "Fecha de la clase futura, o fuera del plazo de registro")
     })
-    @PreAuthorize("hasAnyAuthority('Instructor','Coordinador')")
+    @PreAuthorize("hasAnyAuthority('Instructor','Coordinador','Administrador')")
     @DeleteMapping("/clase")
     public ResponseEntity<ClaseDto> deleteClase(
             @Parameter(description = "Codigo de la clase a eliminar")
-            @RequestParam @NotNull Integer id) {
+            @RequestParam @NotNull Integer id,
+            @AuthenticationPrincipal Jwt jwt) {
+        String perfIdLlamador = jwt != null ? jwt.getClaimAsString("perf_id") : null;
+        if (perfIdLlamador == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        String rolLlamador = jwt.getClaimAsString("rol");
         PeticionLogger.log(LOGGER, "DELETE", "/api/v2/clase", "id=" + id);
-        Clase claseEliminada = servicioClase.eliminarClase(id);
+        Clase claseEliminada = servicioClase.eliminarClase(id, perfIdLlamador, rolLlamador);
         return new ResponseEntity<>(ClaseMapper.toDto(claseEliminada), HttpStatus.OK);
     }
 }

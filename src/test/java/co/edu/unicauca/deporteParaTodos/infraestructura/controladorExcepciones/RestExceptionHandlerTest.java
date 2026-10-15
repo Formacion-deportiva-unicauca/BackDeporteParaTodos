@@ -96,6 +96,13 @@ class RestExceptionHandlerTest {
         @GetMapping("/test/registroasistenciavencido")
         void registroAsistenciaVencido() { throw new RegistroAsistenciaVencidoExcepcion("plazo vencido de prueba"); }
 
+        // SCRUM-80 (rediseno, bloque 2): se conectan en ClaseServicio/AsistenciaServicio.
+        @GetMapping("/test/justificacioninvalida")
+        void justificacionInvalida() { throw new JustificacionInvalidaExcepcion("justificacion de prueba"); }
+
+        @GetMapping("/test/duracionmanualinvalida")
+        void duracionManualInvalida() { throw new DuracionManualInvalidaExcepcion("duracion de prueba"); }
+
         // ConstraintViolationException es de capa de servicio (AOP); se lanza
         // manualmente para ejercer el handler directamente en standaloneSetup.
         @GetMapping("/test/constraintviolation")
@@ -292,6 +299,22 @@ class RestExceptionHandlerTest {
         mockMvc.perform(get("/test/registroasistenciavencido"))
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.codigoError").value("GC-0019"))
+                .andExpect(jsonPath("$.codigoHttp").value(422));
+    }
+
+    @Test
+    void justificacionInvalida_retorna422() throws Exception {
+        mockMvc.perform(get("/test/justificacioninvalida"))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.codigoError").value("GC-0021"))
+                .andExpect(jsonPath("$.codigoHttp").value(422));
+    }
+
+    @Test
+    void duracionManualInvalida_retorna422() throws Exception {
+        mockMvc.perform(get("/test/duracionmanualinvalida"))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.codigoError").value("GC-0022"))
                 .andExpect(jsonPath("$.codigoHttp").value(422));
     }
 
