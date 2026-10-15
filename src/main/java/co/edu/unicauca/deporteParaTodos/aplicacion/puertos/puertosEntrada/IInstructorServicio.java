@@ -6,6 +6,7 @@ import co.edu.unicauca.deporteParaTodos.dominio.modelo.Instructor;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.InstructorDto;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.PerfilDto;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.PlazoCargaDto;
+import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.ProrrogaDto;
 
 public interface IInstructorServicio {
 
@@ -32,5 +33,19 @@ public interface IInstructorServicio {
     // JWT en el controller), igual que actualizarInstructor(). El periodo lo
     // calcula el servidor con el Clock -- el cliente solo manda fechaLimite.
     public PlazoCargaDto asignarPlazoCarga(String instructorId, LocalDate fechaLimite, String idCoordinador);
+
+    // SCRUM-80 (rediseno, bloque 1 de 3): lista las prorrogas de un mes
+    // (anio, mes) -- solo los instructores que SI tienen una asignada.
+    // mes futuro (relativo al Clock) -> ProrrogaMesFuturoExcepcion (422).
+    public List<ProrrogaDto> obtenerProrrogasRegistro(int anio, int mes);
+
+    // Atomica: valida TODOS los ids antes de guardar nada -- si alguno no es
+    // instructor activo, NoExisteExcepcion (404) y no se guarda ni se elimina
+    // ninguna fila. ids duplicados se deduplican (no es error). dias=0 elimina
+    // la prorroga del instructor para ese mes (retorna dias=0/fechaLimite=null
+    // en vez de omitirlo). idCoordinador llega como parametro explicito (claim
+    // del JWT en el controller).
+    public List<ProrrogaDto> asignarProrrogaRegistro(
+            List<String> idsInstructores, int anio, int mes, int dias, String idCoordinador);
 
 }

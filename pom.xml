@@ -206,6 +206,7 @@
 								<exclude>**/GrupoInstructorIT.java</exclude>
 								<exclude>**/InstructorActualizarIT.java</exclude>
 								<exclude>**/PlazoCargaAtencionesIT.java</exclude>
+								<exclude>**/ProrrogaRegistroAsistenciaIT.java</exclude>
 							</excludes>
 						</configuration>
 					</plugin>

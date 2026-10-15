@@ -117,4 +117,84 @@ class AsistenciaServicioTest {
                 () -> servicio.eliminarAsistencia("perf1", 10L));
         verify(asistenciaGateway, never()).eliminarAsistencia(any(), any());
     }
+
+    // ── PASO 0 (SCRUM-80 bloque 2): caracterizacion de registrarAtencionesPorClase ──
+    // Pruebas de caracterizacion del comportamiento ACTUAL (no de lo deseado) --
+    // se escriben ANTES de tocar nada, para reportar con evidencia real.
+
+    @Test
+    void CARACTERIZACION_claseInexistente_lanzaNoExisteExcepcion() {
+        when(claseGateway.existeClase(99)).thenReturn(false);
+
+        assertThrows(NoExisteExcepcion.class,
+                () -> servicio.registrarAtencionesPorClase(List.of(), 99));
+    }
+
+    @Test
+    void CARACTERIZACION_listaVacia_noLanzaErrorNiTocaGateways() {
+        when(claseGateway.existeClase(10)).thenReturn(true);
+
+        assertDoesNotThrow(() -> servicio.registrarAtencionesPorClase(List.of(), 10));
+
+        verify(asistenciaGateway, never()).InsertarAsistencia(any());
+        verify(alumnoGateway, never()).existeAlumno(any());
+    }
+
+    @Test
+    void CARACTERIZACION_registrarDosVecesAlMismoAlumnoActivo_noDuplicaNiLanzaError() {
+        when(claseGateway.existeClase(10)).thenReturn(true);
+        when(alumnoGateway.existeAlumno("alum1")).thenReturn(true);
+        when(asistenciaGateway.existeAsistencia("alum1", 10)).thenReturn(true);
+
+        AtencionDto dto = new AtencionDto("alum1", 10, true);
+        assertDoesNotThrow(() -> servicio.registrarAtencionesPorClase(List.of(dto), 10));
+
+        verify(asistenciaGateway, never()).InsertarAsistencia(any());
+    }
+
+    // HALLAZGO del PASO 0 (no una suposicion): existeAsistencia() usa
+    // repoAsistencia.existsById(...), que NO filtra META_ELIMINADO -- por lo
+    // tanto, si ya existe una fila con META_ELIMINADO=1 (eliminada
+    // logicamente), existeAsistencia() de todas formas retorna true. El guard
+    // "if (!existeAsistencia(...)) insertar" entonces NUNCA reactiva esa fila:
+    // no inserta (porque "existe"), y tampoco hay ninguna rama que la reactive.
+    // El comportamiento ACTUAL es: la fila se queda en META_ELIMINADO=1 para
+    // siempre, sin error y sin aviso. Esto contradice el requisito nuevo
+    // ("si existe con META_ELIMINADO=1, se reactiva") -- hay que corregirlo.
+    @Test
+    void CARACTERIZACION_alumnoConAsistenciaEliminadaLogicamente_actualmenteNoSeReactiva() {
+        when(claseGateway.existeClase(10)).thenReturn(true);
+        when(alumnoGateway.existeAlumno("alum1")).thenReturn(true);
+        // existeAsistencia() no distingue eliminado=0 de eliminado=1 -- ambos dan true.
+        when(asistenciaGateway.existeAsistencia("alum1", 10)).thenReturn(true);
+
+        AtencionDto dto = new AtencionDto("alum1", 10, true);
+        servicio.registrarAtencionesPorClase(List.of(dto), 10);
+
+        // Comportamiento actual: NO reactiva (no llama InsertarAsistencia ni
+        // ningun metodo de "reactivar"/actualizar eliminado=0).
+        verify(asistenciaGateway, never()).InsertarAsistencia(any());
+    }
+
+    @Test
+    void CARACTERIZACION_alumnoInexistente_lanzaNoExisteExcepcion() {
+        when(claseGateway.existeClase(10)).thenReturn(true);
+        when(alumnoGateway.existeAlumno("fantasma")).thenReturn(false);
+
+        AtencionDto dto = new AtencionDto("fantasma", 10, true);
+        assertThrows(NoExisteExcepcion.class,
+                () -> servicio.registrarAtencionesPorClase(List.of(dto), 10));
+    }
+
+    @Test
+    void CARACTERIZACION_estaAtendidoFalseYExiste_eliminaLogicamente() {
+        when(claseGateway.existeClase(10)).thenReturn(true);
+        when(alumnoGateway.existeAlumno("alum1")).thenReturn(true);
+        when(asistenciaGateway.existeAsistencia("alum1", 10)).thenReturn(true);
+
+        AtencionDto dto = new AtencionDto("alum1", 10, false);
+        servicio.registrarAtencionesPorClase(List.of(dto), 10);
+
+        verify(asistenciaGateway).eliminarAsitencia("alum1", 10);
+    }
 }

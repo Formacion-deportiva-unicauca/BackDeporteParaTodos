@@ -55,6 +55,7 @@ DROP TABLE IF EXISTS tbl_grupo;
 DROP TABLE IF EXISTS tbl_curso;
 DROP TABLE IF EXISTS tbl_coordinador;
 DROP TABLE IF EXISTS tbl_plazo_carga_atenciones;
+DROP TABLE IF EXISTS tbl_prorroga_registro_asistencia;
 DROP TABLE IF EXISTS tbl_instructor;
 DROP TABLE IF EXISTS tbl_programa;
 DROP TABLE IF EXISTS tbl_facultad;
@@ -157,6 +158,34 @@ CREATE TABLE tbl_plazo_carga_atenciones (
     PLZ_FECHA_ASIGNACION DATETIME     NOT NULL,
     CONSTRAINT FK_PLAZO_CARGA_INSTRUCTOR      FOREIGN KEY (PERF_ID) REFERENCES tbl_instructor (PERF_ID) ON DELETE RESTRICT,
     CONSTRAINT PK_TBL_PLAZO_CARGA_ATENCIONES  PRIMARY KEY (PERF_ID, PLZ_ANIO, PLZ_PERIODO)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+-- tbl_prorroga_registro_asistencia
+-- SCRUM-80 (rediseno, 15 oct 2026, bloque 1 de 3): reemplaza el enfoque de
+-- tbl_plazo_carga_atenciones (que queda tal cual, sin usarse en el diseno
+-- nuevo, hasta que el frontend migre). El Coordinador asigna una prorroga en
+-- DIAS por instructor y por mes CALENDARIO (PRR_ANIO, PRR_MES); el limite
+-- (PRR_FECHA_LIMITE) se PRECALCULA al asignar: max(fin de mes, fecha de
+-- asignacion) + dias (ver VentanaRegistroAsistencia.calcularLimiteProrroga).
+-- dias=0 borra la fila FISICAMENTE (es configuracion, no historial) -- por
+-- eso no tiene su propio borrado logico aparte de META_ELIMINADO (se deja
+-- por convencion con las demas tablas, pero esta tabla nunca guarda una fila
+-- con META_ELIMINADO=1: la fila simplemente se elimina).
+-- FK_PRORROGA_INSTRUCTOR: mismo criterio que FK_PLAZO_CARGA_INSTRUCTOR --
+-- RESTRICT (el instructor no se borra fisicamente).
+-- --------------------------------------------------------
+CREATE TABLE tbl_prorroga_registro_asistencia (
+    META_ELIMINADO       INT          NOT NULL DEFAULT 0,
+    PERF_ID              VARCHAR(50)  NOT NULL,
+    PRR_ANIO             BIGINT       NOT NULL,
+    PRR_MES              TINYINT      NOT NULL,
+    PRR_DIAS             INT          NOT NULL,
+    PRR_FECHA_LIMITE     DATE         NOT NULL,
+    PRR_COORDINADOR      VARCHAR(50)  NOT NULL,
+    PRR_FECHA_ASIGNACION DATETIME     NOT NULL,
+    CONSTRAINT FK_PRORROGA_INSTRUCTOR      FOREIGN KEY (PERF_ID) REFERENCES tbl_instructor (PERF_ID) ON DELETE RESTRICT,
+    CONSTRAINT PK_TBL_PRORROGA_REGISTRO_ASISTENCIA PRIMARY KEY (PERF_ID, PRR_ANIO, PRR_MES)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------

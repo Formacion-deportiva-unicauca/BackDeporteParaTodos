@@ -23,6 +23,8 @@ import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresP
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.PerfilDto;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.PlazoCargaDto;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.PlazoCargaRequest;
+import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.ProrrogaDto;
+import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.ProrrogaRequest;
 import co.edu.unicauca.deporteParaTodos.dominio.utils.LogSanitizer;
 import co.edu.unicauca.deporteParaTodos.infraestructura.logs.PeticionLogger;
 import io.swagger.v3.oas.annotations.Operation;
@@ -33,7 +35,10 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -138,9 +143,14 @@ public class InstructoresRest {
     }
 
     // ── SCRUM-80 (HE-14 HU-02): plazo de carga de atenciones ─────────────────
+    // FASE A, REEMPLAZADA por el rediseno (prorroga mensual, ver mas abajo).
+    // Se mantienen SIN RETIRAR porque el frontend todavia los usa -- se
+    // retiran cuando ese frontend migre a /instructores/prorroga-registro.
 
-    @Operation(summary = "Lista, para cada instructor activo, el plazo de carga de atenciones y el "
-            + "estado del reporte del periodo academico vigente")
+    @Deprecated
+    @Operation(summary = "[DEPRECADO] Lista, para cada instructor activo, el plazo de carga de atenciones y el "
+            + "estado del reporte del periodo academico vigente. Reemplazado por "
+            + "GET /instructores/prorroga-registro (rediseno SCRUM-80, 15 oct 2026).")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Listado de plazos de carga")
     })
@@ -152,8 +162,10 @@ public class InstructoresRest {
         return new ResponseEntity<>(respuesta, HttpStatus.OK);
     }
 
-    @Operation(summary = "Asigna o reemplaza (upsert) el plazo de carga de atenciones del periodo "
-            + "academico vigente para un instructor")
+    @Deprecated
+    @Operation(summary = "[DEPRECADO] Asigna o reemplaza (upsert) el plazo de carga de atenciones del periodo "
+            + "academico vigente para un instructor. Reemplazado por "
+            + "PUT /instructores/prorroga-registro (rediseno SCRUM-80, 15 oct 2026).")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Plazo asignado o reemplazado"),
             @ApiResponse(responseCode = "400", description = "fechaLimite ausente o con formato invalido"),
@@ -181,6 +193,56 @@ public class InstructoresRest {
         PeticionLogger.log(LOGGER, "PUT", "/api/v2/instructor/" + idSaneado + "/plazo-carga",
                 "id: " + idSaneado + ", fechaLimite: " + fechaLimiteSaneada);
         PlazoCargaDto respuesta = servicioInstructor.asignarPlazoCarga(id, request.getFechaLimite(), idCoordinador);
+        return new ResponseEntity<>(respuesta, HttpStatus.OK);
+    }
+
+    // ── SCRUM-80 (rediseno, bloque 1 de 3): prorroga de registro de asistencia ──
+
+    @Operation(summary = "Lista las prorrogas de registro de asistencia asignadas para un mes "
+            + "(solo los instructores que SI tienen una asignada)")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Listado de prorrogas del mes"),
+            @ApiResponse(responseCode = "400", description = "mes fuera de 1-12"),
+            @ApiResponse(responseCode = "422", description = "El mes es futuro")
+    })
+    @PreAuthorize("hasAuthority('Coordinador')")
+    @GetMapping("/instructores/prorroga-registro")
+    public ResponseEntity<List<ProrrogaDto>> obtenerProrrogasRegistro(
+            @RequestParam @NotNull Integer anio,
+            @RequestParam @NotNull @Min(1) @Max(12) Integer mes) {
+        PeticionLogger.log(LOGGER, "GET", "/api/v2/instructores/prorroga-registro",
+                "anio=" + anio + ", mes=" + mes);
+        List<ProrrogaDto> respuesta = servicioInstructor.obtenerProrrogasRegistro(anio, mes);
+        return new ResponseEntity<>(respuesta, HttpStatus.OK);
+    }
+
+    @Operation(summary = "Asigna o reemplaza (upsert) la prorroga de registro de asistencia de uno o "
+            + "varios instructores para un mes. dias=0 elimina la prorroga existente.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Prorrogas procesadas (asignadas o eliminadas)"),
+            @ApiResponse(responseCode = "400", description = "Datos invalidos (lista vacia, mes fuera de 1-12, dias fuera de 0-60)"),
+            @ApiResponse(responseCode = "404", description = "Alguno de los ids no es un instructor activo (atomico: no se guarda nada)"),
+            @ApiResponse(responseCode = "422", description = "El mes es futuro")
+    })
+    @PreAuthorize("hasAuthority('Coordinador')")
+    @PutMapping("/instructores/prorroga-registro")
+    public ResponseEntity<List<ProrrogaDto>> asignarProrrogaRegistro(
+            @RequestBody @Valid ProrrogaRequest request,
+            @AuthenticationPrincipal Jwt jwt) {
+        String idCoordinador = jwt != null ? jwt.getClaimAsString("perf_id") : null;
+        if (idCoordinador == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        // Sonar java:S5145 (log forging): idsInstructores es una lista cruda del
+        // cuerpo del cliente -- cada id se sanea antes de interpolarse en el log.
+        String idsSaneados = request.getIdsInstructores().stream()
+                .map(LogSanitizer::sanitizar)
+                .collect(java.util.stream.Collectors.joining(","));
+        PeticionLogger.log(LOGGER, "PUT", "/api/v2/instructores/prorroga-registro",
+                "idsInstructores=[" + idsSaneados + "], anio=" + request.getAnio()
+                        + ", mes=" + request.getMes() + ", dias=" + request.getDias());
+        List<ProrrogaDto> respuesta = servicioInstructor.asignarProrrogaRegistro(
+                request.getIdsInstructores(), request.getAnio(), request.getMes(), request.getDias(), idCoordinador);
         return new ResponseEntity<>(respuesta, HttpStatus.OK);
     }
 

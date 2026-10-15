@@ -3,9 +3,11 @@ package co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadores
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosEntrada.IInstructorServicio;
 import co.edu.unicauca.deporteParaTodos.deporteParaTodos;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.PlazoCargaInvalidoExcepcion;
+import co.edu.unicauca.deporteParaTodos.dominio.excepciones.ProrrogaMesFuturoExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Instructor;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Perfil;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.PlazoCargaDto;
+import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.ProrrogaDto;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
@@ -41,6 +43,7 @@ import java.util.Base64;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
@@ -596,6 +599,232 @@ class InstructorRestSecurityTest {
 
             assertEquals(lineasControl, lineasAtaque,
                     "el id con %0d%0a no puede agregar lineas al log frente a la peticion de control");
+            assertTrue(mensajeAtaque.contains("ins1__FAKE-LOG-LINE"),
+                    "el id sanitizado (CR/LF -> _) debe seguir siendo identificable en el log");
+        } finally {
+            logbackLogger.detachAppender(appender);
+        }
+    }
+
+    // ── GET /api/v2/instructores/prorroga-registro — SCRUM-80 (rediseno) ─────
+
+    @Test
+    void obtenerProrrogasRegistro_rolCoordinador_retorna200() throws Exception {
+        ProrrogaDto dto = new ProrrogaDto("ins1", 10, "2026-11-10");
+        when(servicio.obtenerProrrogasRegistro(2026, 10)).thenReturn(java.util.List.of(dto));
+
+        mockMvc.perform(get("/api/v2/instructores/prorroga-registro")
+                .param("anio", "2026")
+                .param("mes", "10")
+                .header("Authorization", "Bearer " + buildJwt("Coordinador", "coord1")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].idInstructor").value("ins1"))
+                .andExpect(jsonPath("$[0].fechaLimite").value("2026-11-10"));
+    }
+
+    @Test
+    void obtenerProrrogasRegistro_rolInstructor_retorna403() throws Exception {
+        mockMvc.perform(get("/api/v2/instructores/prorroga-registro")
+                .param("anio", "2026")
+                .param("mes", "10")
+                .header("Authorization", "Bearer " + buildJwt("Instructor", "ins1")))
+                .andExpect(status().isForbidden());
+
+        verify(servicio, never()).obtenerProrrogasRegistro(anyInt(), anyInt());
+    }
+
+    @Test
+    void obtenerProrrogasRegistro_sinToken_retorna401() throws Exception {
+        mockMvc.perform(get("/api/v2/instructores/prorroga-registro")
+                .param("anio", "2026")
+                .param("mes", "10"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void obtenerProrrogasRegistro_mesFueraDeRango_retorna400() throws Exception {
+        mockMvc.perform(get("/api/v2/instructores/prorroga-registro")
+                .param("anio", "2026")
+                .param("mes", "13")
+                .header("Authorization", "Bearer " + buildJwt("Coordinador", "coord1")))
+                .andExpect(status().isBadRequest());
+
+        verify(servicio, never()).obtenerProrrogasRegistro(anyInt(), anyInt());
+    }
+
+    @Test
+    void obtenerProrrogasRegistro_mesFuturo_retorna422() throws Exception {
+        when(servicio.obtenerProrrogasRegistro(2026, 12))
+                .thenThrow(new ProrrogaMesFuturoExcepcion("mes futuro"));
+
+        mockMvc.perform(get("/api/v2/instructores/prorroga-registro")
+                .param("anio", "2026")
+                .param("mes", "12")
+                .header("Authorization", "Bearer " + buildJwt("Coordinador", "coord1")))
+                .andExpect(status().isUnprocessableEntity());
+    }
+
+    // ── PUT /api/v2/instructores/prorroga-registro — SCRUM-80 (rediseno) ─────
+
+    private static final String BODY_PRORROGA_VALIDO =
+            "{\"idsInstructores\":[\"ins1\"],\"anio\":2026,\"mes\":10,\"dias\":10}";
+
+    @Test
+    void asignarProrrogaRegistro_rolCoordinador_retorna200() throws Exception {
+        when(servicio.asignarProrrogaRegistro(eq(java.util.List.of("ins1")), eq(2026), eq(10), eq(10), eq("coord1")))
+                .thenReturn(java.util.List.of(new ProrrogaDto("ins1", 10, "2026-11-10")));
+
+        mockMvc.perform(put("/api/v2/instructores/prorroga-registro")
+                .contentType("application/json")
+                .content(BODY_PRORROGA_VALIDO)
+                .header("Authorization", "Bearer " + buildJwt("Coordinador", "coord1")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].idInstructor").value("ins1"))
+                .andExpect(jsonPath("$[0].dias").value(10))
+                .andExpect(jsonPath("$[0].fechaLimite").value("2026-11-10"));
+    }
+
+    @Test
+    void asignarProrrogaRegistro_rolInstructor_retorna403() throws Exception {
+        mockMvc.perform(put("/api/v2/instructores/prorroga-registro")
+                .contentType("application/json")
+                .content(BODY_PRORROGA_VALIDO)
+                .header("Authorization", "Bearer " + buildJwt("Instructor", "ins1")))
+                .andExpect(status().isForbidden());
+
+        verify(servicio, never()).asignarProrrogaRegistro(any(), anyInt(), anyInt(), anyInt(), any());
+    }
+
+    @Test
+    void asignarProrrogaRegistro_sinToken_retorna401() throws Exception {
+        mockMvc.perform(put("/api/v2/instructores/prorroga-registro")
+                .contentType("application/json")
+                .content(BODY_PRORROGA_VALIDO))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void asignarProrrogaRegistro_coordinadorSinClaimPerfId_retorna401() throws Exception {
+        byte[] keyBytes = Base64.getDecoder().decode(TEST_SECRET);
+        SecretKey key = new SecretKeySpec(keyBytes, "HmacSHA256");
+        JWKSource<SecurityContext> source = new ImmutableJWKSet<>(new JWKSet(new OctetSequenceKey.Builder(key).build()));
+        JwtClaimsSet claims = JwtClaimsSet.builder()
+                .subject("test@unicauca.edu.co")
+                .issuedAt(Instant.now())
+                .expiresAt(Instant.now().plusSeconds(3600))
+                .claim("rol", "Coordinador")
+                .build();
+        String jwtSinPerfId = new NimbusJwtEncoder(source)
+                .encode(JwtEncoderParameters.from(JwsHeader.with(MacAlgorithm.HS256).build(), claims))
+                .getTokenValue();
+
+        mockMvc.perform(put("/api/v2/instructores/prorroga-registro")
+                .contentType("application/json")
+                .content(BODY_PRORROGA_VALIDO)
+                .header("Authorization", "Bearer " + jwtSinPerfId))
+                .andExpect(status().isUnauthorized());
+
+        verify(servicio, never()).asignarProrrogaRegistro(any(), anyInt(), anyInt(), anyInt(), any());
+    }
+
+    @Test
+    void asignarProrrogaRegistro_listaVacia_retorna400() throws Exception {
+        mockMvc.perform(put("/api/v2/instructores/prorroga-registro")
+                .contentType("application/json")
+                .content("{\"idsInstructores\":[],\"anio\":2026,\"mes\":10,\"dias\":10}")
+                .header("Authorization", "Bearer " + buildJwt("Coordinador", "coord1")))
+                .andExpect(status().isBadRequest());
+
+        verify(servicio, never()).asignarProrrogaRegistro(any(), anyInt(), anyInt(), anyInt(), any());
+    }
+
+    @Test
+    void asignarProrrogaRegistro_diasFueraDeRango_retorna400() throws Exception {
+        mockMvc.perform(put("/api/v2/instructores/prorroga-registro")
+                .contentType("application/json")
+                .content("{\"idsInstructores\":[\"ins1\"],\"anio\":2026,\"mes\":10,\"dias\":61}")
+                .header("Authorization", "Bearer " + buildJwt("Coordinador", "coord1")))
+                .andExpect(status().isBadRequest());
+
+        verify(servicio, never()).asignarProrrogaRegistro(any(), anyInt(), anyInt(), anyInt(), any());
+    }
+
+    @Test
+    void asignarProrrogaRegistro_mesFueraDeRango_retorna400() throws Exception {
+        mockMvc.perform(put("/api/v2/instructores/prorroga-registro")
+                .contentType("application/json")
+                .content("{\"idsInstructores\":[\"ins1\"],\"anio\":2026,\"mes\":0,\"dias\":10}")
+                .header("Authorization", "Bearer " + buildJwt("Coordinador", "coord1")))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void asignarProrrogaRegistro_algunIdNoEsInstructorActivo_retorna404() throws Exception {
+        when(servicio.asignarProrrogaRegistro(any(), eq(2026), eq(10), eq(10), eq("coord1")))
+                .thenThrow(new co.edu.unicauca.deporteParaTodos.dominio.excepciones.NoExisteExcepcion(
+                        "No existe el instructor con el identificador desconocido"));
+
+        mockMvc.perform(put("/api/v2/instructores/prorroga-registro")
+                .contentType("application/json")
+                .content("{\"idsInstructores\":[\"ins1\",\"desconocido\"],\"anio\":2026,\"mes\":10,\"dias\":10}")
+                .header("Authorization", "Bearer " + buildJwt("Coordinador", "coord1")))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void asignarProrrogaRegistro_mesFuturo_retorna422() throws Exception {
+        when(servicio.asignarProrrogaRegistro(any(), eq(2026), eq(12), eq(10), eq("coord1")))
+                .thenThrow(new ProrrogaMesFuturoExcepcion("mes futuro"));
+
+        mockMvc.perform(put("/api/v2/instructores/prorroga-registro")
+                .contentType("application/json")
+                .content("{\"idsInstructores\":[\"ins1\"],\"anio\":2026,\"mes\":12,\"dias\":10}")
+                .header("Authorization", "Bearer " + buildJwt("Coordinador", "coord1")))
+                .andExpect(status().isUnprocessableEntity());
+    }
+
+    @Test
+    void asignarProrrogaRegistro_diasCero_retorna200ConFechaLimiteNula() throws Exception {
+        when(servicio.asignarProrrogaRegistro(eq(java.util.List.of("ins1")), eq(2026), eq(10), eq(0), eq("coord1")))
+                .thenReturn(java.util.List.of(new ProrrogaDto("ins1", 0, null)));
+
+        mockMvc.perform(put("/api/v2/instructores/prorroga-registro")
+                .contentType("application/json")
+                .content("{\"idsInstructores\":[\"ins1\"],\"anio\":2026,\"mes\":10,\"dias\":0}")
+                .header("Authorization", "Bearer " + buildJwt("Coordinador", "coord1")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].dias").value(0))
+                .andExpect(jsonPath("$[0].fechaLimite").doesNotExist());
+    }
+
+    // Sonar java:S5145 (log forging): cada id de la lista cruda del cliente se
+    // sanea antes de interpolarse en el log -- mismo criterio de medicion
+    // (conteo de lineas control vs ataque) que en los demas endpoints nuevos.
+    @Test
+    void asignarProrrogaRegistro_idConCRLF_noAumentaElNumeroDeLineasDelLog() throws Exception {
+        when(servicio.asignarProrrogaRegistro(any(), anyInt(), anyInt(), anyInt(), any()))
+                .thenReturn(java.util.List.of(new ProrrogaDto("ins1", 10, "2026-11-10")));
+        Logger logbackLogger = (Logger) LoggerFactory.getLogger(InstructoresRest.class);
+        ListAppender<ILoggingEvent> appender = new ListAppender<>();
+        appender.start();
+        logbackLogger.addAppender(appender);
+        try {
+            mockMvc.perform(put("/api/v2/instructores/prorroga-registro")
+                    .contentType("application/json")
+                    .content(BODY_PRORROGA_VALIDO)
+                    .header("Authorization", "Bearer " + buildJwt("Coordinador", "coord1")))
+                    .andExpect(status().isOk());
+            long lineasControl = appender.list.get(appender.list.size() - 1).getFormattedMessage().lines().count();
+
+            mockMvc.perform(put("/api/v2/instructores/prorroga-registro")
+                    .contentType("application/json")
+                    .content("{\"idsInstructores\":[\"ins1\\r\\nFAKE-LOG-LINE\"],\"anio\":2026,\"mes\":10,\"dias\":10}")
+                    .header("Authorization", "Bearer " + buildJwt("Coordinador", "coord1")))
+                    .andExpect(status().isOk());
+            String mensajeAtaque = appender.list.get(appender.list.size() - 1).getFormattedMessage();
+
+            assertEquals(lineasControl, mensajeAtaque.lines().count(),
+                    "el id con CRLF no puede agregar lineas al log frente a la peticion de control");
             assertTrue(mensajeAtaque.contains("ins1__FAKE-LOG-LINE"),
                     "el id sanitizado (CR/LF -> _) debe seguir siendo identificable en el log");
         } finally {

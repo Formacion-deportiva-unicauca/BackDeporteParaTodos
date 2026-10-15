@@ -24,6 +24,9 @@ public enum CodigoError {
         FECHAS_GRUPO_INVALIDAS("GC-0015", "Las fechas del grupo no son validas"),
         INSCRIPCION_FUERA_DE_FECHAS("GC-0016", "La inscripcion no esta disponible en este momento"),
         PLAZO_CARGA_INVALIDO("GC-0017", "La fecha limite de plazo de carga no es valida"),
+        FECHA_CLASE_FUTURA("GC-0018", "La fecha de la clase no puede ser futura"),
+        REGISTRO_ASISTENCIA_VENCIDO("GC-0019", "El plazo para registrar la asistencia ya venció"),
+        PRORROGA_MES_FUTURO("GC-0020", "No se puede asignar una prorroga para un mes futuro"),
         ;
 
         private final String codigo;

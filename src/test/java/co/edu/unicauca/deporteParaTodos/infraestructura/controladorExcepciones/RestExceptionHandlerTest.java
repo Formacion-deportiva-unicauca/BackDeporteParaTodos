@@ -87,6 +87,15 @@ class RestExceptionHandlerTest {
         @GetMapping("/test/limitecursos")
         void limiteCursos() { throw new LimiteCursosExcepcion("limite alcanzado"); }
 
+        // SCRUM-80 (rediseno, bloque 1): sin endpoint real todavia (se conecta en
+        // el bloque 2, cuando POST /claseGrupo y POST /atenciones empiecen a
+        // llamar a VentanaRegistroAsistencia) -- se cubre el handler aqui.
+        @GetMapping("/test/fechaclasefutura")
+        void fechaClaseFutura() { throw new FechaClaseFuturaExcepcion("fecha futura de prueba"); }
+
+        @GetMapping("/test/registroasistenciavencido")
+        void registroAsistenciaVencido() { throw new RegistroAsistenciaVencidoExcepcion("plazo vencido de prueba"); }
+
         // ConstraintViolationException es de capa de servicio (AOP); se lanza
         // manualmente para ejercer el handler directamente en standaloneSetup.
         @GetMapping("/test/constraintviolation")
@@ -267,6 +276,22 @@ class RestExceptionHandlerTest {
         mockMvc.perform(get("/test/limitecursos"))
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.codigoError").value("GC-0014"))
+                .andExpect(jsonPath("$.codigoHttp").value(422));
+    }
+
+    @Test
+    void fechaClaseFutura_retorna422() throws Exception {
+        mockMvc.perform(get("/test/fechaclasefutura"))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.codigoError").value("GC-0018"))
+                .andExpect(jsonPath("$.codigoHttp").value(422));
+    }
+
+    @Test
+    void registroAsistenciaVencido_retorna422() throws Exception {
+        mockMvc.perform(get("/test/registroasistenciavencido"))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.codigoError").value("GC-0019"))
                 .andExpect(jsonPath("$.codigoHttp").value(422));
     }
 
