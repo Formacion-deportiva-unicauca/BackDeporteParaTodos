@@ -3,17 +3,21 @@ package co.edu.unicauca.deporteParaTodos.dominio.servicios;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IInstructorGateway;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IPerfilGateway;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IPlazoCargaAtencionesGateway;
+import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IProrrogaRegistroAsistenciaGateway;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.ListadoVacioExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.NoExisteExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.PlazoCargaInvalidoExcepcion;
+import co.edu.unicauca.deporteParaTodos.dominio.excepciones.ProrrogaMesFuturoExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.YaExisteElementoExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.EstadoReporte;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Instructor;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Perfil;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.PlazoCargaAtenciones;
+import co.edu.unicauca.deporteParaTodos.dominio.modelo.ProrrogaRegistroAsistencia;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.InstructorDto;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.PerfilDto;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.PlazoCargaDto;
+import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.ProrrogaDto;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
@@ -48,6 +52,9 @@ class InstructorServicioTest {
 
     @Mock
     private IPlazoCargaAtencionesGateway plazoCargaGateway;
+
+    @Mock
+    private IProrrogaRegistroAsistenciaGateway prorrogaGateway;
 
     @Mock
     private Clock clock;
@@ -607,5 +614,155 @@ class InstructorServicioTest {
         assertTrue(resultado.isEmpty());
         verify(plazoCargaGateway, never()).obtenerPlazosPorPeriodo(anyInt(), anyInt());
         verify(plazoCargaGateway, never()).contarClasesConAsistenciaPorInstructor(anyInt(), anyInt());
+    }
+
+    // ── asignarProrrogaRegistro / obtenerProrrogasRegistro (SCRUM-80, rediseno bloque 1) ──
+    // HOY_FIJO = 2026-10-12 -> mes actual = (2026, 10).
+
+    private static final String ID_B = "ins-b";
+
+    @Test
+    void asignarProrrogaRegistro_variosInstructoresActivos_asignaATodosYRetornaDtos() {
+        when(instructorsGateway.existeInstructorActivo(ID)).thenReturn(true);
+        when(instructorsGateway.existeInstructorActivo(ID_B)).thenReturn(true);
+        when(prorrogaGateway.upsertProrroga(any(ProrrogaRegistroAsistencia.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
+
+        List<ProrrogaDto> resultado = instructorServicio.asignarProrrogaRegistro(
+                List.of(ID, ID_B), 2026, 10, 10, ID_COORDINADOR);
+
+        assertEquals(2, resultado.size());
+        assertTrue(resultado.stream().allMatch(d -> d.getDias() == 10));
+        // finDeMes(2026,10) = 2026-10-31; fechaAsignacion = HOY_FIJO = 2026-10-12 ->
+        // base = finDeMes (posterior) -> limite = 2026-10-31 + 10 = 2026-11-10.
+        assertTrue(resultado.stream().allMatch(d -> "2026-11-10".equals(d.getFechaLimite())));
+        verify(prorrogaGateway, times(2)).upsertProrroga(any(ProrrogaRegistroAsistencia.class));
+    }
+
+    @Test
+    void asignarProrrogaRegistro_unIdInactivo_lanzaNoExisteExcepcionYNoGuardaNadaAtomico() {
+        when(instructorsGateway.existeInstructorActivo(ID)).thenReturn(true);
+        when(instructorsGateway.existeInstructorActivo("desconocido")).thenReturn(false);
+
+        assertThrows(NoExisteExcepcion.class, () -> instructorServicio.asignarProrrogaRegistro(
+                List.of(ID, "desconocido"), 2026, 10, 10, ID_COORDINADOR));
+
+        verify(prorrogaGateway, never()).upsertProrroga(any());
+        verify(prorrogaGateway, never()).eliminarProrroga(any(), anyInt(), anyInt());
+    }
+
+    @Test
+    void asignarProrrogaRegistro_idsDuplicados_seDeduplicanYSeProcesaUnaSolaVez() {
+        when(instructorsGateway.existeInstructorActivo(ID)).thenReturn(true);
+        when(prorrogaGateway.upsertProrroga(any(ProrrogaRegistroAsistencia.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
+
+        List<ProrrogaDto> resultado = instructorServicio.asignarProrrogaRegistro(
+                List.of(ID, ID, ID), 2026, 10, 10, ID_COORDINADOR);
+
+        assertEquals(1, resultado.size(), "los ids duplicados se deduplican");
+        verify(prorrogaGateway, times(1)).upsertProrroga(any(ProrrogaRegistroAsistencia.class));
+        verify(instructorsGateway, times(1)).existeInstructorActivo(ID);
+    }
+
+    @Test
+    void asignarProrrogaRegistro_diasCero_eliminaLaProrrogaYRetornaFechaLimiteNula() {
+        when(instructorsGateway.existeInstructorActivo(ID)).thenReturn(true);
+
+        List<ProrrogaDto> resultado = instructorServicio.asignarProrrogaRegistro(
+                List.of(ID), 2026, 10, 0, ID_COORDINADOR);
+
+        assertEquals(1, resultado.size());
+        assertEquals(0, resultado.get(0).getDias());
+        assertNull(resultado.get(0).getFechaLimite());
+        verify(prorrogaGateway).eliminarProrroga(ID, 2026, 10);
+        verify(prorrogaGateway, never()).upsertProrroga(any());
+    }
+
+    @Test
+    void asignarProrrogaRegistro_mesFuturo_lanzaProrrogaMesFuturoExcepcionSinGuardarNada() {
+        assertThrows(ProrrogaMesFuturoExcepcion.class, () -> instructorServicio.asignarProrrogaRegistro(
+                List.of(ID), 2026, 11, 10, ID_COORDINADOR));
+
+        verify(prorrogaGateway, never()).upsertProrroga(any());
+        verify(instructorsGateway, never()).existeInstructorActivo(any());
+    }
+
+    @Test
+    void asignarProrrogaRegistro_mesActual_esPermitidoNoEsFuturo() {
+        when(instructorsGateway.existeInstructorActivo(ID)).thenReturn(true);
+        when(prorrogaGateway.upsertProrroga(any(ProrrogaRegistroAsistencia.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
+
+        assertDoesNotThrow(() -> instructorServicio.asignarProrrogaRegistro(
+                List.of(ID), 2026, 10, 10, ID_COORDINADOR));
+    }
+
+    // Reabrir un mes YA vencido: anio/mes = septiembre 2026 (anterior a HOY_FIJO,
+    // octubre 2026) -- no es futuro, asi que se permite asignar la prorroga, y el
+    // limite se calcula desde HOY_FIJO (fecha de asignacion), no desde finDeMes.
+    @Test
+    void asignarProrrogaRegistro_mesAnteriorYaVencido_reabreUsandoFechaDeAsignacionComoBase() {
+        when(instructorsGateway.existeInstructorActivo(ID)).thenReturn(true);
+        when(prorrogaGateway.upsertProrroga(any(ProrrogaRegistroAsistencia.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
+
+        List<ProrrogaDto> resultado = instructorServicio.asignarProrrogaRegistro(
+                List.of(ID), 2026, 9, 5, ID_COORDINADOR);
+
+        // finDeMes(2026,9) = 2026-09-30; fechaAsignacion = HOY_FIJO = 2026-10-12 ->
+        // base = fechaAsignacion (posterior) -> limite = 2026-10-12 + 5 = 2026-10-17.
+        assertEquals("2026-10-17", resultado.get(0).getFechaLimite());
+    }
+
+    @Test
+    void asignarProrrogaRegistro_auditoria_emiteUnLogPorInstructorConSoloIdentificadores() {
+        when(instructorsGateway.existeInstructorActivo(ID)).thenReturn(true);
+        when(prorrogaGateway.upsertProrroga(any(ProrrogaRegistroAsistencia.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
+
+        instructorServicio.asignarProrrogaRegistro(List.of(ID), 2026, 10, 10, ID_COORDINADOR);
+
+        assertEquals(1, logAppender.list.size());
+        String mensaje = logAppender.list.get(0).getFormattedMessage();
+        assertTrue(mensaje.contains(ID));
+        assertTrue(mensaje.contains(ID_COORDINADOR));
+    }
+
+    @Test
+    void obtenerProrrogasRegistro_retornaListaDelMes() {
+        ProrrogaRegistroAsistencia prorroga = new ProrrogaRegistroAsistencia();
+        prorroga.setIdInstructor(ID);
+        prorroga.setDias(10);
+        prorroga.setFechaLimite(LocalDate.of(2026, 11, 10));
+        when(prorrogaGateway.obtenerProrrogasPorMes(2026, 10)).thenReturn(Map.of(ID, prorroga));
+
+        List<ProrrogaDto> resultado = instructorServicio.obtenerProrrogasRegistro(2026, 10);
+
+        assertEquals(1, resultado.size());
+        assertEquals(ID, resultado.get(0).getIdInstructor());
+        assertEquals("2026-11-10", resultado.get(0).getFechaLimite());
+    }
+
+    @Test
+    void obtenerProrrogasRegistro_sinProrrogasEnElMes_retornaListaVacia() {
+        when(prorrogaGateway.obtenerProrrogasPorMes(2026, 10)).thenReturn(Map.of());
+
+        assertTrue(instructorServicio.obtenerProrrogasRegistro(2026, 10).isEmpty());
+    }
+
+    @Test
+    void obtenerProrrogasRegistro_mesFuturo_lanzaProrrogaMesFuturoExcepcion() {
+        assertThrows(ProrrogaMesFuturoExcepcion.class,
+                () -> instructorServicio.obtenerProrrogasRegistro(2026, 11));
+
+        verify(prorrogaGateway, never()).obtenerProrrogasPorMes(anyInt(), anyInt());
+    }
+
+    @Test
+    void obtenerProrrogasRegistro_mesActual_esPermitido() {
+        when(prorrogaGateway.obtenerProrrogasPorMes(2026, 10)).thenReturn(Map.of());
+
+        assertDoesNotThrow(() -> instructorServicio.obtenerProrrogasRegistro(2026, 10));
     }
 }

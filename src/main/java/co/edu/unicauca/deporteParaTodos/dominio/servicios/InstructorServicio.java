@@ -4,6 +4,7 @@ import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import org.slf4j.Logger;
@@ -15,17 +16,22 @@ import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosEntrada.IInstr
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IInstructorGateway;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IPerfilGateway;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IPlazoCargaAtencionesGateway;
+import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IProrrogaRegistroAsistenciaGateway;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Instructor;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Perfil;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.PeriodoAcademico;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.PlazoCargaAtenciones;
+import co.edu.unicauca.deporteParaTodos.dominio.modelo.ProrrogaRegistroAsistencia;
+import co.edu.unicauca.deporteParaTodos.dominio.modelo.VentanaRegistroAsistencia;
 import co.edu.unicauca.deporteParaTodos.dominio.utils.LogSanitizer;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.InstructorDto;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.PerfilDto;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.PlazoCargaDto;
+import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.ProrrogaDto;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.ErrorInternoException;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.ListadoVacioExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.PlazoCargaInvalidoExcepcion;
+import co.edu.unicauca.deporteParaTodos.dominio.excepciones.ProrrogaMesFuturoExcepcion;
 import co.edu.unicauca.deporteParaTodos.infraestructura.mappers.PerfilMapper;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.NoExisteExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.YaExisteElementoExcepcion;
@@ -43,6 +49,9 @@ public class InstructorServicio implements IInstructorServicio {
 
     @Autowired
     private IPlazoCargaAtencionesGateway plazoCargaGateway;
+
+    @Autowired
+    private IProrrogaRegistroAsistenciaGateway prorrogaGateway;
 
     @Autowired
     private Clock clock;
@@ -249,6 +258,76 @@ public class InstructorServicio implements IInstructorServicio {
                 .contarClasesConAsistenciaPorInstructor(vigente.getAnio(), vigente.getPeriodo())
                 .getOrDefault(instructorId, 0);
         return PlazoCargaDto.fabricarDeModelo(guardado, clasesConAsistencia, hoy);
+    }
+
+    // SCRUM-80 (rediseno, bloque 1 de 3): prorroga de registro de asistencia
+    // por instructor y mes. mes futuro (relativo al Clock) -> 422.
+    private void validarMesNoFuturo(int anio, int mes) {
+        LocalDate hoy = LocalDate.now(clock);
+        if (anio > hoy.getYear() || (anio == hoy.getYear() && mes > hoy.getMonthValue())) {
+            throw new ProrrogaMesFuturoExcepcion(
+                    "No se puede asignar ni consultar una prorroga para " + anio + "-" + mes
+                            + " porque es un mes futuro (hoy: " + hoy + ")");
+        }
+    }
+
+    @Override
+    public List<ProrrogaDto> obtenerProrrogasRegistro(int anio, int mes) {
+        validarMesNoFuturo(anio, mes);
+        List<ProrrogaDto> resultado = new ArrayList<>();
+        prorrogaGateway.obtenerProrrogasPorMes(anio, mes)
+                .values()
+                .forEach(prorroga -> resultado.add(ProrrogaDto.fabricarDeModelo(prorroga)));
+        return resultado;
+    }
+
+    // Atomica: primero valida TODOS los ids (deduplicados) antes de tocar
+    // cualquier fila -- si alguno no es instructor activo, NoExisteExcepcion y
+    // NINGUNA fila se guarda ni se elimina. dias=0 elimina (borrado fisico); el
+    // limite de los demas se calcula con VentanaRegistroAsistencia (misma regla
+    // de dominio que valida el registro, para que ambos lados coincidan).
+    @Override
+    public List<ProrrogaDto> asignarProrrogaRegistro(
+            List<String> idsInstructores, int anio, int mes, int dias, String idCoordinador) {
+        validarMesNoFuturo(anio, mes);
+
+        List<String> idsUnicos = new ArrayList<>(new LinkedHashSet<>(idsInstructores));
+        for (String idInstructor : idsUnicos) {
+            if (!instructorsGateway.existeInstructorActivo(idInstructor)) {
+                throw new NoExisteExcepcion("No existe el instructor con el identificador " + idInstructor);
+            }
+        }
+
+        LocalDate hoy = LocalDate.now(clock);
+        LocalDate finDeMes = VentanaRegistroAsistencia.finDeMes(anio, mes);
+        LocalDateTime fechaAsignacion = LocalDateTime.now(clock);
+
+        List<ProrrogaDto> resultado = new ArrayList<>();
+        for (String idInstructor : idsUnicos) {
+            if (dias == 0) {
+                prorrogaGateway.eliminarProrroga(idInstructor, anio, mes);
+                ProrrogaRegistroAsistencia eliminada = new ProrrogaRegistroAsistencia();
+                eliminada.setIdInstructor(idInstructor);
+                eliminada.setDias(0);
+                resultado.add(ProrrogaDto.fabricarDeModelo(eliminada));
+            } else {
+                LocalDate limite = VentanaRegistroAsistencia.calcularLimiteProrroga(finDeMes, hoy, dias);
+                ProrrogaRegistroAsistencia datos = new ProrrogaRegistroAsistencia();
+                datos.setIdInstructor(idInstructor);
+                datos.setAnio(anio);
+                datos.setMes(mes);
+                datos.setDias(dias);
+                datos.setFechaLimite(limite);
+                datos.setIdCoordinador(idCoordinador);
+                datos.setFechaAsignacion(fechaAsignacion);
+                ProrrogaRegistroAsistencia guardado = prorrogaGateway.upsertProrroga(datos);
+                resultado.add(ProrrogaDto.fabricarDeModelo(guardado));
+            }
+            // Rastro de auditoria: solo identificadores (Sonar java:S5145, log forging).
+            LOGGER.info("prorroga de registro de asistencia de {} para {}-{} asignada ({} dias) por {}",
+                    LogSanitizer.sanitizar(idInstructor), anio, mes, dias, LogSanitizer.sanitizar(idCoordinador));
+        }
+        return resultado;
     }
 
 }
