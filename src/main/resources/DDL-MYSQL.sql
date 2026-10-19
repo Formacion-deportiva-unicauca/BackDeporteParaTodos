@@ -190,33 +190,6 @@ CREATE TABLE tbl_prorroga_registro_asistencia (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
--- tbl_novedad_clase
--- Registro de novedades de clases no realizadas. Una novedad por grupo y fecha.
--- FK_NOVEDAD_GRUPO: RESTRICT (el grupo no se borra f�sicamente).
--- UQ_TBL_NOVEDAD_CLASE: garantiza s�lo una novedad activa por grupo y fecha.
--- --------------------------------------------------------
-CREATE TABLE tbl_novedad_clase (
-    NOV_CODIGO            BIGINT       NOT NULL AUTO_INCREMENT,
-    CAT_TITULO            VARCHAR(100) NOT NULL,
-    CUR_NOMBRE            VARCHAR(100) NOT NULL,
-    GRP_ANIO              BIGINT       NOT NULL,
-    GRP_ITERABLE          BIGINT       NOT NULL,
-    NOV_FECHA             DATE         NOT NULL,
-    NOV_MOTIVO            VARCHAR(50)  NOT NULL,
-    NOV_DESCRIPCION       VARCHAR(1000),
-    NOV_USUARIO_CREADOR   VARCHAR(50)  NOT NULL,
-    NOV_FECHA_CREACION    DATETIME     NOT NULL,
-    NOV_USUARIO_MODIFICADOR VARCHAR(50),
-    NOV_FECHA_MODIFICACION DATETIME,
-    NOV_VERSION           INT          NOT NULL DEFAULT 0,
-    META_ELIMINADO        INT          NOT NULL DEFAULT 0,
-    CONSTRAINT FK_NOVEDAD_GRUPO FOREIGN KEY (CAT_TITULO, CUR_NOMBRE, GRP_ANIO, GRP_ITERABLE)
-        REFERENCES tbl_grupo (CAT_TITULO, CUR_NOMBRE, GRP_ANIO, GRP_ITERABLE) ON DELETE RESTRICT,
-    CONSTRAINT PK_TBL_NOVEDAD_CLASE PRIMARY KEY (NOV_CODIGO),
-    CONSTRAINT UQ_TBL_NOVEDAD_CLASE UNIQUE (CAT_TITULO, CUR_NOMBRE, GRP_ANIO, GRP_ITERABLE, NOV_FECHA, META_ELIMINADO)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- --------------------------------------------------------
 -- tbl_facultad
 -- --------------------------------------------------------
 CREATE TABLE tbl_facultad (
@@ -288,6 +261,33 @@ CREATE TABLE tbl_grupo (
     CONSTRAINT FK_GRUPO_CURSO      FOREIGN KEY (CUR_NOMBRE, CAT_TITULO) REFERENCES tbl_curso (CUR_NOMBRE, CAT_TITULO)       ON DELETE RESTRICT,
     CONSTRAINT FK_GRUPO_INSTRUCTOR FOREIGN KEY (PERF_ID)                REFERENCES tbl_instructor (PERF_ID),
     CONSTRAINT PK_TBL_GRUPO        PRIMARY KEY (CAT_TITULO, CUR_NOMBRE, GRP_ANIO, GRP_ITERABLE)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+-- tbl_novedad_clase
+-- Registro de novedades de clases no realizadas. Una novedad por grupo y fecha.
+-- FK_NOVEDAD_GRUPO: RESTRICT (el grupo no se borra f�sicamente).
+-- UQ_TBL_NOVEDAD_CLASE: garantiza s�lo una novedad activa por grupo y fecha.
+-- --------------------------------------------------------
+CREATE TABLE tbl_novedad_clase (
+    NOV_CODIGO            BIGINT       NOT NULL AUTO_INCREMENT,
+    CAT_TITULO            VARCHAR(100) NOT NULL,
+    CUR_NOMBRE            VARCHAR(100) NOT NULL,
+    GRP_ANIO              BIGINT       NOT NULL,
+    GRP_ITERABLE          BIGINT       NOT NULL,
+    NOV_FECHA             DATE         NOT NULL,
+    NOV_MOTIVO            VARCHAR(50)  NOT NULL,
+    NOV_DESCRIPCION       VARCHAR(1000),
+    NOV_USUARIO_CREADOR   VARCHAR(50)  NOT NULL,
+    NOV_FECHA_CREACION    DATETIME     NOT NULL,
+    NOV_USUARIO_MODIFICADOR VARCHAR(50),
+    NOV_FECHA_MODIFICACION DATETIME,
+    NOV_VERSION           INT          NOT NULL DEFAULT 0,
+    META_ELIMINADO        INT          NOT NULL DEFAULT 0,
+    CONSTRAINT FK_NOVEDAD_GRUPO FOREIGN KEY (CAT_TITULO, CUR_NOMBRE, GRP_ANIO, GRP_ITERABLE)
+        REFERENCES tbl_grupo (CAT_TITULO, CUR_NOMBRE, GRP_ANIO, GRP_ITERABLE) ON DELETE RESTRICT,
+    CONSTRAINT PK_TBL_NOVEDAD_CLASE PRIMARY KEY (NOV_CODIGO),
+    CONSTRAINT UQ_TBL_NOVEDAD_CLASE UNIQUE (CAT_TITULO, CUR_NOMBRE, GRP_ANIO, GRP_ITERABLE, NOV_FECHA, META_ELIMINADO)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
