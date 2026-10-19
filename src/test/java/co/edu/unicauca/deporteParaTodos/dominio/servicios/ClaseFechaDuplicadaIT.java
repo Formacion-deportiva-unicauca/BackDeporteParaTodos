@@ -214,7 +214,7 @@ class ClaseFechaDuplicadaIT {
     @Test
     void postClase_http_fechaEnviada_sePersisteExactamenteIgualEnBd() throws Exception {
         int iterable = crearGrupoFresco();
-        String fechaEnviada = "2026-11-11";
+        String fechaEnviada = LocalDate.now().toString();
 
         mockMvc.perform(post("/api/v2/claseGrupo")
                 .contentType("application/json")
@@ -243,7 +243,7 @@ class ClaseFechaDuplicadaIT {
     @Test
     void postClase_http_fechaDuplicadaMismoGrupo_reutilizaClaseExistente() throws Exception {
         int iterable = crearGrupoFresco();
-        String fecha = "2026-12-01";
+        String fecha = LocalDate.now().toString();
         ObjectMapper mapper = new ObjectMapper();
 
         MvcResult primero = mockMvc.perform(post("/api/v2/claseGrupo")
@@ -272,16 +272,18 @@ class ClaseFechaDuplicadaIT {
     @Test
     void postClase_http_fechasDistintasMismoGrupo_aceptaAmbas() throws Exception {
         int iterable = crearGrupoFresco();
+        String fechaDia1 = LocalDate.now().toString();
+        String fechaDia2 = LocalDate.now().minusDays(1).toString();
 
         mockMvc.perform(post("/api/v2/claseGrupo")
                 .contentType("application/json")
-                .content(bodyClase(iterable, "2026-12-15", "clase dia 1"))
+                .content(bodyClase(iterable, fechaDia1, "clase dia 1"))
                 .header("Authorization", "Bearer " + buildJwt("Instructor", INSTRUCTOR_SEED_ID)))
                 .andExpect(status().isCreated());
 
         mockMvc.perform(post("/api/v2/claseGrupo")
                 .contentType("application/json")
-                .content(bodyClase(iterable, "2026-12-16", "clase dia 2"))
+                .content(bodyClase(iterable, fechaDia2, "clase dia 2"))
                 .header("Authorization", "Bearer " + buildJwt("Instructor", INSTRUCTOR_SEED_ID)))
                 .andExpect(status().isCreated());
     }
