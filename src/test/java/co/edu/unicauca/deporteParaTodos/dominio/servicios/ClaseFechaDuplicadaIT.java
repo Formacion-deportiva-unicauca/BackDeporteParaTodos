@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.time.DayOfWeek;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Base64;
@@ -38,6 +39,7 @@ import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosEntrada.ICateg
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosEntrada.ICursoServicio;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosEntrada.IGrupoServicio;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosEntrada.IImagenServicio;
+import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosEntrada.IHorarioServicio;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.NoExisteExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.YaExisteElementoExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Categoria;
@@ -45,6 +47,8 @@ import co.edu.unicauca.deporteParaTodos.dominio.modelo.Curso;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.EstadoCurso;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.EstadoInscripciones;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Grupo;
+import co.edu.unicauca.deporteParaTodos.dominio.modelo.Horario;
+import co.edu.unicauca.deporteParaTodos.dominio.modelo.CalculadoraDuracionClase;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.ImagenDto;
 
 /**
@@ -94,6 +98,9 @@ class ClaseFechaDuplicadaIT {
 
     @Autowired
     private IImagenServicio imagenServicio;
+
+    @Autowired
+    private IHorarioServicio horarioServicio;
 
     @Autowired
     private MockMvc mockMvc;
@@ -148,7 +155,25 @@ class ClaseFechaDuplicadaIT {
         grupo.setCupos(5);
         grupo.setFechaCreacion(LocalDate.now());
         grupo.setPeriodo(1);
-        return grupoServicio.insertarGrupo(grupo).getIterable();
+        Grupo insertado = grupoServicio.insertarGrupo(grupo);
+        crearHorariosParaGrupo(insertado);
+        return insertado.getIterable();
+    }
+
+    private void crearHorariosParaGrupo(Grupo grupo) {
+        for (DayOfWeek dia : DayOfWeek.values()) {
+            Horario h = new Horario();
+            h.setCategoria(grupo.getCategoria());
+            h.setCurso(grupo.getCurso());
+            h.setAnio(grupo.getAnio());
+            h.setIterable(grupo.getIterable());
+            h.setDia(CalculadoraDuracionClase.nombreDia(dia));
+            h.setHoraInicio("08:00");
+            h.setHoraFin("10:00");
+            h.setEscenario("Cancha IT");
+            h.setEliminado(0);
+            horarioServicio.insertarHorario(h);
+        }
     }
 
     private String buildJwt(String rol, String perfId) {

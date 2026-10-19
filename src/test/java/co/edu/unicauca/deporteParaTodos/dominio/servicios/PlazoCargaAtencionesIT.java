@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.time.Clock;
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Base64;
@@ -44,6 +45,7 @@ import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosEntrada.IClase
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosEntrada.ICursoServicio;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosEntrada.IGrupoServicio;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosEntrada.IImagenServicio;
+import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosEntrada.IHorarioServicio;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosEntrada.IInstructorServicio;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IPerfilGateway;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.NoExisteExcepcion;
@@ -56,6 +58,8 @@ import co.edu.unicauca.deporteParaTodos.dominio.modelo.EstadoCurso;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.EstadoInscripciones;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.EstadoReporte;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Grupo;
+import co.edu.unicauca.deporteParaTodos.dominio.modelo.Horario;
+import co.edu.unicauca.deporteParaTodos.dominio.modelo.CalculadoraDuracionClase;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.PeriodoAcademico;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Perfil;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.ImagenDto;
@@ -119,6 +123,9 @@ class PlazoCargaAtencionesIT {
 
     @Autowired
     private IImagenServicio imagenServicio;
+
+    @Autowired
+    private IHorarioServicio horarioServicio;
 
     @Autowired
     private IPerfilGateway perfilGateway;
@@ -308,7 +315,25 @@ class PlazoCargaAtencionesIT {
         // real (la misma que PeriodoAcademico reutiliza) lo calcule.
         nuevo.setPeriodo(0);
         // Los grupos se crean con insertarGrupo y se usa el iterable que DEVUELVE.
-        return grupoServicio.insertarGrupo(nuevo);
+        Grupo insertado = grupoServicio.insertarGrupo(nuevo);
+        crearHorariosParaGrupo(insertado);
+        return insertado;
+    }
+
+    private void crearHorariosParaGrupo(Grupo grupo) {
+        for (DayOfWeek dia : DayOfWeek.values()) {
+            Horario h = new Horario();
+            h.setCategoria(grupo.getCategoria());
+            h.setCurso(grupo.getCurso());
+            h.setAnio(grupo.getAnio());
+            h.setIterable(grupo.getIterable());
+            h.setDia(CalculadoraDuracionClase.nombreDia(dia));
+            h.setHoraInicio("08:00");
+            h.setHoraFin("10:00");
+            h.setEscenario("Cancha IT");
+            h.setEliminado(0);
+            horarioServicio.insertarHorario(h);
+        }
     }
 
     private Clase crearClase(Grupo grupo, String idInstructor, LocalDate fecha,
