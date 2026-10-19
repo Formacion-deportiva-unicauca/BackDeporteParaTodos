@@ -30,6 +30,8 @@ import co.edu.unicauca.deporteParaTodos.dominio.excepciones.RegistroAsistenciaVe
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.ProrrogaMesFuturoExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.JustificacionInvalidaExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.DuracionManualInvalidaExcepcion;
+import co.edu.unicauca.deporteParaTodos.dominio.excepciones.MesFuturoExcepcion;
+import co.edu.unicauca.deporteParaTodos.dominio.excepciones.DiaFueraDeHorarioExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.InsercionFallidaExepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.LimiteCursosExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.ListadoVacioExcepcion;
@@ -404,6 +406,26 @@ public class RestExceptionHandler {
         @ExceptionHandler(DuracionManualInvalidaExcepcion.class)
         public ResponseEntity<Error> GenericException(final HttpServletRequest req, final DuracionManualInvalidaExcepcion ex) {
                 logExcepcion("DuracionManualInvalidaExcepcion", req, ex);
+                return buildDomainErrorResponse(req,
+                                ex != null ? ex.getCodigo()       : "",
+                                ex != null ? ex.getLlaveMensaje() : "",
+                                ex != null ? ex.getMessage()      : "",
+                                HttpStatus.UNPROCESSABLE_ENTITY);
+        }
+
+        @ExceptionHandler(MesFuturoExcepcion.class)
+        public ResponseEntity<Error> GenericException(final HttpServletRequest req, final MesFuturoExcepcion ex) {
+                logExcepcion("MesFuturoExcepcion", req, ex);
+                return buildDomainErrorResponse(req,
+                                ex != null ? ex.getCodigo()       : "",
+                                ex != null ? ex.getLlaveMensaje() : "",
+                                ex != null ? ex.getMessage()      : "",
+                                HttpStatus.UNPROCESSABLE_ENTITY);
+        }
+
+        @ExceptionHandler(DiaFueraDeHorarioExcepcion.class)
+        public ResponseEntity<Error> GenericException(final HttpServletRequest req, final DiaFueraDeHorarioExcepcion ex) {
+                logExcepcion("DiaFueraDeHorarioExcepcion", req, ex);
                 return buildDomainErrorResponse(req,
                                 ex != null ? ex.getCodigo()       : "",
                                 ex != null ? ex.getLlaveMensaje() : "",

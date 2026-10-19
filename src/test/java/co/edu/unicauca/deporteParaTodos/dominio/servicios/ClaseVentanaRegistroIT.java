@@ -106,6 +106,7 @@ class ClaseVentanaRegistroIT {
     private String alumno1;
     private Grupo grupoConHorario;
     private Grupo grupoSinHorario;
+    private Grupo grupoTodosLosDias;
     private LocalDate hoy;
 
     @BeforeAll
@@ -142,6 +143,17 @@ class ClaseVentanaRegistroIT {
                 grupoConHorario.getAnio(), grupoConHorario.getIterable(), diaDeHoy, "14:00", "16:00", "Cancha", 0));
 
         grupoSinHorario = crearGrupo("SIN-" + sufijo, instructorA, hoy);
+
+        // SCRUM-80 (correccion del cliente, 15 oct 2026): grupo con una franja en
+        // CADA dia de la semana -- lo usan los tests de plazo/prorroga que
+        // registran en fechas pasadas arbitrarias (mes anterior, etc.) y no
+        // quieren que la regla de dia-en-horario (no relacionada con lo que esos
+        // tests verifican) los bloquee por coincidencia de dia de la semana.
+        grupoTodosLosDias = crearGrupo("TODOSDIAS-" + sufijo, instructorA, hoy);
+        for (String dia : new String[] {"LUNES", "MARTES", "MIERCOLES", "JUEVES", "VIERNES", "SABADO", "DOMINGO"}) {
+            horarioServicio.insertarHorario(new Horario(null, CATEGORIA, grupoTodosLosDias.getCurso(),
+                    grupoTodosLosDias.getAnio(), grupoTodosLosDias.getIterable(), dia, "06:00", "07:00", "Cancha", 0));
+        }
     }
 
     @AfterAll
@@ -298,34 +310,64 @@ class ClaseVentanaRegistroIT {
                 .andExpect(status().isUnprocessableEntity());
     }
 
-    // ── POST /claseGrupo: sin franja ese dia -- justificacion + duracion manual ─
+    // ── POST /claseGrupo: dia-en-horario (correccion del cliente, 15 oct 2026) ──
+    // El Instructor ya NO puede llegar a la rama de justificacion/duracion
+    // manual -- si el grupo no tiene horario ese dia, se le bloquea con
+    // DiaFueraDeHorarioExcepcion (GC-0024) ANTES de evaluar justificacion.
 
     @Test
-    void postClase_sinFranjaSinJustificacion_retorna422() throws Exception {
+    void postClase_instructorGrupoSinNingunHorario_retorna422Nuevo() throws Exception {
         mockMvc.perform(post("/api/v2/claseGrupo")
                         .contentType("application/json")
                         .content(payloadClase(grupoSinHorario, hoy, 1, 0, null))
                         .header("Authorization", "Bearer " + buildJwt("Instructor", instructorA)))
-                .andExpect(status().isUnprocessableEntity());
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.codigoError").value("GC-0024"));
     }
 
     @Test
-    void postClase_sinFranjaDuracionManualInvalida_retorna422() throws Exception {
+    void postClase_instructorDiaSinFranjaEnGrupoConHorarioOtroDia_retorna422Nuevo() throws Exception {
+        // grupoConHorario SI tiene franja, pero no en hoy.minusDays(1) (dia distinto).
+        mockMvc.perform(post("/api/v2/claseGrupo")
+                        .contentType("application/json")
+                        .content(payloadClase(grupoConHorario, hoy.minusDays(1), 1, 0, null))
+                        .header("Authorization", "Bearer " + buildJwt("Instructor", instructorA)))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.codigoError").value("GC-0024"));
+    }
+
+    // ── POST /claseGrupo: sin franja ese dia -- justificacion + duracion manual
+    // (Coordinador/Administrador -- comportamiento sin cambios, no sujetos a la
+    // regla de dia-en-horario) ──────────────────────────────────────────────
+
+    @Test
+    void postClase_coordinadorSinFranjaSinJustificacion_retorna422() throws Exception {
+        mockMvc.perform(post("/api/v2/claseGrupo")
+                        .contentType("application/json")
+                        .content(payloadClase(grupoSinHorario, hoy, 1, 0, null))
+                        .header("Authorization", "Bearer " + buildJwt("Coordinador", COORD)))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.codigoError").value("GC-0021"));
+    }
+
+    @Test
+    void postClase_coordinadorSinFranjaDuracionManualInvalida_retorna422() throws Exception {
         mockMvc.perform(post("/api/v2/claseGrupo")
                         .contentType("application/json")
                         .content(payloadClase(grupoSinHorario, hoy.minusDays(1), 0, 0,
                                 "justificacion valida de mas de diez caracteres"))
-                        .header("Authorization", "Bearer " + buildJwt("Instructor", instructorA)))
-                .andExpect(status().isUnprocessableEntity());
+                        .header("Authorization", "Bearer " + buildJwt("Coordinador", COORD)))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.codigoError").value("GC-0022"));
     }
 
     @Test
-    void postClase_sinFranjaConJustificacionYDuracionValidas_retorna201ConDuracionManual() throws Exception {
+    void postClase_coordinadorSinFranjaConJustificacionYDuracionValidas_retorna201ConDuracionManual() throws Exception {
         mockMvc.perform(post("/api/v2/claseGrupo")
                         .contentType("application/json")
                         .content(payloadClase(grupoSinHorario, hoy.minusDays(2), 2, 30,
                                 "instalacion en mantenimiento, clase dictada en otro espacio"))
-                        .header("Authorization", "Bearer " + buildJwt("Instructor", instructorA)))
+                        .header("Authorization", "Bearer " + buildJwt("Coordinador", COORD)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.horas").value(2))
                 .andExpect(jsonPath("$.minutos").value(30))
@@ -337,11 +379,12 @@ class ClaseVentanaRegistroIT {
     @Test
     void postClase_instructorMesAnterior_bloqueadoLuegoPermitidoConProrroga() throws Exception {
         LocalDate fechaMesAnterior = hoy.minusMonths(1);
-        String justificacion = "clase de recuperacion del mes anterior, registrada en el IT";
-
+        // grupoTodosLosDias tiene franja TODOS los dias -- este test prueba
+        // plazo/prorroga, no dia-en-horario, asi que no debe bloquearse por la
+        // regla nueva sin importar en que dia de la semana caiga fechaMesAnterior.
         mockMvc.perform(post("/api/v2/claseGrupo")
                         .contentType("application/json")
-                        .content(payloadClase(grupoSinHorario, fechaMesAnterior, 1, 0, justificacion))
+                        .content(payloadClase(grupoTodosLosDias, fechaMesAnterior, 1, 0, null))
                         .header("Authorization", "Bearer " + buildJwt("Instructor", instructorA)))
                 .andExpect(status().isUnprocessableEntity());
 
@@ -349,7 +392,7 @@ class ClaseVentanaRegistroIT {
 
         mockMvc.perform(post("/api/v2/claseGrupo")
                         .contentType("application/json")
-                        .content(payloadClase(grupoSinHorario, fechaMesAnterior, 1, 0, justificacion))
+                        .content(payloadClase(grupoTodosLosDias, fechaMesAnterior, 1, 0, null))
                         .header("Authorization", "Bearer " + buildJwt("Instructor", instructorA)))
                 .andExpect(status().isCreated());
     }

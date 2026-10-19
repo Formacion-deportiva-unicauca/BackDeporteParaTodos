@@ -23,6 +23,21 @@ public final class VentanaRegistroAsistencia {
         return YearMonth.of(anio, mes).atEndOfMonth();
     }
 
+    public static LocalDate inicioDeMes(int anio, int mes) {
+        return YearMonth.of(anio, mes).atDay(1);
+    }
+
+    // Fecha minima desde la que el Instructor puede registrar (SCRUM-80 bloque 3):
+    // normalmente el 1o del mes actual; si tiene una prorroga TODAVIA VIGENTE
+    // (limiteProrrogaMesAnterior >= hoy) para el mes anterior, se habilita tambien
+    // ese mes, asi que baja al 1o del mes anterior. Sin prorroga -> 1o del mes actual.
+    public static LocalDate calcularFechaMinima(LocalDate hoy, LocalDate limiteProrrogaMesAnterior) {
+        LocalDate inicioMesActual = hoy.withDayOfMonth(1);
+        boolean prorrogaMesAnteriorVigente = limiteProrrogaMesAnterior != null
+                && !hoy.isAfter(limiteProrrogaMesAnterior);
+        return prorrogaMesAnteriorVigente ? inicioMesActual.minusMonths(1) : inicioMesActual;
+    }
+
     // Limite efectivo de una prorroga EN EL MOMENTO EN QUE EL COORDINADOR LA
     // ASIGNA: max(finDeMes, fechaAsignacion) + dias. Usar la fecha de
     // asignacion como base (en vez de finDeMes) cuando esta es posterior

@@ -151,4 +151,51 @@ class VentanaRegistroAsistenciaTest {
         assertThrows(FechaClaseFuturaExcepcion.class, () -> VentanaRegistroAsistencia.validarRegistro(
                 LocalDate.of(2026, 10, 20), LocalDate.of(2026, 10, 15), true, null));
     }
+
+    // ── inicioDeMes (bloque 3) ───────────────────────────────────────────
+
+    @Test
+    void inicioDeMes_retornaPrimerDia() {
+        assertEquals(LocalDate.of(2026, 10, 1), VentanaRegistroAsistencia.inicioDeMes(2026, 10));
+        assertEquals(LocalDate.of(2026, 2, 1), VentanaRegistroAsistencia.inicioDeMes(2026, 2));
+    }
+
+    // ── calcularFechaMinima (bloque 3) ───────────────────────────────────
+
+    @Test
+    void calcularFechaMinima_sinProrrogaMesAnterior_esElPrimerDiaDelMesActual() {
+        assertEquals(LocalDate.of(2026, 10, 1),
+                VentanaRegistroAsistencia.calcularFechaMinima(LocalDate.of(2026, 10, 15), null));
+    }
+
+    @Test
+    void calcularFechaMinima_prorrogaMesAnteriorVigente_bajaAlPrimerDiaDelMesAnterior() {
+        // limiteProrroga (2026-10-20) >= hoy (2026-10-15) -> mes anterior habilitado.
+        assertEquals(LocalDate.of(2026, 9, 1),
+                VentanaRegistroAsistencia.calcularFechaMinima(
+                        LocalDate.of(2026, 10, 15), LocalDate.of(2026, 10, 20)));
+    }
+
+    @Test
+    void calcularFechaMinima_prorrogaDelMesAnteriorExactamenteHoy_esVigente() {
+        // limite == hoy todavia es vigente (inclusive).
+        assertEquals(LocalDate.of(2026, 9, 1),
+                VentanaRegistroAsistencia.calcularFechaMinima(
+                        LocalDate.of(2026, 10, 15), LocalDate.of(2026, 10, 15)));
+    }
+
+    @Test
+    void calcularFechaMinima_prorrogaMesAnteriorVencida_seQuedaEnElMesActual() {
+        // limite (2026-10-14) < hoy (2026-10-15) -> vencida, se ignora.
+        assertEquals(LocalDate.of(2026, 10, 1),
+                VentanaRegistroAsistencia.calcularFechaMinima(
+                        LocalDate.of(2026, 10, 15), LocalDate.of(2026, 10, 14)));
+    }
+
+    @Test
+    void calcularFechaMinima_cambioDeAnio_eneroBajaADiciembreDelAnioAnterior() {
+        assertEquals(LocalDate.of(2025, 12, 1),
+                VentanaRegistroAsistencia.calcularFechaMinima(
+                        LocalDate.of(2026, 1, 10), LocalDate.of(2026, 1, 20)));
+    }
 }

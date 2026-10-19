@@ -6,6 +6,8 @@ import co.edu.unicauca.deporteParaTodos.dominio.excepciones.PlazoCargaInvalidoEx
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.ProrrogaMesFuturoExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Instructor;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Perfil;
+import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.AvisoRegistroDto;
+import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.EstadoRegistroDto;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.PlazoCargaDto;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.ProrrogaDto;
 import ch.qos.logback.classic.Logger;
@@ -830,5 +832,165 @@ class InstructorRestSecurityTest {
         } finally {
             logbackLogger.detachAppender(appender);
         }
+    }
+
+    // ── GET /api/v2/instructores/estado-registro — SCRUM-80 (bloque 3) ──────
+
+    private EstadoRegistroDto estadoRegistroDeEjemplo() {
+        return new EstadoRegistroDto("ins1", "Prof. Prueba", 2026, 10, "COMPLETO", 1, 1, "2026-10-31", "2026-10-12");
+    }
+
+    @Test
+    void obtenerEstadoRegistro_rolCoordinador_retorna200() throws Exception {
+        when(servicio.obtenerEstadoRegistro(null, null)).thenReturn(java.util.List.of(estadoRegistroDeEjemplo()));
+
+        mockMvc.perform(get("/api/v2/instructores/estado-registro")
+                .header("Authorization", "Bearer " + buildJwt("Coordinador", "coord1")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].idInstructor").value("ins1"))
+                .andExpect(jsonPath("$[0].estado").value("COMPLETO"))
+                .andExpect(jsonPath("$[0].gruposActivos").value(1))
+                .andExpect(jsonPath("$[0].fechaLimite").value("2026-10-31"));
+
+        verify(servicio).obtenerEstadoRegistro(null, null);
+    }
+
+    @Test
+    void obtenerEstadoRegistro_rolAdministrador_retorna200() throws Exception {
+        when(servicio.obtenerEstadoRegistro(null, null)).thenReturn(java.util.List.of(estadoRegistroDeEjemplo()));
+
+        mockMvc.perform(get("/api/v2/instructores/estado-registro")
+                .header("Authorization", "Bearer " + buildJwt("Administrador", "admin1")))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void obtenerEstadoRegistro_conAnioYMes_retorna200() throws Exception {
+        when(servicio.obtenerEstadoRegistro(2026, 9)).thenReturn(java.util.List.of(estadoRegistroDeEjemplo()));
+
+        mockMvc.perform(get("/api/v2/instructores/estado-registro")
+                .param("anio", "2026")
+                .param("mes", "9")
+                .header("Authorization", "Bearer " + buildJwt("Coordinador", "coord1")))
+                .andExpect(status().isOk());
+
+        verify(servicio).obtenerEstadoRegistro(2026, 9);
+    }
+
+    @Test
+    void obtenerEstadoRegistro_rolInstructor_retorna403() throws Exception {
+        mockMvc.perform(get("/api/v2/instructores/estado-registro")
+                .header("Authorization", "Bearer " + buildJwt("Instructor", "ins1")))
+                .andExpect(status().isForbidden());
+
+        verify(servicio, never()).obtenerEstadoRegistro(any(), any());
+    }
+
+    @Test
+    void obtenerEstadoRegistro_rolAlumno_retorna403() throws Exception {
+        mockMvc.perform(get("/api/v2/instructores/estado-registro")
+                .header("Authorization", "Bearer " + buildJwt("Alumno", "alum1")))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void obtenerEstadoRegistro_sinToken_retorna401() throws Exception {
+        mockMvc.perform(get("/api/v2/instructores/estado-registro"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void obtenerEstadoRegistro_mesFueraDeRango_retorna400() throws Exception {
+        mockMvc.perform(get("/api/v2/instructores/estado-registro")
+                .param("anio", "2026")
+                .param("mes", "13")
+                .header("Authorization", "Bearer " + buildJwt("Coordinador", "coord1")))
+                .andExpect(status().isBadRequest());
+
+        verify(servicio, never()).obtenerEstadoRegistro(any(), any());
+    }
+
+    @Test
+    void obtenerEstadoRegistro_mesFuturo_retorna422() throws Exception {
+        when(servicio.obtenerEstadoRegistro(2026, 12))
+                .thenThrow(new co.edu.unicauca.deporteParaTodos.dominio.excepciones.MesFuturoExcepcion("mes futuro"));
+
+        mockMvc.perform(get("/api/v2/instructores/estado-registro")
+                .param("anio", "2026")
+                .param("mes", "12")
+                .header("Authorization", "Bearer " + buildJwt("Coordinador", "coord1")))
+                .andExpect(status().isUnprocessableEntity());
+    }
+
+    // ── GET /api/v2/instructor/avisos-registro — SCRUM-80 (bloque 3) ────────
+
+    @Test
+    void obtenerAvisosRegistro_rolInstructor_retorna200() throws Exception {
+        when(servicio.obtenerAvisosRegistro("ins1"))
+                .thenReturn(java.util.List.of(new AvisoRegistroDto(2026, 9, "VENCIDO", 5, "2026-09-30")));
+
+        mockMvc.perform(get("/api/v2/instructor/avisos-registro")
+                .header("Authorization", "Bearer " + buildJwt("Instructor", "ins1")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].anio").value(2026))
+                .andExpect(jsonPath("$[0].mes").value(9))
+                .andExpect(jsonPath("$[0].estado").value("VENCIDO"));
+
+        verify(servicio).obtenerAvisosRegistro("ins1");
+    }
+
+    @Test
+    void obtenerAvisosRegistro_rolCoordinador_retorna403() throws Exception {
+        mockMvc.perform(get("/api/v2/instructor/avisos-registro")
+                .header("Authorization", "Bearer " + buildJwt("Coordinador", "coord1")))
+                .andExpect(status().isForbidden());
+
+        verify(servicio, never()).obtenerAvisosRegistro(anyString());
+    }
+
+    @Test
+    void obtenerAvisosRegistro_rolAlumno_retorna403() throws Exception {
+        mockMvc.perform(get("/api/v2/instructor/avisos-registro")
+                .header("Authorization", "Bearer " + buildJwt("Alumno", "alum1")))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void obtenerAvisosRegistro_sinToken_retorna401() throws Exception {
+        mockMvc.perform(get("/api/v2/instructor/avisos-registro"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void obtenerAvisosRegistro_instructorSinClaimPerfId_retorna401() throws Exception {
+        byte[] keyBytes = Base64.getDecoder().decode(TEST_SECRET);
+        SecretKey key = new SecretKeySpec(keyBytes, "HmacSHA256");
+        JWKSource<SecurityContext> source = new ImmutableJWKSet<>(new JWKSet(new OctetSequenceKey.Builder(key).build()));
+        JwtClaimsSet claims = JwtClaimsSet.builder()
+                .subject("test@unicauca.edu.co")
+                .issuedAt(Instant.now())
+                .expiresAt(Instant.now().plusSeconds(3600))
+                .claim("rol", "Instructor")
+                .build();
+        String jwtSinPerfId = new NimbusJwtEncoder(source)
+                .encode(JwtEncoderParameters.from(JwsHeader.with(MacAlgorithm.HS256).build(), claims))
+                .getTokenValue();
+
+        mockMvc.perform(get("/api/v2/instructor/avisos-registro")
+                .header("Authorization", "Bearer " + jwtSinPerfId))
+                .andExpect(status().isUnauthorized());
+
+        verify(servicio, never()).obtenerAvisosRegistro(anyString());
+    }
+
+    @Test
+    void obtenerAvisosRegistro_instructorInexistente_retorna404() throws Exception {
+        when(servicio.obtenerAvisosRegistro("ins1"))
+                .thenThrow(new co.edu.unicauca.deporteParaTodos.dominio.excepciones.NoExisteExcepcion(
+                        "No existe el instructor con el identificador ins1"));
+
+        mockMvc.perform(get("/api/v2/instructor/avisos-registro")
+                .header("Authorization", "Bearer " + buildJwt("Instructor", "ins1")))
+                .andExpect(status().isNotFound());
     }
 }

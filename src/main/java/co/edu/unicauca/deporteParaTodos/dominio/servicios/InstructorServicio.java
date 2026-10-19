@@ -13,10 +13,16 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosEntrada.IInstructorServicio;
+import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IClaseGateway;
+import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IGrupoGateway;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IInstructorGateway;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IPerfilGateway;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IPlazoCargaAtencionesGateway;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IProrrogaRegistroAsistenciaGateway;
+import co.edu.unicauca.deporteParaTodos.dominio.modelo.Clase;
+import co.edu.unicauca.deporteParaTodos.dominio.modelo.EstadoAvisoRegistro;
+import co.edu.unicauca.deporteParaTodos.dominio.modelo.EstadoRegistroMensual;
+import co.edu.unicauca.deporteParaTodos.dominio.modelo.Grupo;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Instructor;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Perfil;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.PeriodoAcademico;
@@ -28,8 +34,11 @@ import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresP
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.PerfilDto;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.PlazoCargaDto;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.ProrrogaDto;
+import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.AvisoRegistroDto;
+import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.EstadoRegistroDto;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.ErrorInternoException;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.ListadoVacioExcepcion;
+import co.edu.unicauca.deporteParaTodos.dominio.excepciones.MesFuturoExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.PlazoCargaInvalidoExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.ProrrogaMesFuturoExcepcion;
 import co.edu.unicauca.deporteParaTodos.infraestructura.mappers.PerfilMapper;
@@ -52,6 +61,12 @@ public class InstructorServicio implements IInstructorServicio {
 
     @Autowired
     private IProrrogaRegistroAsistenciaGateway prorrogaGateway;
+
+    @Autowired
+    private IGrupoGateway grupoGateway;
+
+    @Autowired
+    private IClaseGateway claseGateway;
 
     @Autowired
     private Clock clock;
@@ -328,6 +343,103 @@ public class InstructorServicio implements IInstructorServicio {
                     LogSanitizer.sanitizar(idInstructor), anio, mes, dias, LogSanitizer.sanitizar(idCoordinador));
         }
         return resultado;
+    }
+
+    // SCRUM-80 (rediseno, bloque 3 de 4): estado del registro de asistencia de
+    // cada instructor ACTIVO para un mes. anio/mes null -> mes actual del Clock.
+    // Reutiliza los gateways existentes por instructor (N+1 aceptado, ver PASO 0).
+    @Override
+    public List<EstadoRegistroDto> obtenerEstadoRegistro(Integer anioParam, Integer mesParam) {
+        LocalDate hoy = LocalDate.now(clock);
+        int anio = anioParam != null ? anioParam : hoy.getYear();
+        int mes = mesParam != null ? mesParam : hoy.getMonthValue();
+        if (anio > hoy.getYear() || (anio == hoy.getYear() && mes > hoy.getMonthValue())) {
+            throw new MesFuturoExcepcion(
+                    "No se puede consultar el estado de registro de " + anio + "-" + mes
+                            + " porque es un mes futuro (hoy: " + hoy + ")");
+        }
+
+        List<Instructor> instructoresActivos = instructorsGateway.obtenerInstructores();
+        Map<String, ProrrogaRegistroAsistencia> prorrogasPorInstructor =
+                prorrogaGateway.obtenerProrrogasPorMes(anio, mes);
+
+        List<EstadoRegistroDto> resultado = new ArrayList<>();
+        for (Instructor instructor : instructoresActivos) {
+            String idInstructor = instructor.getInst_codigo();
+            ConteoGrupos conteo = contarGruposDelMes(idInstructor, anio, mes);
+            ProrrogaRegistroAsistencia prorroga = prorrogasPorInstructor.get(idInstructor);
+            LocalDate fechaLimite = EstadoRegistroMensual.fechaLimiteEfectiva(
+                    anio, mes, prorroga != null ? prorroga.getFechaLimite() : null);
+            EstadoRegistroMensual estado = EstadoRegistroMensual.calcular(
+                    conteo.activos, conteo.registrados, fechaLimite, hoy);
+            resultado.add(EstadoRegistroDto.fabricarDeModelo(instructor, anio, mes, estado,
+                    conteo.activos, conteo.registrados, fechaLimite, hoy));
+        }
+        return resultado;
+    }
+
+    // Avisos del MES ACTUAL y del ANTERIOR: solo cuando falta registrar algun
+    // grupo activo y el plazo esta por vencer (<=3 dias) o ya vencio. El mes
+    // anterior interesa tipicamente cuando hubo prorroga (o quedo vencido).
+    @Override
+    public List<AvisoRegistroDto> obtenerAvisosRegistro(String idInstructor) {
+        if (idInstructor == null || idInstructor.isBlank()
+                || !instructorsGateway.existeInstructorActivo(idInstructor)) {
+            throw new NoExisteExcepcion("No existe el instructor con el identificador " + idInstructor);
+        }
+        LocalDate hoy = LocalDate.now(clock);
+        LocalDate primerDiaMesActual = hoy.withDayOfMonth(1);
+
+        List<AvisoRegistroDto> resultado = new ArrayList<>();
+        for (LocalDate referencia : List.of(primerDiaMesActual, primerDiaMesActual.minusMonths(1))) {
+            int anio = referencia.getYear();
+            int mes = referencia.getMonthValue();
+            ConteoGrupos conteo = contarGruposDelMes(idInstructor, anio, mes);
+            ProrrogaRegistroAsistencia prorroga = prorrogaGateway.obtenerProrrogasPorMes(anio, mes)
+                    .get(idInstructor);
+            LocalDate fechaLimite = EstadoRegistroMensual.fechaLimiteEfectiva(
+                    anio, mes, prorroga != null ? prorroga.getFechaLimite() : null);
+            EstadoAvisoRegistro.calcular(conteo.activos, conteo.registrados, fechaLimite, hoy)
+                    .ifPresent(estado -> resultado.add(
+                            AvisoRegistroDto.fabricarDeModelo(anio, mes, estado, fechaLimite, hoy)));
+        }
+        return resultado;
+    }
+
+    private ConteoGrupos contarGruposDelMes(String idInstructor, int anio, int mes) {
+        int activos = 0;
+        int registrados = 0;
+        for (Grupo grupo : grupoGateway.obtenerGruposInstructor(idInstructor)) {
+            if (!EstadoRegistroMensual.grupoActivoEnMes(
+                    grupo.getFechaCreacion(), grupo.getFechaFinalizacion(), anio, mes)) {
+                continue;
+            }
+            activos++;
+            if (tieneClaseEnMes(grupo, anio, mes)) {
+                registrados++;
+            }
+        }
+        return new ConteoGrupos(activos, registrados);
+    }
+
+    private boolean tieneClaseEnMes(Grupo grupo, int anio, int mes) {
+        for (Clase clase : claseGateway.obtenerClasesGrupo(
+                grupo.getCategoria(), grupo.getCurso(), grupo.getAnio(), grupo.getIterable())) {
+            if (EstadoRegistroMensual.claseDentroDelMes(clase.getFecha(), anio, mes)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static final class ConteoGrupos {
+        private final int activos;
+        private final int registrados;
+
+        private ConteoGrupos(int activos, int registrados) {
+            this.activos = activos;
+            this.registrados = registrados;
+        }
     }
 
 }

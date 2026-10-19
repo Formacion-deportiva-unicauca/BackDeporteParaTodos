@@ -19,6 +19,8 @@ import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosEntrada.IAsist
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Asistencia;
 import co.edu.unicauca.deporteParaTodos.infraestructura.mappers.AsistenciaMapper;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.AtencionDto;
+import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.VentanaRegistroDto;
+import co.edu.unicauca.deporteParaTodos.dominio.utils.LogSanitizer;
 import co.edu.unicauca.deporteParaTodos.infraestructura.logs.PeticionLogger;
 import io.swagger.v3.oas.annotations.Operation;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -109,5 +111,28 @@ public class AtencionRest {
                 "prmPerfId=" + prmPerfId + ", prmClsCodigo=" + prmClsCodigo);
         Asistencia resultado = servicioAsistencia.eliminarAsistencia(prmPerfId, prmClsCodigo, perfIdLlamador, rolLlamador);
         return new ResponseEntity<>(AsistenciaMapper.toDto(resultado), HttpStatus.OK);
+    }
+
+    // ── SCRUM-80 (rediseno, bloque 3 de 4): ventana de registro de asistencia ──
+
+    @Operation(summary = "Ventana de registro de asistencia para quien llama: fecha minima y maxima entre "
+            + "las que puede registrar/eliminar clases. Instructor: 1o del mes actual (o del anterior si "
+            + "tiene prorroga vigente) hasta hoy. Coordinador/Administrador: sin limite inferior (fechaMinima null).")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Ventana de registro"),
+        @ApiResponse(responseCode = "401", description = "Token sin claim perf_id")
+    })
+    @PreAuthorize("hasAnyAuthority('Instructor','Coordinador','Administrador')")
+    @GetMapping("/asistencia/ventana")
+    public ResponseEntity<VentanaRegistroDto> obtenerVentanaRegistro(@AuthenticationPrincipal Jwt jwt) {
+        String perfIdLlamador = jwt != null ? jwt.getClaimAsString("perf_id") : null;
+        if (perfIdLlamador == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        String rolLlamador = jwt.getClaimAsString("rol");
+        PeticionLogger.log(LOGGER, "GET", "/api/v2/asistencia/ventana",
+                "perfId: " + LogSanitizer.sanitizar(perfIdLlamador) + ", rol: " + LogSanitizer.sanitizar(rolLlamador));
+        VentanaRegistroDto respuesta = servicioAsistencia.obtenerVentanaRegistro(perfIdLlamador, rolLlamador);
+        return new ResponseEntity<>(respuesta, HttpStatus.OK);
     }
 }

@@ -1,6 +1,8 @@
 package co.edu.unicauca.deporteParaTodos.dominio.modelo;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.DayOfWeek;
@@ -8,6 +10,8 @@ import java.time.LocalDate;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
+
+import co.edu.unicauca.deporteParaTodos.dominio.excepciones.DiaFueraDeHorarioExcepcion;
 
 // SCRUM-80 (rediseno, bloque 2 de 3): componente puro (sin Spring) que calcula
 // la duracion de una clase a partir de las franjas de tbl_horario del dia de
@@ -130,5 +134,138 @@ class CalculadoraDuracionClaseTest {
         assertTrue(!CalculadoraDuracionClase.calcular(List.of()).tieneFranjasValidas());
         assertTrue(!CalculadoraDuracionClase.calcular(List.of(franja(1, "10:00", "10:00"))).tieneFranjasValidas(),
                 "una franja invalida no cuenta como franja -- equivale a 'sin horario ese dia'");
+    }
+
+    // ── SCRUM-80 (correccion del cliente, 15 oct 2026): dia-en-horario ──────
+
+    private Horario franjaDia(Integer id, String dia, String inicio, String fin) {
+        return new Horario(id, "cat", "cur", 2026, 1, dia, inicio, fin, "Cancha", 0);
+    }
+
+    @Test
+    void hayFranjaValidaEnFecha_diaConFranjaValida_esVerdadero() {
+        LocalDate jueves = LocalDate.of(2026, 10, 15);
+        List<Horario> franjas = List.of(franjaDia(1, "JUEVES", "14:00", "16:00"));
+
+        assertTrue(CalculadoraDuracionClase.hayFranjaValidaEnFecha(franjas, jueves));
+    }
+
+    @Test
+    void hayFranjaValidaEnFecha_diaSinNingunaFranja_esFalso() {
+        LocalDate jueves = LocalDate.of(2026, 10, 15);
+        List<Horario> franjas = List.of(franjaDia(1, "MARTES", "14:00", "16:00"));
+
+        assertFalse(CalculadoraDuracionClase.hayFranjaValidaEnFecha(franjas, jueves));
+    }
+
+    @Test
+    void hayFranjaValidaEnFecha_grupoSinNingunaFranja_esFalso() {
+        LocalDate jueves = LocalDate.of(2026, 10, 15);
+
+        assertFalse(CalculadoraDuracionClase.hayFranjaValidaEnFecha(List.of(), jueves));
+    }
+
+    @Test
+    void hayFranjaValidaEnFecha_soloFranjaInvalidaEseDia_esFalso() {
+        LocalDate jueves = LocalDate.of(2026, 10, 15);
+        List<Horario> franjas = List.of(franjaDia(1, "JUEVES", "10:00", "10:00"));
+
+        assertFalse(CalculadoraDuracionClase.hayFranjaValidaEnFecha(franjas, jueves));
+    }
+
+    @Test
+    void hayFranjaValidaEnFecha_variasFranjasElMismoDia_bastaConUnaValida() {
+        LocalDate jueves = LocalDate.of(2026, 10, 15);
+        List<Horario> franjas = List.of(
+                franjaDia(1, "JUEVES", "10:00", "10:00"), // invalida
+                franjaDia(2, "JUEVES", "14:00", "16:00")); // valida
+
+        assertTrue(CalculadoraDuracionClase.hayFranjaValidaEnFecha(franjas, jueves));
+    }
+
+    @Test
+    void hayFranjaValidaEnFecha_paraLos7Dias_usaElNombreSinTildes() {
+        List<Horario> franjas = List.of(
+                franjaDia(1, "LUNES", "08:00", "09:00"),
+                franjaDia(2, "MARTES", "08:00", "09:00"),
+                franjaDia(3, "MIERCOLES", "08:00", "09:00"),
+                franjaDia(4, "JUEVES", "08:00", "09:00"),
+                franjaDia(5, "VIERNES", "08:00", "09:00"),
+                franjaDia(6, "SABADO", "08:00", "09:00"),
+                franjaDia(7, "DOMINGO", "08:00", "09:00"));
+        // 2026-10-12 es lunes -- los 7 dias siguientes cubren la semana completa.
+        LocalDate lunes = LocalDate.of(2026, 10, 12);
+        for (int i = 0; i < 7; i++) {
+            assertTrue(CalculadoraDuracionClase.hayFranjaValidaEnFecha(franjas, lunes.plusDays(i)),
+                    "deberia haber franja valida para " + lunes.plusDays(i).getDayOfWeek());
+        }
+    }
+
+    @Test
+    void diasConFranjaValida_variosDias_retornaEnOrdenNaturalDeLaSemana() {
+        List<Horario> franjas = List.of(
+                franjaDia(1, "JUEVES", "14:00", "16:00"),
+                franjaDia(2, "MARTES", "08:00", "10:00"));
+
+        assertEquals(List.of("MARTES", "JUEVES"), CalculadoraDuracionClase.diasConFranjaValida(franjas));
+    }
+
+    @Test
+    void diasConFranjaValida_sinNingunaFranja_retornaListaVacia() {
+        assertTrue(CalculadoraDuracionClase.diasConFranjaValida(List.of()).isEmpty());
+    }
+
+    @Test
+    void diasConFranjaValida_soloFranjasInvalidas_retornaListaVacia() {
+        List<Horario> franjas = List.of(franjaDia(1, "JUEVES", "10:00", "10:00"));
+
+        assertTrue(CalculadoraDuracionClase.diasConFranjaValida(franjas).isEmpty());
+    }
+
+    @Test
+    void validarDiaConHorario_conFranjaValidaEseDia_noLanza() {
+        LocalDate jueves = LocalDate.of(2026, 10, 15);
+        List<Horario> franjas = List.of(franjaDia(1, "JUEVES", "14:00", "16:00"));
+
+        org.junit.jupiter.api.Assertions.assertDoesNotThrow(
+                () -> CalculadoraDuracionClase.validarDiaConHorario(franjas, jueves));
+    }
+
+    @Test
+    void validarDiaConHorario_grupoSinNingunHorario_lanzaConMensajeQueLoExplica() {
+        LocalDate jueves = LocalDate.of(2026, 10, 15);
+
+        DiaFueraDeHorarioExcepcion ex = assertThrows(DiaFueraDeHorarioExcepcion.class,
+                () -> CalculadoraDuracionClase.validarDiaConHorario(List.of(), jueves));
+
+        assertTrue(ex.getMessage().toLowerCase().contains("ningun horario"));
+        assertTrue(ex.getMessage().toLowerCase().contains("coordinador"));
+    }
+
+    @Test
+    void validarDiaConHorario_grupoConHorarioOtrosDias_lanzaMencionandoLosDiasReales() {
+        LocalDate jueves = LocalDate.of(2026, 10, 15);
+        List<Horario> franjas = List.of(
+                franjaDia(1, "MARTES", "08:00", "10:00"),
+                franjaDia(2, "SABADO", "08:00", "10:00"));
+
+        DiaFueraDeHorarioExcepcion ex = assertThrows(DiaFueraDeHorarioExcepcion.class,
+                () -> CalculadoraDuracionClase.validarDiaConHorario(franjas, jueves));
+
+        assertTrue(ex.getMessage().contains("MARTES"));
+        assertTrue(ex.getMessage().contains("SABADO"));
+        assertFalse(ex.getMessage().contains("JUEVES"));
+    }
+
+    // El mensaje nunca repite datos crudos del cliente (p.ej. la fecha enviada
+    // en la peticion) -- solo los dias reales del horario del grupo.
+    @Test
+    void validarDiaConHorario_elMensajeNoEcoaLaFechaCrudaDeLaPeticion() {
+        LocalDate fechaEnviadaPorElCliente = LocalDate.of(2026, 10, 15);
+
+        DiaFueraDeHorarioExcepcion ex = assertThrows(DiaFueraDeHorarioExcepcion.class,
+                () -> CalculadoraDuracionClase.validarDiaConHorario(List.of(), fechaEnviadaPorElCliente));
+
+        assertFalse(ex.getMessage().contains(fechaEnviadaPorElCliente.toString()));
     }
 }

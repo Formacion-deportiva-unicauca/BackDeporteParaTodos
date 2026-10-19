@@ -3,6 +3,7 @@ package co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadores
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosEntrada.IAsistenciaServicio;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Asistencia;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.AtencionDto;
+import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.VentanaRegistroDto;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -148,5 +149,31 @@ class AtencionRestTest {
                 .andExpect(status().isUnauthorized());
 
         verify(servicioAsistencia, never()).eliminarAsistencia(any(), any(), any(), any());
+    }
+
+    // ── GET /asistencia/ventana (SCRUM-80, rediseno bloque 3) ──────────────
+
+    @Test
+    void obtenerVentanaRegistro_retornaOkConLaVentana() throws Exception {
+        VentanaRegistroDto dto = new VentanaRegistroDto("2026-10-01", "2026-10-15", "Instructor");
+        when(servicioAsistencia.obtenerVentanaRegistro("INS001", "Instructor")).thenReturn(dto);
+
+        mockMvc.perform(get("/api/v2/asistencia/ventana"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.fechaMinima").value("2026-10-01"))
+                .andExpect(jsonPath("$.fechaMaxima").value("2026-10-15"))
+                .andExpect(jsonPath("$.rol").value("Instructor"));
+
+        verify(servicioAsistencia).obtenerVentanaRegistro("INS001", "Instructor");
+    }
+
+    @Test
+    void obtenerVentanaRegistro_sinJwt_retornaUnauthorized() throws Exception {
+        SecurityContextHolder.clearContext();
+
+        mockMvc.perform(get("/api/v2/asistencia/ventana"))
+                .andExpect(status().isUnauthorized());
+
+        verify(servicioAsistencia, never()).obtenerVentanaRegistro(any(), any());
     }
 }

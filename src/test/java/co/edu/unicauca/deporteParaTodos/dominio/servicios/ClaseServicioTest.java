@@ -3,6 +3,7 @@ package co.edu.unicauca.deporteParaTodos.dominio.servicios;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IClaseGateway;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IHorarioGateway;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IProrrogaRegistroAsistenciaGateway;
+import co.edu.unicauca.deporteParaTodos.dominio.excepciones.DiaFueraDeHorarioExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.DuracionManualInvalidaExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.FechaClaseFuturaExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.JustificacionInvalidaExcepcion;
@@ -154,13 +155,16 @@ class ClaseServicioTest {
     @Test
     void insertarClase_instructorMesAnteriorConProrrogaVigente_permite() {
         Clase datos = claseBase();
-        datos.setFecha(LocalDate.of(2026, 9, 10));
+        datos.setFecha(LocalDate.of(2026, 9, 10)); // tambien jueves (35 dias = 5 semanas antes de HOY_FIJO)
         ProrrogaRegistroAsistencia prorroga = new ProrrogaRegistroAsistencia();
         prorroga.setFechaLimite(LocalDate.of(2026, 10, 20)); // posterior a HOY_FIJO
         when(prorrogaGateway.obtenerProrrogasPorMes(2026, 9)).thenReturn(Map.of(INS, prorroga));
-        when(horarioGateway.listarHorariosPorGrupo(any(), any(), anyInt(), anyInt())).thenReturn(List.of());
+        // SCRUM-80 (correccion del cliente): el Instructor ahora tambien necesita
+        // un dia con horario para pasar -- este test prueba la prorroga, no el
+        // dia, asi que se le da una franja valida ese jueves.
+        when(horarioGateway.listarHorariosPorGrupo(any(), any(), anyInt(), anyInt()))
+                .thenReturn(List.of(franja(1, "JUEVES", "14:00", "16:00")));
         when(claseGateway.existeClaseEnFecha(any(), any(), any(), any(), any())).thenReturn(false);
-        datos.setJustificacion("clase de recuperacion del mes anterior, con prorroga vigente");
         when(claseGateway.insertarClase(any(Clase.class))).thenAnswer(inv -> inv.getArgument(0));
 
         assertDoesNotThrow(() -> claseServicio.insertarClase(datos, INS, "Instructor"));
@@ -215,6 +219,12 @@ class ClaseServicioTest {
     }
 
     // ── sin franja ese dia: justificacion y duracion manual ─────────────────
+    // SCRUM-80 (correccion del cliente, 15 oct 2026): el Instructor ya NO puede
+    // llegar a esta rama -- si el grupo no tiene horario ese dia, se le bloquea
+    // con DiaFueraDeHorarioExcepcion ANTES de evaluar justificacion/duracion
+    // (ver mas abajo). Esta rama sigue existiendo solo para Coordinador y
+    // Administrador, que no estan sujetos a la regla de dia-en-horario (rol que
+    // antes era INS/"Instructor" ahora es COORD/"Coordinador" en estos tests).
 
     @Test
     void insertarClase_sinFranjaConJustificacionYDuracionValidas_permite() {
@@ -226,7 +236,7 @@ class ClaseServicioTest {
         when(claseGateway.existeClaseEnFecha(any(), any(), any(), any(), any())).thenReturn(false);
         when(claseGateway.insertarClase(any(Clase.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        Clase resultado = claseServicio.insertarClase(datos, INS, "Instructor");
+        Clase resultado = claseServicio.insertarClase(datos, COORD, "Coordinador");
 
         assertEquals(2, resultado.getHoras());
         assertEquals(0, resultado.getMinutos());
@@ -239,7 +249,7 @@ class ClaseServicioTest {
         datos.setJustificacion(null);
 
         assertThrows(JustificacionInvalidaExcepcion.class,
-                () -> claseServicio.insertarClase(datos, INS, "Instructor"));
+                () -> claseServicio.insertarClase(datos, COORD, "Coordinador"));
         verify(claseGateway, never()).insertarClase(any());
     }
 
@@ -250,7 +260,7 @@ class ClaseServicioTest {
         datos.setJustificacion("                     ");
 
         assertThrows(JustificacionInvalidaExcepcion.class,
-                () -> claseServicio.insertarClase(datos, INS, "Instructor"));
+                () -> claseServicio.insertarClase(datos, COORD, "Coordinador"));
     }
 
     @Test
@@ -260,7 +270,7 @@ class ClaseServicioTest {
         datos.setJustificacion("  justificacion con espacios al inicio y al final  ");
 
         assertThrows(JustificacionInvalidaExcepcion.class,
-                () -> claseServicio.insertarClase(datos, INS, "Instructor"));
+                () -> claseServicio.insertarClase(datos, COORD, "Coordinador"));
     }
 
     @Test
@@ -270,7 +280,7 @@ class ClaseServicioTest {
         datos.setJustificacion("123456789"); // 9 caracteres, el minimo es 10
 
         assertThrows(JustificacionInvalidaExcepcion.class,
-                () -> claseServicio.insertarClase(datos, INS, "Instructor"));
+                () -> claseServicio.insertarClase(datos, COORD, "Coordinador"));
     }
 
     @Test
@@ -283,7 +293,7 @@ class ClaseServicioTest {
         when(claseGateway.existeClaseEnFecha(any(), any(), any(), any(), any())).thenReturn(false);
         when(claseGateway.insertarClase(any(Clase.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        assertDoesNotThrow(() -> claseServicio.insertarClase(datos, INS, "Instructor"));
+        assertDoesNotThrow(() -> claseServicio.insertarClase(datos, COORD, "Coordinador"));
     }
 
     @Test
@@ -293,7 +303,7 @@ class ClaseServicioTest {
         datos.setJustificacion("a".repeat(501));
 
         assertThrows(JustificacionInvalidaExcepcion.class,
-                () -> claseServicio.insertarClase(datos, INS, "Instructor"));
+                () -> claseServicio.insertarClase(datos, COORD, "Coordinador"));
     }
 
     @Test
@@ -306,7 +316,7 @@ class ClaseServicioTest {
         when(claseGateway.existeClaseEnFecha(any(), any(), any(), any(), any())).thenReturn(false);
         when(claseGateway.insertarClase(any(Clase.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        assertDoesNotThrow(() -> claseServicio.insertarClase(datos, INS, "Instructor"));
+        assertDoesNotThrow(() -> claseServicio.insertarClase(datos, COORD, "Coordinador"));
     }
 
     @Test
@@ -318,7 +328,7 @@ class ClaseServicioTest {
         datos.setMinutos(0);
 
         assertThrows(DuracionManualInvalidaExcepcion.class,
-                () -> claseServicio.insertarClase(datos, INS, "Instructor"));
+                () -> claseServicio.insertarClase(datos, COORD, "Coordinador"));
         verify(claseGateway, never()).insertarClase(any());
     }
 
@@ -331,7 +341,7 @@ class ClaseServicioTest {
         datos.setMinutos(1); // 12h01 > 12h
 
         assertThrows(DuracionManualInvalidaExcepcion.class,
-                () -> claseServicio.insertarClase(datos, INS, "Instructor"));
+                () -> claseServicio.insertarClase(datos, COORD, "Coordinador"));
     }
 
     @Test
@@ -344,7 +354,7 @@ class ClaseServicioTest {
         when(claseGateway.existeClaseEnFecha(any(), any(), any(), any(), any())).thenReturn(false);
         when(claseGateway.insertarClase(any(Clase.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        assertDoesNotThrow(() -> claseServicio.insertarClase(datos, INS, "Instructor"));
+        assertDoesNotThrow(() -> claseServicio.insertarClase(datos, COORD, "Coordinador"));
     }
 
     // Decision documentada en CalculadoraDuracionClaseTest: una franja invalida
@@ -354,12 +364,92 @@ class ClaseServicioTest {
         Clase datos = claseBase();
         when(horarioGateway.listarHorariosPorGrupo(any(), any(), anyInt(), anyInt()))
                 .thenReturn(List.of(franja(1, "JUEVES", "10:00", "10:00")));
-        when(prorrogaGateway.obtenerProrrogasPorMes(anyInt(), anyInt())).thenReturn(Map.of());
         datos.setJustificacion(null);
 
         assertThrows(JustificacionInvalidaExcepcion.class,
+                () -> claseServicio.insertarClase(datos, COORD, "Coordinador"));
+    }
+
+    // ── SCRUM-80 (correccion del cliente, 15 oct 2026): dia-en-horario (Instructor) ──
+
+    @Test
+    void insertarClase_instructorGrupoSinNingunHorario_lanzaDiaFueraDeHorarioMencionandoQueNoHayHorario() {
+        Clase datos = claseBase(); // fecha = HOY_FIJO, jueves
+        when(horarioGateway.listarHorariosPorGrupo(any(), any(), anyInt(), anyInt())).thenReturn(List.of());
+        when(prorrogaGateway.obtenerProrrogasPorMes(anyInt(), anyInt())).thenReturn(Map.of());
+
+        DiaFueraDeHorarioExcepcion ex = assertThrows(DiaFueraDeHorarioExcepcion.class,
+                () -> claseServicio.insertarClase(datos, INS, "Instructor"));
+
+        assertTrue(ex.getMessage().toLowerCase().contains("ningun horario"));
+        verify(claseGateway, never()).existeClaseEnFecha(any(), any(), any(), any(), any());
+        verify(claseGateway, never()).insertarClase(any());
+    }
+
+    @Test
+    void insertarClase_instructorDiaSinFranjaPeroGrupoTieneOtrosDias_lanzaDiaFueraDeHorarioMencionandoLosDias() {
+        Clase datos = claseBase(); // fecha = HOY_FIJO, jueves -- el grupo solo tiene horario martes
+        when(horarioGateway.listarHorariosPorGrupo(any(), any(), anyInt(), anyInt()))
+                .thenReturn(List.of(franja(1, "MARTES", "08:00", "10:00")));
+        when(prorrogaGateway.obtenerProrrogasPorMes(anyInt(), anyInt())).thenReturn(Map.of());
+
+        DiaFueraDeHorarioExcepcion ex = assertThrows(DiaFueraDeHorarioExcepcion.class,
+                () -> claseServicio.insertarClase(datos, INS, "Instructor"));
+
+        assertTrue(ex.getMessage().contains("MARTES"));
+        verify(claseGateway, never()).existeClaseEnFecha(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void insertarClase_instructorSoloFranjaInvalidaEseDia_lanzaDiaFueraDeHorario() {
+        Clase datos = claseBase(); // fecha = HOY_FIJO, jueves
+        when(horarioGateway.listarHorariosPorGrupo(any(), any(), anyInt(), anyInt()))
+                .thenReturn(List.of(franja(1, "JUEVES", "10:00", "10:00"))); // fin == inicio -- invalida
+        when(prorrogaGateway.obtenerProrrogasPorMes(anyInt(), anyInt())).thenReturn(Map.of());
+
+        assertThrows(DiaFueraDeHorarioExcepcion.class,
                 () -> claseServicio.insertarClase(datos, INS, "Instructor"));
     }
+
+    @Test
+    void insertarClase_instructorDiaConFranjaValida_noLanzaDiaFueraDeHorario() {
+        sinFranjasNiProrroga();
+        Clase datos = claseBase(); // fecha = HOY_FIJO, jueves
+        when(horarioGateway.listarHorariosPorGrupo(CATEGORIA, CURSO, ANIO, ITERABLE))
+                .thenReturn(List.of(franja(1, "JUEVES", "14:00", "16:00")));
+        when(claseGateway.existeClaseEnFecha(any(), any(), any(), any(), any())).thenReturn(false);
+        when(claseGateway.insertarClase(any(Clase.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        assertDoesNotThrow(() -> claseServicio.insertarClase(datos, INS, "Instructor"));
+    }
+
+    @Test
+    void insertarClase_coordinadorDiaSinNingunHorario_noAplicaLaReglaDeDia() {
+        sinFranjasNiProrroga();
+        Clase datos = claseBase();
+        datos.setJustificacion("clase dictada por el coordinador, sin horario ese dia");
+        when(claseGateway.existeClaseEnFecha(any(), any(), any(), any(), any())).thenReturn(false);
+        when(claseGateway.insertarClase(any(Clase.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        assertDoesNotThrow(() -> claseServicio.insertarClase(datos, COORD, "Coordinador"));
+    }
+
+    @Test
+    void insertarClase_administradorDiaSinNingunHorario_noAplicaLaReglaDeDia() {
+        sinFranjasNiProrroga();
+        Clase datos = claseBase();
+        datos.setJustificacion("clase dictada por el administrador, sin horario ese dia");
+        when(claseGateway.existeClaseEnFecha(any(), any(), any(), any(), any())).thenReturn(false);
+        when(claseGateway.insertarClase(any(Clase.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        assertDoesNotThrow(() -> claseServicio.insertarClase(datos, "admin-1", "Administrador"));
+    }
+
+    // Orden de validaciones (punto 3 del ticket): fecha futura y plazo se
+    // evaluan ANTES del dia-en-horario -- ya cubierto por los tests existentes
+    // de fecha futura (sin horario stubbeado, ni siquiera se llega a mirarlo) y
+    // de "mes anterior sin prorroga" (sinFranjasNiProrroga + lanza
+    // RegistroAsistenciaVencidoExcepcion, no DiaFueraDeHorarioExcepcion).
 
     @Test
     void insertarClase_conFranja_ignoraHorasYMinutosEnviadosPorElCliente() {
@@ -404,10 +494,13 @@ class ClaseServicioTest {
         Clase existente = claseBase();
         existente.setCodigo(99);
         existente.setJustificacion("justificacion que quedo guardada en el primer click");
-        // NO se stubbea horarioGateway: la reutilizacion debe retornar ANTES de
-        // llegar a calcular horario/justificacion -- si este stub se llegara a
-        // necesitar, Mockito lo marcaria como "unnecessary" solo si NO se usa,
-        // asi que su ausencia aqui documenta que el codigo real nunca lo toca.
+        // SCRUM-80 (correccion del cliente): el dia-en-horario SI se consulta
+        // ahora para el Instructor (antes de mirar si la clase ya existe), asi
+        // que horarioGateway se stubbea con una franja valida para HOY_FIJO
+        // (jueves) -- pero solo UNA vez: la reutilizacion retorna antes de
+        // volver a pedirlo para el calculo de duracion.
+        when(horarioGateway.listarHorariosPorGrupo(any(), any(), anyInt(), anyInt()))
+                .thenReturn(List.of(franja(1, "JUEVES", "14:00", "16:00")));
         when(prorrogaGateway.obtenerProrrogasPorMes(anyInt(), anyInt())).thenReturn(Map.of());
         when(claseGateway.existeClaseEnFecha(any(), any(), any(), any(), any())).thenReturn(true);
         when(claseGateway.obtenerClaseEnFecha(any(), any(), any(), any(), any())).thenReturn(existente);
@@ -416,6 +509,7 @@ class ClaseServicioTest {
 
         assertEquals(99, resultado.getCodigo());
         verify(claseGateway, never()).insertarClase(any());
+        verify(horarioGateway, times(1)).listarHorariosPorGrupo(any(), any(), anyInt(), anyInt());
     }
 
     @Test

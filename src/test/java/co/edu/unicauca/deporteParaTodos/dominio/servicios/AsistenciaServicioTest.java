@@ -21,7 +21,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IAlumnoGateway;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IAsistenciaGateway;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IClaseGateway;
+import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IHorarioGateway;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IProrrogaRegistroAsistenciaGateway;
+import co.edu.unicauca.deporteParaTodos.dominio.excepciones.DiaFueraDeHorarioExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.FechaClaseFuturaExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.ListadoVacioExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.NoExisteExcepcion;
@@ -29,8 +31,10 @@ import co.edu.unicauca.deporteParaTodos.dominio.excepciones.RegistroAsistenciaVe
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.YaExisteElementoExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Asistencia;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Clase;
+import co.edu.unicauca.deporteParaTodos.dominio.modelo.Horario;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.ProrrogaRegistroAsistencia;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.AtencionDto;
+import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.VentanaRegistroDto;
 
 @ExtendWith(MockitoExtension.class)
 class AsistenciaServicioTest {
@@ -46,6 +50,9 @@ class AsistenciaServicioTest {
 
     @Mock
     private IProrrogaRegistroAsistenciaGateway prorrogaGateway;
+
+    @Mock
+    private IHorarioGateway horarioGateway;
 
     @Mock
     private Clock clock;
@@ -72,11 +79,32 @@ class AsistenciaServicioTest {
         Clase c = new Clase();
         c.setCodigo(CLASE_ID);
         c.setFecha(fecha);
+        // SCRUM-80 (correccion del cliente): el dia-en-horario necesita
+        // categoria/curso/anio/iterable para consultar el horario del grupo --
+        // horarioGateway.listarHorariosPorGrupo(..., int, int) desempaqueta
+        // anio/iterable, asi que no pueden quedar null (NPE en autoboxing).
+        c.setCategoria("Recreativo");
+        c.setCurso("Natacion");
+        c.setAnio(2026);
+        c.setIterable(1);
         return c;
     }
 
+    private Horario franja(String dia, String inicio, String fin) {
+        return new Horario(1, null, null, 0, 0, dia, inicio, fin, "Cancha", 0);
+    }
+
+    // SCRUM-80 (correccion del cliente, 15 oct 2026): HOY_FIJO (2026-10-15) es
+    // jueves -- todos los llamantes de este helper son Instructor registrando
+    // en HOY_FIJO o en el mes anterior sobre la misma fecha-de-prueba (tambien
+    // jueves, ver ClaseServicioTest), asi que una franja JUEVES por defecto
+    // les permite seguir probando ventana/plazo sin que la regla nueva de
+    // dia-en-horario (no relacionada con lo que esos tests verifican) los
+    // bloquee. Los tests que SI prueban la regla de dia sobreescriben este stub.
     private void sinProrroga() {
         lenient().when(prorrogaGateway.obtenerProrrogasPorMes(anyInt(), anyInt())).thenReturn(Map.of());
+        lenient().when(horarioGateway.listarHorariosPorGrupo(any(), any(), anyInt(), anyInt()))
+                .thenReturn(List.of(franja("JUEVES", "14:00", "16:00")));
     }
 
     // ──────────────────────────────────────────────────────────────────────────
@@ -166,10 +194,13 @@ class AsistenciaServicioTest {
     @Test
     void registrarAtencionesPorClase_instructorMesAnteriorConProrrogaVigente_permite() {
         when(claseGateway.existeClase(CLASE_ID)).thenReturn(true);
-        when(claseGateway.obtenerClase(CLASE_ID)).thenReturn(claseConFecha(LocalDate.of(2026, 9, 10)));
+        when(claseGateway.obtenerClase(CLASE_ID)).thenReturn(claseConFecha(LocalDate.of(2026, 9, 10))); // jueves
         ProrrogaRegistroAsistencia prorroga = new ProrrogaRegistroAsistencia();
         prorroga.setFechaLimite(LocalDate.of(2026, 10, 20));
         when(prorrogaGateway.obtenerProrrogasPorMes(2026, 9)).thenReturn(Map.of(INS, prorroga));
+        // Este test prueba la prorroga, no el dia-en-horario -- se le da una franja valida.
+        when(horarioGateway.listarHorariosPorGrupo(any(), any(), anyInt(), anyInt()))
+                .thenReturn(List.of(franja("JUEVES", "14:00", "16:00")));
 
         assertDoesNotThrow(() -> servicio.registrarAtencionesPorClase(List.of(), CLASE_ID, INS, "Instructor"));
     }
@@ -209,6 +240,75 @@ class AsistenciaServicioTest {
         when(claseGateway.obtenerClase(CLASE_ID)).thenReturn(claseConFecha(LocalDate.of(2026, 9, 10)));
 
         assertDoesNotThrow(() -> servicio.registrarAtencionesPorClase(List.of(), CLASE_ID, "admin-1", "Administrador"));
+    }
+
+    // ── SCRUM-80 (correccion del cliente, 15 oct 2026): dia-en-horario (Instructor) ──
+
+    @Test
+    void registrarAtencionesPorClase_instructorGrupoSinNingunHorario_lanzaDiaFueraDeHorario() {
+        when(claseGateway.existeClase(CLASE_ID)).thenReturn(true);
+        when(claseGateway.obtenerClase(CLASE_ID)).thenReturn(claseConFecha(HOY_FIJO));
+        when(prorrogaGateway.obtenerProrrogasPorMes(anyInt(), anyInt())).thenReturn(Map.of());
+        when(horarioGateway.listarHorariosPorGrupo(any(), any(), anyInt(), anyInt())).thenReturn(List.of());
+
+        DiaFueraDeHorarioExcepcion ex = assertThrows(DiaFueraDeHorarioExcepcion.class,
+                () -> servicio.registrarAtencionesPorClase(List.of(), CLASE_ID, INS, "Instructor"));
+
+        assertTrue(ex.getMessage().toLowerCase().contains("ningun horario"));
+    }
+
+    @Test
+    void registrarAtencionesPorClase_instructorDiaSinFranjaPeroGrupoTieneOtrosDias_lanzaDiaFueraDeHorario() {
+        when(claseGateway.existeClase(CLASE_ID)).thenReturn(true);
+        when(claseGateway.obtenerClase(CLASE_ID)).thenReturn(claseConFecha(HOY_FIJO)); // jueves
+        when(prorrogaGateway.obtenerProrrogasPorMes(anyInt(), anyInt())).thenReturn(Map.of());
+        when(horarioGateway.listarHorariosPorGrupo(any(), any(), anyInt(), anyInt()))
+                .thenReturn(List.of(franja("MARTES", "08:00", "10:00")));
+
+        DiaFueraDeHorarioExcepcion ex = assertThrows(DiaFueraDeHorarioExcepcion.class,
+                () -> servicio.registrarAtencionesPorClase(List.of(), CLASE_ID, INS, "Instructor"));
+
+        assertTrue(ex.getMessage().contains("MARTES"));
+    }
+
+    @Test
+    void registrarAtencionesPorClase_instructorDiaConFranjaValida_permite() {
+        when(claseGateway.existeClase(CLASE_ID)).thenReturn(true);
+        when(claseGateway.obtenerClase(CLASE_ID)).thenReturn(claseConFecha(HOY_FIJO));
+        sinProrroga();
+
+        assertDoesNotThrow(() -> servicio.registrarAtencionesPorClase(List.of(), CLASE_ID, INS, "Instructor"));
+    }
+
+    // Una clase fuera de horario creada por un Coordinador NO exime al Instructor
+    // de la regla de dia-en-horario (punto 6 del ticket).
+    @Test
+    void registrarAtencionesPorClase_instructorClaseExistenteFueraDeHorario_siguebloqueado() {
+        when(claseGateway.existeClase(CLASE_ID)).thenReturn(true);
+        when(claseGateway.obtenerClase(CLASE_ID)).thenReturn(claseConFecha(HOY_FIJO));
+        when(prorrogaGateway.obtenerProrrogasPorMes(anyInt(), anyInt())).thenReturn(Map.of());
+        when(horarioGateway.listarHorariosPorGrupo(any(), any(), anyInt(), anyInt())).thenReturn(List.of());
+
+        assertThrows(DiaFueraDeHorarioExcepcion.class,
+                () -> servicio.registrarAtencionesPorClase(List.of(), CLASE_ID, INS, "Instructor"));
+    }
+
+    @Test
+    void registrarAtencionesPorClase_coordinadorSinNingunHorario_noAplicaLaReglaDeDia() {
+        when(claseGateway.existeClase(CLASE_ID)).thenReturn(true);
+        when(claseGateway.obtenerClase(CLASE_ID)).thenReturn(claseConFecha(HOY_FIJO));
+
+        assertDoesNotThrow(() -> servicio.registrarAtencionesPorClase(List.of(), CLASE_ID, COORD, "Coordinador"));
+        verify(horarioGateway, never()).listarHorariosPorGrupo(any(), any(), anyInt(), anyInt());
+    }
+
+    @Test
+    void registrarAtencionesPorClase_administradorSinNingunHorario_noAplicaLaReglaDeDia() {
+        when(claseGateway.existeClase(CLASE_ID)).thenReturn(true);
+        when(claseGateway.obtenerClase(CLASE_ID)).thenReturn(claseConFecha(HOY_FIJO));
+
+        assertDoesNotThrow(() -> servicio.registrarAtencionesPorClase(List.of(), CLASE_ID, "admin-1", "Administrador"));
+        verify(horarioGateway, never()).listarHorariosPorGrupo(any(), any(), anyInt(), anyInt());
     }
 
     // ──────────────────────────────────────────────────────────────────────────
@@ -425,5 +525,78 @@ class AsistenciaServicioTest {
                 .thenReturn(new Asistencia("perf1", CLASE_ID, 1));
 
         assertDoesNotThrow(() -> servicio.eliminarAsistencia("perf1", (long) CLASE_ID, "admin-1", "Administrador"));
+    }
+
+    // Decision documentada (punto 2 del ticket): DELETE /asistencia NO aplica la
+    // regla de dia-en-horario -- solo fecha futura y plazo, igual que antes. Un
+    // Instructor dentro de plazo puede eliminar aunque el grupo no tenga (o ya
+    // no tenga) horario asignado ese dia.
+    @Test
+    void eliminarAsistencia_instructorSinNingunHorario_noAplicaLaReglaDeDia() {
+        stubAsistenciaActiva("perf1");
+        when(claseGateway.obtenerClase(CLASE_ID)).thenReturn(claseConFecha(HOY_FIJO));
+        when(prorrogaGateway.obtenerProrrogasPorMes(anyInt(), anyInt())).thenReturn(Map.of());
+        when(asistenciaGateway.eliminarAsistencia("perf1", (long) CLASE_ID))
+                .thenReturn(new Asistencia("perf1", CLASE_ID, 1));
+
+        assertDoesNotThrow(() -> servicio.eliminarAsistencia("perf1", (long) CLASE_ID, INS, "Instructor"));
+        verify(horarioGateway, never()).listarHorariosPorGrupo(any(), any(), anyInt(), anyInt());
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // obtenerVentanaRegistro: ventana de registro de "hoy" hacia atras
+    // ──────────────────────────────────────────────────────────────────────────
+
+    @Test
+    void obtenerVentanaRegistro_instructorSinProrrogaMesAnterior_esPrimerDiaDelMesActual() {
+        when(prorrogaGateway.obtenerProrrogasPorMes(2026, 9)).thenReturn(Map.of());
+
+        VentanaRegistroDto dto = servicio.obtenerVentanaRegistro(INS, "Instructor");
+
+        assertEquals("2026-10-01", dto.getFechaMinima());
+        assertEquals("2026-10-15", dto.getFechaMaxima());
+        assertEquals("Instructor", dto.getRol());
+    }
+
+    @Test
+    void obtenerVentanaRegistro_instructorConProrrogaVigenteDelMesAnterior_bajaAlPrimerDiaDelMesAnterior() {
+        ProrrogaRegistroAsistencia prorroga = new ProrrogaRegistroAsistencia();
+        prorroga.setFechaLimite(LocalDate.of(2026, 10, 20));
+        when(prorrogaGateway.obtenerProrrogasPorMes(2026, 9)).thenReturn(Map.of(INS, prorroga));
+
+        VentanaRegistroDto dto = servicio.obtenerVentanaRegistro(INS, "Instructor");
+
+        assertEquals("2026-09-01", dto.getFechaMinima());
+        assertEquals("2026-10-15", dto.getFechaMaxima());
+    }
+
+    @Test
+    void obtenerVentanaRegistro_instructorConProrrogaVencidaDelMesAnterior_seQuedaEnElMesActual() {
+        ProrrogaRegistroAsistencia prorroga = new ProrrogaRegistroAsistencia();
+        prorroga.setFechaLimite(LocalDate.of(2026, 10, 10));
+        when(prorrogaGateway.obtenerProrrogasPorMes(2026, 9)).thenReturn(Map.of(INS, prorroga));
+
+        VentanaRegistroDto dto = servicio.obtenerVentanaRegistro(INS, "Instructor");
+
+        assertEquals("2026-10-01", dto.getFechaMinima());
+    }
+
+    @Test
+    void obtenerVentanaRegistro_coordinador_sinLimiteInferior() {
+        VentanaRegistroDto dto = servicio.obtenerVentanaRegistro(COORD, "Coordinador");
+
+        assertNull(dto.getFechaMinima());
+        assertEquals("2026-10-15", dto.getFechaMaxima());
+        assertEquals("Coordinador", dto.getRol());
+        verify(prorrogaGateway, never()).obtenerProrrogasPorMes(anyInt(), anyInt());
+    }
+
+    @Test
+    void obtenerVentanaRegistro_administrador_sinLimiteInferior() {
+        VentanaRegistroDto dto = servicio.obtenerVentanaRegistro("admin-1", "Administrador");
+
+        assertNull(dto.getFechaMinima());
+        assertEquals("2026-10-15", dto.getFechaMaxima());
+        verify(prorrogaGateway, never()).obtenerProrrogasPorMes(anyInt(), anyInt());
     }
 }

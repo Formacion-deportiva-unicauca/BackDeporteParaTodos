@@ -103,6 +103,11 @@ class RestExceptionHandlerTest {
         @GetMapping("/test/duracionmanualinvalida")
         void duracionManualInvalida() { throw new DuracionManualInvalidaExcepcion("duracion de prueba"); }
 
+        // SCRUM-80 (correccion del cliente, 15 oct 2026): se conecta en
+        // ClaseServicio/AsistenciaServicio via CalculadoraDuracionClase.validarDiaConHorario.
+        @GetMapping("/test/diafueradehorario")
+        void diaFueraDeHorario() { throw new DiaFueraDeHorarioExcepcion("dia fuera de horario de prueba"); }
+
         // ConstraintViolationException es de capa de servicio (AOP); se lanza
         // manualmente para ejercer el handler directamente en standaloneSetup.
         @GetMapping("/test/constraintviolation")
@@ -315,6 +320,14 @@ class RestExceptionHandlerTest {
         mockMvc.perform(get("/test/duracionmanualinvalida"))
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.codigoError").value("GC-0022"))
+                .andExpect(jsonPath("$.codigoHttp").value(422));
+    }
+
+    @Test
+    void diaFueraDeHorario_retorna422() throws Exception {
+        mockMvc.perform(get("/test/diafueradehorario"))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.codigoError").value("GC-0024"))
                 .andExpect(jsonPath("$.codigoHttp").value(422));
     }
 

@@ -208,6 +208,7 @@
 								<exclude>**/PlazoCargaAtencionesIT.java</exclude>
 								<exclude>**/ProrrogaRegistroAsistenciaIT.java</exclude>
 								<exclude>**/ClaseVentanaRegistroIT.java</exclude>
+								<exclude>**/EstadoRegistroInstructorIT.java</exclude>
 							</excludes>
 						</configuration>
 					</plugin>

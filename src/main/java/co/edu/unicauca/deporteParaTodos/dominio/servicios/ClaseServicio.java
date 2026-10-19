@@ -82,16 +82,31 @@ public class ClaseServicio implements IClaseServicio {
 
     @Override
     public Clase insertarClase(Clase datoClase, String perfIdLlamador, String rolLlamador) {
-        boolean esExentoDePlazo = !"Instructor".equals(rolLlamador);
+        boolean esInstructor = "Instructor".equals(rolLlamador);
+        boolean esExentoDePlazo = !esInstructor;
         LocalDate hoy = LocalDate.now(clock);
         LocalDate limiteProrroga = limiteProrrogaSiAplica(esExentoDePlazo, perfIdLlamador, datoClase.getFecha(), hoy);
         VentanaRegistroAsistencia.validarRegistro(datoClase.getFecha(), hoy, esExentoDePlazo, limiteProrroga);
+
+        // SCRUM-80 (correccion del cliente, 15 oct 2026): el Instructor solo
+        // puede registrar en dias con horario asignado -- se valida ANTES de
+        // mirar si la clase ya existe (una clase fuera de horario creada por
+        // un Coordinador no habilita al Instructor a registrar en esa fecha).
+        // Coordinador/Administrador no estan sujetos a esta regla. Se
+        // aprovecha esta misma consulta para el calculo de duracion de abajo
+        // (nunca se vuelve a pedir el horario del grupo una segunda vez).
+        List<Horario> franjasDelGrupo = null;
+        if (esInstructor) {
+            franjasDelGrupo = horarioGateway.listarHorariosPorGrupo(
+                    datoClase.getCategoria(), datoClase.getCurso(), datoClase.getAnio(), datoClase.getIterable());
+            CalculadoraDuracionClase.validarDiaConHorario(franjasDelGrupo, datoClase.getFecha());
+        }
 
         // El Instructor registra asistencia alumno por alumno, con un click por alumno
         // en momentos distintos durante la misma clase -- cada click repite el flujo
         // completo (crear clase + registrar atencion). Si ya existe una clase de hoy
         // para este grupo, se reutiliza en vez de rechazar o crear una segunda (ver
-        // ClaseFechaDuplicadaIT) -- SOLO despues de pasar fecha/plazo arriba, y SIN
+        // ClaseFechaDuplicadaIT) -- SOLO despues de pasar fecha/plazo/dia arriba, y SIN
         // exigir justificacion de nuevo (ya quedo guardada en el primer click).
         if (claseGateway.existeClaseEnFecha(datoClase.getCategoria(), datoClase.getCurso(),
                 datoClase.getAnio(), datoClase.getIterable(), datoClase.getFecha())) {
@@ -99,9 +114,12 @@ public class ClaseServicio implements IClaseServicio {
                     datoClase.getAnio(), datoClase.getIterable(), datoClase.getFecha());
         }
 
+        if (franjasDelGrupo == null) {
+            // Coordinador/Administrador: no se valido dia arriba, se pide el horario aqui.
+            franjasDelGrupo = horarioGateway.listarHorariosPorGrupo(
+                    datoClase.getCategoria(), datoClase.getCurso(), datoClase.getAnio(), datoClase.getIterable());
+        }
         String diaSemana = CalculadoraDuracionClase.nombreDia(datoClase.getFecha().getDayOfWeek());
-        List<Horario> franjasDelGrupo = horarioGateway.listarHorariosPorGrupo(
-                datoClase.getCategoria(), datoClase.getCurso(), datoClase.getAnio(), datoClase.getIterable());
         List<Horario> franjasDelDia = franjasDelGrupo.stream()
                 .filter(h -> diaSemana.equalsIgnoreCase(h.getDia()))
                 .toList();

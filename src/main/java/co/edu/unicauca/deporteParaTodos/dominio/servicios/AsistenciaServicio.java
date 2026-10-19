@@ -13,12 +13,16 @@ import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosEntrada.IAsist
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IAlumnoGateway;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IAsistenciaGateway;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IClaseGateway;
+import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IHorarioGateway;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IProrrogaRegistroAsistenciaGateway;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Asistencia;
+import co.edu.unicauca.deporteParaTodos.dominio.modelo.CalculadoraDuracionClase;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Clase;
+import co.edu.unicauca.deporteParaTodos.dominio.modelo.Horario;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.ProrrogaRegistroAsistencia;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.VentanaRegistroAsistencia;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.AtencionDto;
+import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.VentanaRegistroDto;
 import co.edu.unicauca.deporteParaTodos.infraestructura.mappers.AsistenciaMapper;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.ErrorInternoException;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.ListadoVacioExcepcion;
@@ -32,14 +36,17 @@ public class AsistenciaServicio implements IAsistenciaServicio {
     private final IAlumnoGateway alumnoGateway;
     private final IClaseGateway claseGateway;
     private final IProrrogaRegistroAsistenciaGateway prorrogaGateway;
+    private final IHorarioGateway horarioGateway;
     private final Clock clock;
 
     public AsistenciaServicio(IAsistenciaGateway asistenciaGateway, IAlumnoGateway alumnoGateway,
-            IClaseGateway claseGateway, IProrrogaRegistroAsistenciaGateway prorrogaGateway, Clock clock) {
+            IClaseGateway claseGateway, IProrrogaRegistroAsistenciaGateway prorrogaGateway,
+            IHorarioGateway horarioGateway, Clock clock) {
         this.asistenciaGateway = asistenciaGateway;
         this.alumnoGateway = alumnoGateway;
         this.claseGateway = claseGateway;
         this.prorrogaGateway = prorrogaGateway;
+        this.horarioGateway = horarioGateway;
         this.clock = clock;
     }
 
@@ -91,7 +98,22 @@ public class AsistenciaServicio implements IAsistenciaServicio {
         if (claseId == null || !claseGateway.existeClase(claseId)) {
             throw new NoExisteExcepcion("No existe la clase con codigo " + claseId);
         }
-        validarVentanaRegistro(claseId, perfIdLlamador, rolLlamador);
+        // SCRUM-80 (correccion del cliente, 15 oct 2026): la clase se obtiene UNA
+        // sola vez aqui (no se reusa el helper validarVentanaRegistro, que
+        // tambien usa eliminarAsistencia) para encadenar fecha/plazo y, SOLO
+        // para el Instructor, el dia-en-horario -- una clase fuera de horario
+        // creada por un Coordinador NO exime al Instructor de esta regla.
+        Clase clase = claseGateway.obtenerClase(claseId);
+        boolean esInstructor = "Instructor".equals(rolLlamador);
+        boolean esExentoDePlazo = !esInstructor;
+        LocalDate hoy = LocalDate.now(clock);
+        LocalDate limiteProrroga = limiteProrrogaSiAplica(esExentoDePlazo, perfIdLlamador, clase.getFecha(), hoy);
+        VentanaRegistroAsistencia.validarRegistro(clase.getFecha(), hoy, esExentoDePlazo, limiteProrroga);
+        if (esInstructor) {
+            List<Horario> franjasDelGrupo = horarioGateway.listarHorariosPorGrupo(
+                    clase.getCategoria(), clase.getCurso(), clase.getAnio(), clase.getIterable());
+            CalculadoraDuracionClase.validarDiaConHorario(franjasDelGrupo, clase.getFecha());
+        }
 
         if (atenciones == null || atenciones.isEmpty()) {
             return;
@@ -164,5 +186,25 @@ public class AsistenciaServicio implements IAsistenciaServicio {
         }
         validarVentanaRegistro(clsCodigo.intValue(), perfIdLlamador, rolLlamador);
         return asistenciaGateway.eliminarAsistencia(perfId, clsCodigo);
+    }
+
+    // SCRUM-80 (rediseno, bloque 3 de 4): ventana de registro de asistencia de
+    // "hoy" hacia atras. Instructor: 1o del mes actual (o del mes anterior si
+    // tiene prorroga todavia vigente). Coordinador/Administrador: sin limite
+    // inferior (fechaMinima null). fechaMaxima siempre "hoy" (nadie registra
+    // fechas futuras -- ver VentanaRegistroAsistencia.validarRegistro).
+    @Override
+    public VentanaRegistroDto obtenerVentanaRegistro(String perfIdLlamador, String rolLlamador) {
+        LocalDate hoy = LocalDate.now(clock);
+        if (!"Instructor".equals(rolLlamador)) {
+            return VentanaRegistroDto.fabricarDeModelo(null, hoy, rolLlamador);
+        }
+        LocalDate mesAnterior = hoy.minusMonths(1);
+        ProrrogaRegistroAsistencia prorroga = prorrogaGateway
+                .obtenerProrrogasPorMes(mesAnterior.getYear(), mesAnterior.getMonthValue())
+                .get(perfIdLlamador);
+        LocalDate limiteProrrogaMesAnterior = prorroga != null ? prorroga.getFechaLimite() : null;
+        LocalDate fechaMinima = VentanaRegistroAsistencia.calcularFechaMinima(hoy, limiteProrrogaMesAnterior);
+        return VentanaRegistroDto.fabricarDeModelo(fechaMinima, hoy, rolLlamador);
     }
 }

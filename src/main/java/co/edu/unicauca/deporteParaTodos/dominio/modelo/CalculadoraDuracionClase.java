@@ -2,10 +2,13 @@ package co.edu.unicauca.deporteParaTodos.dominio.modelo;
 
 import java.time.DayOfWeek;
 import java.time.Duration;
+import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+
+import co.edu.unicauca.deporteParaTodos.dominio.excepciones.DiaFueraDeHorarioExcepcion;
 
 // SCRUM-80 (rediseno, bloque 2 de 3): componente puro (sin Spring) que calcula
 // la duracion total de una clase sumando las franjas de tbl_horario del grupo
@@ -76,5 +79,51 @@ public final class CalculadoraDuracionClase {
             totalMinutos += Duration.between(inicio, fin).toMinutes();
         }
         return new Resultado(totalMinutos, Collections.unmodifiableList(ignoradas));
+    }
+
+    // SCRUM-80 (correccion del cliente, 15 oct 2026): "dia con horario" = al
+    // menos una franja VALIDA (fin > inicio) ese dia de la semana. No se mira
+    // la hora del dia en ningun punto -- solo si el dia, como tal, tiene horario.
+    public static boolean hayFranjaValidaEnFecha(List<Horario> franjasDelGrupo, LocalDate fecha) {
+        String dia = nombreDia(fecha.getDayOfWeek());
+        List<Horario> franjasDelDia = franjasDelGrupo.stream()
+                .filter(h -> dia.equalsIgnoreCase(h.getDia()))
+                .toList();
+        return calcular(franjasDelDia).tieneFranjasValidas();
+    }
+
+    // Dias (LUNES..DOMINGO, orden natural de la semana) en que el grupo tiene
+    // al menos una franja valida -- usado SOLO para el mensaje de error, nunca
+    // para decidir (esa decision es hayFranjaValidaEnFecha/validarDiaConHorario).
+    public static List<String> diasConFranjaValida(List<Horario> franjasDelGrupo) {
+        List<String> dias = new ArrayList<>();
+        for (DayOfWeek diaSemana : DayOfWeek.values()) {
+            String nombre = nombreDia(diaSemana);
+            List<Horario> franjasDelDia = franjasDelGrupo.stream()
+                    .filter(h -> nombre.equalsIgnoreCase(h.getDia()))
+                    .toList();
+            if (calcular(franjasDelDia).tieneFranjasValidas()) {
+                dias.add(nombre);
+            }
+        }
+        return dias;
+    }
+
+    // SCRUM-80 (correccion del cliente, 15 oct 2026): el Instructor solo puede
+    // registrar asistencia (crear clase o marcar atenciones) en los dias de la
+    // semana en que el grupo tiene horario asignado -- Coordinador/Administrador
+    // NO estan sujetos a esta regla (el llamador decide si la invoca). El
+    // mensaje menciona los dias reales del grupo, nunca datos crudos del
+    // cliente (la fecha que llego en la peticion no se repite en el mensaje).
+    public static void validarDiaConHorario(List<Horario> franjasDelGrupo, LocalDate fecha) {
+        if (hayFranjaValidaEnFecha(franjasDelGrupo, fecha)) {
+            return;
+        }
+        List<String> dias = diasConFranjaValida(franjasDelGrupo);
+        String mensaje = dias.isEmpty()
+                ? "Este grupo no tiene ningun horario asignado -- solicite al Coordinador que configure el horario antes de registrar asistencia."
+                : "El Instructor solo puede registrar asistencia los dias en que el grupo tiene horario asignado: "
+                        + String.join(", ", dias) + ".";
+        throw new DiaFueraDeHorarioExcepcion(mensaje);
     }
 }
