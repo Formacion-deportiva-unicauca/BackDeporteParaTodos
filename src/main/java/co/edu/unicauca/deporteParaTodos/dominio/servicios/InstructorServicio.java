@@ -87,7 +87,7 @@ public class InstructorServicio implements IInstructorServicio {
 
     @Override
     public Instructor insertarInstructor(Instructor datosInstructor) {
-        return null;
+        return instructorsGateway.insertarInstructor(datosInstructor);
     }
 
     @Override

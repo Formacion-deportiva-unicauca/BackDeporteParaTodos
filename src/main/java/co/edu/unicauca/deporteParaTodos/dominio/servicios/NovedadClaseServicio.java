@@ -4,6 +4,7 @@ import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosEntrada.INovedadClaseServicio;
@@ -49,6 +50,9 @@ public class NovedadClaseServicio implements INovedadClaseServicio {
         // 1. El grupo debe existir y no estar eliminado l\u00f3gicamente
         Grupo grupo = grupoGateway.obtenerGrupo(
                 datos.getCategoria(), datos.getCurso(), datos.getAnio(), datos.getIterable());
+        if (grupo == null) {
+            throw new NoExisteExcepcion("No existe el grupo para esta novedad");
+        }
         if (grupo.getEliminado() != null && grupo.getEliminado() == 1) {
             throw new NoExisteExcepcion("El grupo no est\u00e1 disponible");
         }
@@ -157,13 +161,18 @@ public class NovedadClaseServicio implements INovedadClaseServicio {
         if (esExentoDePlazo || fecha.isAfter(hoy)) {
             return null;
         }
-        return prorrogaGateway.obtenerProrrogasPorMes(fecha.getYear(), fecha.getMonthValue())
-                .get(perfIdLlamador) != null
-                ? prorrogaGateway.obtenerProrrogasPorMes(fecha.getYear(), fecha.getMonthValue()).get(perfIdLlamador).getFechaLimite()
-                : null;
+        Map<String, ProrrogaRegistroAsistencia> prorrogas = prorrogaGateway.obtenerProrrogasPorMes(fecha.getYear(), fecha.getMonthValue());
+        if (prorrogas == null) {
+            return null;
+        }
+        ProrrogaRegistroAsistencia prorroga = prorrogas.get(perfIdLlamador);
+        return prorroga != null ? prorroga.getFechaLimite() : null;
     }
 
     private void validarMotivo(String motivo) {
+        if (motivo == null || motivo.isBlank()) {
+            throw new JustificacionInvalidaExcepcion("El motivo es obligatorio");
+        }
         String m = motivo.trim().toUpperCase();
         boolean valido = "CLIMA".equals(m) || "INSTRUCTOR".equals(m)
                 || "ESCENARIO".equals(m) || "ACTIVIDAD_UNIV".equals(m) || "OTRO".equals(m);
