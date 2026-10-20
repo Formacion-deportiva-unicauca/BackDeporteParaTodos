@@ -19,6 +19,7 @@ import co.edu.unicauca.deporteParaTodos.dominio.excepciones.NovedadDuplicadaExce
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.RegistroAsistenciaVencidoExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Grupo;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.NovedadClase;
+import co.edu.unicauca.deporteParaTodos.dominio.modelo.ProrrogaRegistroAsistencia;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.VentanaRegistroAsistencia;
 
 /**
