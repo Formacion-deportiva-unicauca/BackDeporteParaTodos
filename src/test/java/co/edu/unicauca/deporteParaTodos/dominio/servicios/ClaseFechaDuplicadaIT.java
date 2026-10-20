@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.time.Clock;
 import java.time.DayOfWeek;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -101,6 +102,9 @@ class ClaseFechaDuplicadaIT {
 
     @Autowired
     private IHorarioServicio horarioServicio;
+
+    @Autowired
+    private Clock clock;
 
     @Autowired
     private MockMvc mockMvc;
@@ -214,7 +218,7 @@ class ClaseFechaDuplicadaIT {
     @Test
     void postClase_http_fechaEnviada_sePersisteExactamenteIgualEnBd() throws Exception {
         int iterable = crearGrupoFresco();
-        String fechaEnviada = LocalDate.now().toString();
+        String fechaEnviada = LocalDate.now(clock).toString();
 
         mockMvc.perform(post("/api/v2/claseGrupo")
                 .contentType("application/json")
@@ -243,7 +247,7 @@ class ClaseFechaDuplicadaIT {
     @Test
     void postClase_http_fechaDuplicadaMismoGrupo_reutilizaClaseExistente() throws Exception {
         int iterable = crearGrupoFresco();
-        String fecha = LocalDate.now().toString();
+        String fecha = LocalDate.now(clock).toString();
         ObjectMapper mapper = new ObjectMapper();
 
         MvcResult primero = mockMvc.perform(post("/api/v2/claseGrupo")
@@ -272,8 +276,8 @@ class ClaseFechaDuplicadaIT {
     @Test
     void postClase_http_fechasDistintasMismoGrupo_aceptaAmbas() throws Exception {
         int iterable = crearGrupoFresco();
-        String fechaDia1 = LocalDate.now().toString();
-        String fechaDia2 = LocalDate.now().minusDays(1).toString();
+        String fechaDia1 = LocalDate.now(clock).toString();
+        String fechaDia2 = LocalDate.now(clock).minusDays(1).toString();
 
         mockMvc.perform(post("/api/v2/claseGrupo")
                 .contentType("application/json")
