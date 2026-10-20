@@ -54,4 +54,10 @@ public class ClaseDto {
     private String observacion;
 
     private Integer eliminado;
+
+    // SCRUM-80 (rediseno, bloque 2): opcional en la peticion -- solo es
+    // obligatoria cuando el grupo no tiene franja de horario ese dia (lo
+    // valida ClaseServicio, no una anotacion aqui, porque la obligatoriedad
+    // depende de datos que el DTO no conoce). La respuesta siempre la incluye.
+    private String justificacion;
 }

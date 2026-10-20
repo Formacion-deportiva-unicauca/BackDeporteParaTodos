@@ -21,17 +21,13 @@ public class InstructorDto {
     private String sexo;
 
     public static InstructorDto fabricarDeModelo(Instructor modelo) {
-        try {
-            InstructorDto dto = new InstructorDto();
-            if (modelo.getPerfil() != null) {
-                dto.setId(modelo.getPerfil().getId());
-                dto.setNombre(modelo.getPerfil().getNombre());
-                dto.setCorreo(modelo.getPerfil().getCorreo());
-                dto.setSexo(modelo.getPerfil().getSexo());
-            }
-            return dto;
-        } catch (Exception e) {
-            return null;
+        InstructorDto dto = new InstructorDto();
+        if (modelo.getPerfil() != null) {
+            dto.setId(modelo.getPerfil().getId());
+            dto.setNombre(modelo.getPerfil().getNombre());
+            dto.setCorreo(modelo.getPerfil().getCorreo());
+            dto.setSexo(modelo.getPerfil().getSexo());
         }
+        return dto;
     }
 }

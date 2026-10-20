@@ -56,6 +56,7 @@ DROP TABLE IF EXISTS tbl_curso;
 DROP TABLE IF EXISTS tbl_coordinador;
 DROP TABLE IF EXISTS tbl_plazo_carga_atenciones;
 DROP TABLE IF EXISTS tbl_prorroga_registro_asistencia;
+DROP TABLE IF EXISTS tbl_novedad_clase;
 DROP TABLE IF EXISTS tbl_instructor;
 DROP TABLE IF EXISTS tbl_programa;
 DROP TABLE IF EXISTS tbl_facultad;
@@ -263,6 +264,33 @@ CREATE TABLE tbl_grupo (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
+-- tbl_novedad_clase
+-- Registro de novedades de clases no realizadas. Una novedad por grupo y fecha.
+-- FK_NOVEDAD_GRUPO: RESTRICT (el grupo no se borra f�sicamente).
+-- UQ_TBL_NOVEDAD_CLASE: garantiza s�lo una novedad activa por grupo y fecha.
+-- --------------------------------------------------------
+CREATE TABLE tbl_novedad_clase (
+    NOV_CODIGO            BIGINT       NOT NULL AUTO_INCREMENT,
+    CAT_TITULO            VARCHAR(100) NOT NULL,
+    CUR_NOMBRE            VARCHAR(100) NOT NULL,
+    GRP_ANIO              BIGINT       NOT NULL,
+    GRP_ITERABLE          BIGINT       NOT NULL,
+    NOV_FECHA             DATE         NOT NULL,
+    NOV_MOTIVO            VARCHAR(50)  NOT NULL,
+    NOV_DESCRIPCION       VARCHAR(1000),
+    NOV_USUARIO_CREADOR   VARCHAR(50)  NOT NULL,
+    NOV_FECHA_CREACION    DATETIME     NOT NULL,
+    NOV_USUARIO_MODIFICADOR VARCHAR(50),
+    NOV_FECHA_MODIFICACION DATETIME,
+    NOV_VERSION           INT          NOT NULL DEFAULT 0,
+    META_ELIMINADO        INT          NOT NULL DEFAULT 0,
+    CONSTRAINT FK_NOVEDAD_GRUPO FOREIGN KEY (CAT_TITULO, CUR_NOMBRE, GRP_ANIO, GRP_ITERABLE)
+        REFERENCES tbl_grupo (CAT_TITULO, CUR_NOMBRE, GRP_ANIO, GRP_ITERABLE) ON DELETE RESTRICT,
+    CONSTRAINT PK_TBL_NOVEDAD_CLASE PRIMARY KEY (NOV_CODIGO),
+    CONSTRAINT UQ_TBL_NOVEDAD_CLASE UNIQUE (CAT_TITULO, CUR_NOMBRE, GRP_ANIO, GRP_ITERABLE, NOV_FECHA, META_ELIMINADO)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
 -- tbl_clase
 -- CLS_CODIGO: era SEQ_CLS_CODIGO (START 121) -> AUTO_INCREMENT
 -- CLS_FECHA: Java usa java.sql.Date -> MySQL DATE
@@ -285,6 +313,10 @@ CREATE TABLE tbl_clase (
     GRP_ITERABLE         BIGINT       NOT NULL,
     CUR_NOMBRE           VARCHAR(100) NOT NULL,
     CAT_TITULO           VARCHAR(100) NOT NULL,
+    -- SCRUM-80 (rediseno, 15 oct 2026, bloque 2 de 3): obligatoria SOLO cuando
+    -- el grupo no tiene franja de horario ese dia de la semana (lo valida
+    -- ClaseServicio, no una restriccion de BD, porque depende de tbl_horario).
+    CLS_JUSTIFICACION    VARCHAR(500),
     CONSTRAINT FK_CLASE_INSTRUCTOR FOREIGN KEY (PERF_ID)                                        REFERENCES tbl_instructor (PERF_ID)                                    ON DELETE SET NULL,
     CONSTRAINT FK_CLASE_GRUPO      FOREIGN KEY (CAT_TITULO, CUR_NOMBRE, GRP_ANIO, GRP_ITERABLE) REFERENCES tbl_grupo (CAT_TITULO, CUR_NOMBRE, GRP_ANIO, GRP_ITERABLE) ON DELETE RESTRICT,
     CONSTRAINT PK_TBL_CLASE        PRIMARY KEY (CLS_CODIGO)

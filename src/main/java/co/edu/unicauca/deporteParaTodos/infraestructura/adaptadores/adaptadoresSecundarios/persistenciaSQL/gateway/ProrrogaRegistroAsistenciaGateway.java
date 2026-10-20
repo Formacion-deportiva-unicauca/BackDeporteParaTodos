@@ -3,6 +3,8 @@ package co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadores
 import java.util.HashMap;
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.EmptyResultDataAccessException;
@@ -17,6 +19,8 @@ import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresS
 
 @Service
 public class ProrrogaRegistroAsistenciaGateway implements IProrrogaRegistroAsistenciaGateway {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(ProrrogaRegistroAsistenciaGateway.class);
 
     @Autowired
     private IProrrogaRegistroAsistenciaRepositorio repoProrroga;
@@ -77,6 +81,7 @@ public class ProrrogaRegistroAsistenciaGateway implements IProrrogaRegistroAsist
             repoProrroga.deleteById(id);
         } catch (EmptyResultDataAccessException e) {
             // dias=0 sobre un instructor SIN prorroga: no hay nada que borrar.
+            LOGGER.debug("No existe prorroga para eliminar: instructor={}, anio={}, mes={}", idInstructor, anio, mes);
         }
     }
 }

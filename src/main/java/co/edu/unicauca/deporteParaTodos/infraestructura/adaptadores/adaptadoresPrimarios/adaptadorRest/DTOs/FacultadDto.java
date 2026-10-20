@@ -15,12 +15,8 @@ public class FacultadDto {
     private String nombre;
 
     public static FacultadDto fabricarDeModelo(Facultad modelo) {
-        try {
-            FacultadDto dto = new FacultadDto();
-            dto.setNombre(modelo.getNombre());
-            return dto;
-        } catch (Exception e) {
-            return null;
-        }
+        FacultadDto dto = new FacultadDto();
+        dto.setNombre(modelo.getNombre());
+        return dto;
     }
 }

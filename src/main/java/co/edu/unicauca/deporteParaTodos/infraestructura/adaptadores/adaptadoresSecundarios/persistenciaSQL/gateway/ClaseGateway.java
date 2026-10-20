@@ -61,6 +61,13 @@ public class ClaseGateway implements IClaseGateway {
     }
 
     @Override
+    public Clase obtenerClase(int id) {
+        ClaseEntidad entidad = repoClase.findById(id)
+                .orElseThrow(() -> new NoExisteExcepcion("No existe la clase con codigo " + id));
+        return ClaseMapper.toDominio(entidad);
+    }
+
+    @Override
     public Clase eliminarClase(int id) {
         ClaseEntidad entidad = repoClase.findById(id).orElseThrow(NoExisteExcepcion::new);
         repoClase.marcarComoEliminado(id);

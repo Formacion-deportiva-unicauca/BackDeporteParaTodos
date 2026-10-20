@@ -3,6 +3,8 @@ package co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosEntrada;
 import java.time.LocalDate;
 import java.util.List;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Instructor;
+import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.AvisoRegistroDto;
+import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.EstadoRegistroDto;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.InstructorDto;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.PerfilDto;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.PlazoCargaDto;
@@ -47,5 +49,15 @@ public interface IInstructorServicio {
     // del JWT en el controller).
     public List<ProrrogaDto> asignarProrrogaRegistro(
             List<String> idsInstructores, int anio, int mes, int dias, String idCoordinador);
+
+    // SCRUM-80 (rediseno, bloque 3 de 4): una fila por instructor ACTIVO con el
+    // estado del registro de asistencia del mes (anio, mes). anio/mes null ->
+    // mes actual del Clock. mes futuro -> MesFuturoExcepcion (422).
+    public List<EstadoRegistroDto> obtenerEstadoRegistro(Integer anio, Integer mes);
+
+    // Avisos del MES ACTUAL y del ANTERIOR para un instructor: solo cuando le
+    // falta registrar algun grupo activo y el plazo esta por vencer (<=3 dias)
+    // o ya vencio. Instructor inexistente/inactivo -> NoExisteExcepcion (404).
+    public List<AvisoRegistroDto> obtenerAvisosRegistro(String idInstructor);
 
 }

@@ -27,6 +27,10 @@ public enum CodigoError {
         FECHA_CLASE_FUTURA("GC-0018", "La fecha de la clase no puede ser futura"),
         REGISTRO_ASISTENCIA_VENCIDO("GC-0019", "El plazo para registrar la asistencia ya venció"),
         PRORROGA_MES_FUTURO("GC-0020", "No se puede asignar una prorroga para un mes futuro"),
+        JUSTIFICACION_INVALIDA("GC-0021", "La justificacion de la clase no es valida"),
+        DURACION_MANUAL_INVALIDA("GC-0022", "La duracion de la clase no es valida"),
+        CONSULTA_MES_FUTURO("GC-0023", "No se puede consultar un mes futuro"),
+        DIA_FUERA_DE_HORARIO("GC-0024", "La fecha no corresponde a un dia con horario asignado"),
         ;
 
         private final String codigo;

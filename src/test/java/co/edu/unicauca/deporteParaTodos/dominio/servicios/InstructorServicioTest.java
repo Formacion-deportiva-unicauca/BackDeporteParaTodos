@@ -1,19 +1,26 @@
 package co.edu.unicauca.deporteParaTodos.dominio.servicios;
 
+import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IClaseGateway;
+import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IGrupoGateway;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IInstructorGateway;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IPerfilGateway;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IPlazoCargaAtencionesGateway;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IProrrogaRegistroAsistenciaGateway;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.ListadoVacioExcepcion;
+import co.edu.unicauca.deporteParaTodos.dominio.excepciones.MesFuturoExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.NoExisteExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.PlazoCargaInvalidoExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.ProrrogaMesFuturoExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.YaExisteElementoExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.EstadoReporte;
+import co.edu.unicauca.deporteParaTodos.dominio.modelo.Clase;
+import co.edu.unicauca.deporteParaTodos.dominio.modelo.Grupo;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Instructor;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Perfil;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.PlazoCargaAtenciones;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.ProrrogaRegistroAsistencia;
+import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.AvisoRegistroDto;
+import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.EstadoRegistroDto;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.InstructorDto;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.PerfilDto;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.PlazoCargaDto;
@@ -55,6 +62,12 @@ class InstructorServicioTest {
 
     @Mock
     private IProrrogaRegistroAsistenciaGateway prorrogaGateway;
+
+    @Mock
+    private IGrupoGateway grupoGateway;
+
+    @Mock
+    private IClaseGateway claseGateway;
 
     @Mock
     private Clock clock;
@@ -764,5 +777,262 @@ class InstructorServicioTest {
         when(prorrogaGateway.obtenerProrrogasPorMes(2026, 10)).thenReturn(Map.of());
 
         assertDoesNotThrow(() -> instructorServicio.obtenerProrrogasRegistro(2026, 10));
+    }
+
+    // ── obtenerEstadoRegistro (SCRUM-80, rediseno bloque 3) ──────────────────
+    // HOY_FIJO = 2026-10-12 -> mes actual = (2026, 10).
+
+    private static final String CAT = "Deportes";
+    private static final String CURSO = "Futbol";
+    private static final int ANIO = 2026;
+    private static final int ITER = 1;
+
+    private Grupo grupoConPeriodo(LocalDate inicio, LocalDate fin) {
+        Grupo g = new Grupo();
+        g.setCategoria(CAT);
+        g.setCurso(CURSO);
+        g.setAnio(ANIO);
+        g.setIterable(ITER);
+        g.setFechaCreacion(inicio);
+        g.setFechaFinalizacion(fin);
+        return g;
+    }
+
+    private Clase claseEn(LocalDate fecha) {
+        Clase c = new Clase();
+        c.setFecha(fecha);
+        return c;
+    }
+
+    private void sinProrrogasDelMes(int anio, int mes) {
+        lenient().when(prorrogaGateway.obtenerProrrogasPorMes(anio, mes)).thenReturn(Map.of());
+    }
+
+    @Test
+    void obtenerEstadoRegistro_conGrupoActivoYClaseEnElMes_retornaCompleto() {
+        when(instructorsGateway.obtenerInstructores()).thenReturn(List.of(instructorConPerfil()));
+        when(grupoGateway.obtenerGruposInstructor(ID))
+                .thenReturn(List.of(grupoConPeriodo(LocalDate.of(2026, 10, 1), null)));
+        when(claseGateway.obtenerClasesGrupo(CAT, CURSO, ANIO, ITER))
+                .thenReturn(List.of(claseEn(LocalDate.of(2026, 10, 5))));
+        sinProrrogasDelMes(2026, 10);
+
+        List<EstadoRegistroDto> resultado = instructorServicio.obtenerEstadoRegistro(null, null);
+
+        assertEquals(1, resultado.size());
+        EstadoRegistroDto dto = resultado.get(0);
+        assertEquals(ID, dto.getIdInstructor());
+        assertEquals(2026, dto.getAnio());
+        assertEquals(10, dto.getMes());
+        assertEquals("COMPLETO", dto.getEstado());
+        assertEquals(1, dto.getGruposActivos());
+        assertEquals(1, dto.getGruposRegistrados());
+        assertEquals("2026-10-31", dto.getFechaLimite());
+        assertEquals("2026-10-12", dto.getHoy());
+    }
+
+    @Test
+    void obtenerEstadoRegistro_conGrupoActivoSinClase_retornaPendiente() {
+        when(instructorsGateway.obtenerInstructores()).thenReturn(List.of(instructorConPerfil()));
+        when(grupoGateway.obtenerGruposInstructor(ID))
+                .thenReturn(List.of(grupoConPeriodo(LocalDate.of(2026, 10, 1), null)));
+        when(claseGateway.obtenerClasesGrupo(CAT, CURSO, ANIO, ITER)).thenReturn(List.of());
+        sinProrrogasDelMes(2026, 10);
+
+        List<EstadoRegistroDto> resultado = instructorServicio.obtenerEstadoRegistro(null, null);
+
+        assertEquals("PENDIENTE", resultado.get(0).getEstado());
+        assertEquals(1, resultado.get(0).getGruposActivos());
+        assertEquals(0, resultado.get(0).getGruposRegistrados());
+    }
+
+    @Test
+    void obtenerEstadoRegistro_claseEnOtroMes_noCuentaComoRegistrada() {
+        when(instructorsGateway.obtenerInstructores()).thenReturn(List.of(instructorConPerfil()));
+        when(grupoGateway.obtenerGruposInstructor(ID))
+                .thenReturn(List.of(grupoConPeriodo(LocalDate.of(2026, 10, 1), null)));
+        // Clase en septiembre: el grupo esta activo en octubre pero la clase no es de octubre.
+        when(claseGateway.obtenerClasesGrupo(CAT, CURSO, ANIO, ITER))
+                .thenReturn(List.of(claseEn(LocalDate.of(2026, 9, 30))));
+        sinProrrogasDelMes(2026, 10);
+
+        List<EstadoRegistroDto> resultado = instructorServicio.obtenerEstadoRegistro(null, null);
+
+        assertEquals("PENDIENTE", resultado.get(0).getEstado());
+        assertEquals(0, resultado.get(0).getGruposRegistrados());
+    }
+
+    @Test
+    void obtenerEstadoRegistro_instructorSinGrupos_retornaSinGrupos() {
+        when(instructorsGateway.obtenerInstructores()).thenReturn(List.of(instructorConPerfil()));
+        when(grupoGateway.obtenerGruposInstructor(ID)).thenReturn(List.of());
+        sinProrrogasDelMes(2026, 10);
+
+        List<EstadoRegistroDto> resultado = instructorServicio.obtenerEstadoRegistro(null, null);
+
+        assertEquals("SIN_GRUPOS", resultado.get(0).getEstado());
+        assertEquals(0, resultado.get(0).getGruposActivos());
+        verify(claseGateway, never()).obtenerClasesGrupo(any(), any(), anyInt(), anyInt());
+    }
+
+    @Test
+    void obtenerEstadoRegistro_mesPasadoSinRegistro_retornaVencido() {
+        when(instructorsGateway.obtenerInstructores()).thenReturn(List.of(instructorConPerfil()));
+        when(grupoGateway.obtenerGruposInstructor(ID))
+                .thenReturn(List.of(grupoConPeriodo(LocalDate.of(2026, 9, 1), LocalDate.of(2026, 9, 30))));
+        when(claseGateway.obtenerClasesGrupo(CAT, CURSO, ANIO, ITER)).thenReturn(List.of());
+        sinProrrogasDelMes(2026, 9);
+
+        List<EstadoRegistroDto> resultado = instructorServicio.obtenerEstadoRegistro(2026, 9);
+
+        assertEquals("VENCIDO", resultado.get(0).getEstado());
+        assertEquals("2026-09-30", resultado.get(0).getFechaLimite());
+    }
+
+    @Test
+    void obtenerEstadoRegistro_mesPasadoConProrrogaVigente_retornaPendiente() {
+        when(instructorsGateway.obtenerInstructores()).thenReturn(List.of(instructorConPerfil()));
+        when(grupoGateway.obtenerGruposInstructor(ID))
+                .thenReturn(List.of(grupoConPeriodo(LocalDate.of(2026, 9, 1), LocalDate.of(2026, 9, 30))));
+        when(claseGateway.obtenerClasesGrupo(CAT, CURSO, ANIO, ITER)).thenReturn(List.of());
+        ProrrogaRegistroAsistencia prorroga = new ProrrogaRegistroAsistencia();
+        prorroga.setFechaLimite(LocalDate.of(2026, 10, 20));
+        when(prorrogaGateway.obtenerProrrogasPorMes(2026, 9)).thenReturn(Map.of(ID, prorroga));
+
+        List<EstadoRegistroDto> resultado = instructorServicio.obtenerEstadoRegistro(2026, 9);
+
+        assertEquals("PENDIENTE", resultado.get(0).getEstado());
+        assertEquals("2026-10-20", resultado.get(0).getFechaLimite());
+    }
+
+    @Test
+    void obtenerEstadoRegistro_dosGruposUnoRegistrado_retornaPendienteConConteos() {
+        Grupo grupoA = grupoConPeriodo(LocalDate.of(2026, 10, 1), null);
+        Grupo grupoB = new Grupo();
+        grupoB.setCategoria(CAT);
+        grupoB.setCurso("Baloncesto");
+        grupoB.setAnio(ANIO);
+        grupoB.setIterable(2);
+        grupoB.setFechaCreacion(LocalDate.of(2026, 10, 1));
+        when(instructorsGateway.obtenerInstructores()).thenReturn(List.of(instructorConPerfil()));
+        when(grupoGateway.obtenerGruposInstructor(ID)).thenReturn(List.of(grupoA, grupoB));
+        when(claseGateway.obtenerClasesGrupo(CAT, CURSO, ANIO, ITER))
+                .thenReturn(List.of(claseEn(LocalDate.of(2026, 10, 5))));
+        lenient().when(claseGateway.obtenerClasesGrupo(CAT, "Baloncesto", ANIO, 2)).thenReturn(List.of());
+        sinProrrogasDelMes(2026, 10);
+
+        List<EstadoRegistroDto> resultado = instructorServicio.obtenerEstadoRegistro(null, null);
+
+        assertEquals(2, resultado.get(0).getGruposActivos());
+        assertEquals(1, resultado.get(0).getGruposRegistrados());
+        assertEquals("PENDIENTE", resultado.get(0).getEstado());
+    }
+
+    @Test
+    void obtenerEstadoRegistro_mesFuturo_lanzaMesFuturoExcepcionSinConsultar() {
+        assertThrows(MesFuturoExcepcion.class,
+                () -> instructorServicio.obtenerEstadoRegistro(2026, 11));
+
+        verify(grupoGateway, never()).obtenerGruposInstructor(any());
+        verify(prorrogaGateway, never()).obtenerProrrogasPorMes(anyInt(), anyInt());
+    }
+
+    @Test
+    void obtenerEstadoRegistro_anioFuturo_lanzaMesFuturoExcepcion() {
+        assertThrows(MesFuturoExcepcion.class,
+                () -> instructorServicio.obtenerEstadoRegistro(2027, 1));
+    }
+
+    // ── obtenerAvisosRegistro (SCRUM-80, rediseno bloque 3) ──────────────────
+
+    @Test
+    void obtenerAvisosRegistro_instructorInexistente_lanzaNoExisteExcepcion() {
+        when(instructorsGateway.existeInstructorActivo("desconocido")).thenReturn(false);
+
+        assertThrows(NoExisteExcepcion.class,
+                () -> instructorServicio.obtenerAvisosRegistro("desconocido"));
+
+        verify(grupoGateway, never()).obtenerGruposInstructor(any());
+    }
+
+    @Test
+    void obtenerAvisosRegistro_idNulo_lanzaNoExisteExcepcion() {
+        assertThrows(NoExisteExcepcion.class, () -> instructorServicio.obtenerAvisosRegistro(null));
+    }
+
+    @Test
+    void obtenerAvisosRegistro_mesAnteriorIncompleto_retornaAvisoVencido() {
+        when(instructorsGateway.existeInstructorActivo(ID)).thenReturn(true);
+        // Grupo activo SOLO en septiembre (mes anterior): en octubre no aplica.
+        when(grupoGateway.obtenerGruposInstructor(ID))
+                .thenReturn(List.of(grupoConPeriodo(LocalDate.of(2026, 9, 1), LocalDate.of(2026, 9, 30))));
+        lenient().when(claseGateway.obtenerClasesGrupo(CAT, CURSO, ANIO, ITER)).thenReturn(List.of());
+        sinProrrogasDelMes(2026, 9);
+        sinProrrogasDelMes(2026, 10);
+
+        List<AvisoRegistroDto> resultado = instructorServicio.obtenerAvisosRegistro(ID);
+
+        assertEquals(1, resultado.size());
+        assertEquals(2026, resultado.get(0).getAnio());
+        assertEquals(9, resultado.get(0).getMes());
+        assertEquals("VENCIDO", resultado.get(0).getEstado());
+        assertEquals("2026-09-30", resultado.get(0).getFechaLimite());
+    }
+
+    @Test
+    void obtenerAvisosRegistro_mesActualCompleto_noGeneraAvisos() {
+        when(instructorsGateway.existeInstructorActivo(ID)).thenReturn(true);
+        when(grupoGateway.obtenerGruposInstructor(ID))
+                .thenReturn(List.of(grupoConPeriodo(LocalDate.of(2026, 10, 1), null)));
+        when(claseGateway.obtenerClasesGrupo(CAT, CURSO, ANIO, ITER))
+                .thenReturn(List.of(claseEn(LocalDate.of(2026, 10, 5))));
+        sinProrrogasDelMes(2026, 10);
+
+        List<AvisoRegistroDto> resultado = instructorServicio.obtenerAvisosRegistro(ID);
+
+        assertTrue(resultado.isEmpty());
+    }
+
+    @Test
+    void obtenerAvisosRegistro_sinGruposActivos_noGeneraAvisos() {
+        when(instructorsGateway.existeInstructorActivo(ID)).thenReturn(true);
+        when(grupoGateway.obtenerGruposInstructor(ID)).thenReturn(List.of());
+        sinProrrogasDelMes(2026, 10);
+
+        List<AvisoRegistroDto> resultado = instructorServicio.obtenerAvisosRegistro(ID);
+
+        assertTrue(resultado.isEmpty());
+    }
+
+    @Test
+    void obtenerAvisosRegistro_mesActualConPocosDiasParaElLimite_retornaProximoAVencer() {
+        // Hoy = 2026-10-29 (2 dias antes del fin de mes) -> PROXIMO_A_VENCER.
+        lenient().when(clock.instant())
+                .thenReturn(LocalDate.of(2026, 10, 29).atStartOfDay(ZoneId.of("America/Bogota")).toInstant());
+        when(instructorsGateway.existeInstructorActivo(ID)).thenReturn(true);
+        when(grupoGateway.obtenerGruposInstructor(ID))
+                .thenReturn(List.of(grupoConPeriodo(LocalDate.of(2026, 10, 1), null)));
+        when(claseGateway.obtenerClasesGrupo(CAT, CURSO, ANIO, ITER)).thenReturn(List.of());
+        sinProrrogasDelMes(2026, 10);
+
+        List<AvisoRegistroDto> resultado = instructorServicio.obtenerAvisosRegistro(ID);
+
+        assertEquals(1, resultado.size());
+        assertEquals("PROXIMO_A_VENCER", resultado.get(0).getEstado());
+        assertEquals(2, resultado.get(0).getDiasRestantes());
+    }
+
+    @Test
+    void obtenerAvisosRegistro_mesActualConMuchosDias_noGeneraAviso() {
+        // HOY_FIJO = 2026-10-12, fin de mes = 2026-10-31 -> 19 dias > 3 -> sin aviso.
+        when(instructorsGateway.existeInstructorActivo(ID)).thenReturn(true);
+        when(grupoGateway.obtenerGruposInstructor(ID))
+                .thenReturn(List.of(grupoConPeriodo(LocalDate.of(2026, 10, 1), null)));
+        when(claseGateway.obtenerClasesGrupo(CAT, CURSO, ANIO, ITER)).thenReturn(List.of());
+        sinProrrogasDelMes(2026, 10);
+
+        List<AvisoRegistroDto> resultado = instructorServicio.obtenerAvisosRegistro(ID);
+
+        assertTrue(resultado.isEmpty());
     }
 }

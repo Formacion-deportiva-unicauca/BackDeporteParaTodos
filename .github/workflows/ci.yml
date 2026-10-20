@@ -55,6 +55,7 @@ jobs:
           DB_PASSWORD: cipass
 
       - name: SonarCloud analysis
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: mvn --batch-mode sonar:sonar
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}

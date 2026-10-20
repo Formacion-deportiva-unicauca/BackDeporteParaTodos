@@ -28,31 +28,23 @@ public class ImagenDto {
     private String datosBase64;
 
     public static ImagenDto fabricaFromImagenEntidad(ImagenEntidad entidad){
-        try{
-            ImagenDto dto = new ImagenDto();
-            dto.setId(entidad.getId());
-            dto.setNombre(entidad.getNombre());
-            dto.setLongitud(entidad.getLongitud());
-            dto.setTipoArchivo(entidad.getTipoArchivo());
-            dto.setDatosBase64(Base64.getEncoder().encodeToString(entidad.getDatos()));
-            return dto;
-        }catch(Exception e){
-            return null;
-        }
+        ImagenDto dto = new ImagenDto();
+        dto.setId(entidad.getId());
+        dto.setNombre(entidad.getNombre());
+        dto.setLongitud(entidad.getLongitud());
+        dto.setTipoArchivo(entidad.getTipoArchivo());
+        dto.setDatosBase64(Base64.getEncoder().encodeToString(entidad.getDatos()));
+        return dto;
     }
 
     
     public static ImagenDto fabricaFromImagenModelo(Imagen modelo){
-        try{
-            ImagenDto dto = new ImagenDto();
-            dto.setId(modelo.getId());
-            dto.setLongitud(modelo.getLongitud());
-            dto.setNombre(modelo.getNombre());
-            dto.setTipoArchivo(modelo.getTipoArchivo());
-            dto.setDatosBase64(Base64.getEncoder().encodeToString(modelo.getDatos()));
-            return dto;
-        }catch(Exception e){
-            return null;
-        }
+        ImagenDto dto = new ImagenDto();
+        dto.setId(modelo.getId());
+        dto.setLongitud(modelo.getLongitud());
+        dto.setNombre(modelo.getNombre());
+        dto.setTipoArchivo(modelo.getTipoArchivo());
+        dto.setDatosBase64(Base64.getEncoder().encodeToString(modelo.getDatos()));
+        return dto;
     }
 }

@@ -20,4 +20,9 @@ public interface IAsistenciaGateway {
     public Asistencia eliminarAsitencia(String perfId, int clsId);
 
     public Asistencia eliminarAsistencia(String perfId, Long clsCodigo);
+
+    // SCRUM-80 (rediseno, bloque 2): reactiva una fila con META_ELIMINADO=1
+    // (eliminado=0) -- PASO 0 confirmo que existeAsistencia() no distinguia
+    // eliminado=0 de eliminado=1, asi que esa fila nunca se reactivaba.
+    public Asistencia reactivarAsistencia(String perfId, int clsId);
 }

@@ -23,14 +23,10 @@ public class AtencionDto {
     private Boolean estaAtendido;
 
     public static AtencionDto fabricarDeModelo(Asistencia modelo) {
-        try {
-            AtencionDto dto = new AtencionDto();
-            dto.setIdPerfil(modelo.getIdPerfil());
-            dto.setIdClase(modelo.getClsCodigo());
-            dto.setEstaAtendido(modelo.getEliminado() == null || modelo.getEliminado() != 1);
-            return dto;
-        } catch (Exception e) {
-            return null;
-        }
+        AtencionDto dto = new AtencionDto();
+        dto.setIdPerfil(modelo.getIdPerfil());
+        dto.setIdClase(modelo.getClsCodigo());
+        dto.setEstaAtendido(modelo.getEliminado() == null || modelo.getEliminado() != 1);
+        return dto;
     }
 }

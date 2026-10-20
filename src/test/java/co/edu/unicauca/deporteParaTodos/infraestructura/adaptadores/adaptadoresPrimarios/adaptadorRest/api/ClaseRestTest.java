@@ -5,6 +5,7 @@ import co.edu.unicauca.deporteParaTodos.dominio.modelo.Clase;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.ClaseDto;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -13,9 +14,15 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.MediaType;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
+import org.springframework.security.web.method.annotation.AuthenticationPrincipalArgumentResolver;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -36,11 +43,32 @@ class ClaseRestTest {
     private MockMvc mockMvc;
     private final ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
 
+    // SCRUM-80 (rediseno, bloque 2): standaloneSetup NO corre los filtros reales
+    // de Spring Security -- se registra el resolver de @AuthenticationPrincipal
+    // a mano y se fija un JWT (perf_id=INS001, rol=Instructor, igual que
+    // claseBase().idInstructor) en el SecurityContext para que el controller
+    // pueda leerlo, igual que en produccion.
     @BeforeEach
     void setUp() {
         mockMvc = MockMvcBuilders.standaloneSetup(claseRest)
                 .setMessageConverters(new MappingJackson2HttpMessageConverter())
+                .setCustomArgumentResolvers(new AuthenticationPrincipalArgumentResolver())
                 .build();
+
+        Jwt jwt = Jwt.withTokenValue("token")
+                .header("alg", "none")
+                .claim("perf_id", "INS001")
+                .claim("rol", "Instructor")
+                .issuedAt(Instant.now())
+                .expiresAt(Instant.now().plusSeconds(3600))
+                .build();
+        SecurityContextHolder.getContext().setAuthentication(
+                new JwtAuthenticationToken(jwt, List.of(new SimpleGrantedAuthority("Instructor"))));
+    }
+
+    @AfterEach
+    void limpiarSecurityContext() {
+        SecurityContextHolder.clearContext();
     }
 
     private Clase claseBase() {
@@ -91,7 +119,7 @@ class ClaseRestTest {
     @Test
     void postClase_noExistiaClaseHoy_retornaCreated() throws Exception {
         when(servicioClase.existeClaseEnFecha(any(), any(), any(), any(), any())).thenReturn(false);
-        when(servicioClase.insertarClase(any(Clase.class))).thenReturn(claseBase());
+        when(servicioClase.insertarClase(any(Clase.class), eq("INS001"), eq("Instructor"))).thenReturn(claseBase());
 
         mockMvc.perform(post("/api/v2/claseGrupo")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -109,7 +137,7 @@ class ClaseRestTest {
         Clase existente = claseBase();
         existente.setCodigo(99);
         when(servicioClase.existeClaseEnFecha(any(), any(), any(), any(), any())).thenReturn(true);
-        when(servicioClase.insertarClase(any(Clase.class))).thenReturn(existente);
+        when(servicioClase.insertarClase(any(Clase.class), eq("INS001"), eq("Instructor"))).thenReturn(existente);
 
         mockMvc.perform(post("/api/v2/claseGrupo")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -120,7 +148,7 @@ class ClaseRestTest {
 
     @Test
     void deleteClase_retornaOk() throws Exception {
-        when(servicioClase.eliminarClase(anyInt())).thenReturn(claseBase());
+        when(servicioClase.eliminarClase(anyInt(), eq("INS001"), eq("Instructor"))).thenReturn(claseBase());
 
         mockMvc.perform(delete("/api/v2/clase")
                         .param("id", "1"))

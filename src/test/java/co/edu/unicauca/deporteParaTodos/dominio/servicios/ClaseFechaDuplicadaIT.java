@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.time.Clock;
+import java.time.DayOfWeek;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Base64;
@@ -38,6 +40,7 @@ import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosEntrada.ICateg
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosEntrada.ICursoServicio;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosEntrada.IGrupoServicio;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosEntrada.IImagenServicio;
+import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosEntrada.IHorarioServicio;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.NoExisteExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.YaExisteElementoExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Categoria;
@@ -45,6 +48,8 @@ import co.edu.unicauca.deporteParaTodos.dominio.modelo.Curso;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.EstadoCurso;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.EstadoInscripciones;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Grupo;
+import co.edu.unicauca.deporteParaTodos.dominio.modelo.Horario;
+import co.edu.unicauca.deporteParaTodos.dominio.modelo.CalculadoraDuracionClase;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.ImagenDto;
 
 /**
@@ -94,6 +99,12 @@ class ClaseFechaDuplicadaIT {
 
     @Autowired
     private IImagenServicio imagenServicio;
+
+    @Autowired
+    private IHorarioServicio horarioServicio;
+
+    @Autowired
+    private Clock clock;
 
     @Autowired
     private MockMvc mockMvc;
@@ -148,7 +159,25 @@ class ClaseFechaDuplicadaIT {
         grupo.setCupos(5);
         grupo.setFechaCreacion(LocalDate.now());
         grupo.setPeriodo(1);
-        return grupoServicio.insertarGrupo(grupo).getIterable();
+        Grupo insertado = grupoServicio.insertarGrupo(grupo);
+        crearHorariosParaGrupo(insertado);
+        return insertado.getIterable();
+    }
+
+    private void crearHorariosParaGrupo(Grupo grupo) {
+        for (DayOfWeek dia : DayOfWeek.values()) {
+            Horario h = new Horario();
+            h.setCategoria(grupo.getCategoria());
+            h.setCurso(grupo.getCurso());
+            h.setAnio(grupo.getAnio());
+            h.setIterable(grupo.getIterable());
+            h.setDia(CalculadoraDuracionClase.nombreDia(dia));
+            h.setHoraInicio("08:00");
+            h.setHoraFin("10:00");
+            h.setEscenario("Cancha IT");
+            h.setEliminado(0);
+            horarioServicio.insertarHorario(h);
+        }
     }
 
     private String buildJwt(String rol, String perfId) {
@@ -189,7 +218,7 @@ class ClaseFechaDuplicadaIT {
     @Test
     void postClase_http_fechaEnviada_sePersisteExactamenteIgualEnBd() throws Exception {
         int iterable = crearGrupoFresco();
-        String fechaEnviada = "2026-11-11";
+        String fechaEnviada = LocalDate.now(clock).toString();
 
         mockMvc.perform(post("/api/v2/claseGrupo")
                 .contentType("application/json")
@@ -218,7 +247,7 @@ class ClaseFechaDuplicadaIT {
     @Test
     void postClase_http_fechaDuplicadaMismoGrupo_reutilizaClaseExistente() throws Exception {
         int iterable = crearGrupoFresco();
-        String fecha = "2026-12-01";
+        String fecha = LocalDate.now(clock).toString();
         ObjectMapper mapper = new ObjectMapper();
 
         MvcResult primero = mockMvc.perform(post("/api/v2/claseGrupo")
@@ -247,16 +276,18 @@ class ClaseFechaDuplicadaIT {
     @Test
     void postClase_http_fechasDistintasMismoGrupo_aceptaAmbas() throws Exception {
         int iterable = crearGrupoFresco();
+        String fechaDia1 = LocalDate.now(clock).toString();
+        String fechaDia2 = LocalDate.now(clock).minusDays(1).toString();
 
         mockMvc.perform(post("/api/v2/claseGrupo")
                 .contentType("application/json")
-                .content(bodyClase(iterable, "2026-12-15", "clase dia 1"))
+                .content(bodyClase(iterable, fechaDia1, "clase dia 1"))
                 .header("Authorization", "Bearer " + buildJwt("Instructor", INSTRUCTOR_SEED_ID)))
                 .andExpect(status().isCreated());
 
         mockMvc.perform(post("/api/v2/claseGrupo")
                 .contentType("application/json")
-                .content(bodyClase(iterable, "2026-12-16", "clase dia 2"))
+                .content(bodyClase(iterable, fechaDia2, "clase dia 2"))
                 .header("Authorization", "Bearer " + buildJwt("Instructor", INSTRUCTOR_SEED_ID)))
                 .andExpect(status().isCreated());
     }

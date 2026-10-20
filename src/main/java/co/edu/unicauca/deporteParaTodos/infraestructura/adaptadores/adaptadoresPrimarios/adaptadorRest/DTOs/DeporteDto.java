@@ -15,12 +15,8 @@ public class DeporteDto {
     private String nombre;
 
     public static DeporteDto fabricarDeModelo(Deporte modelo) {
-        try {
-            DeporteDto dto = new DeporteDto();
-            dto.setNombre(modelo.getNombre());
-            return dto;
-        } catch (Exception e) {
-            return null;
-        }
+        DeporteDto dto = new DeporteDto();
+        dto.setNombre(modelo.getNombre());
+        return dto;
     }
 }

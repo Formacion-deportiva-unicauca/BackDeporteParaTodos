@@ -140,4 +140,23 @@ class ClaseGatewayTest {
 
         assertThrows(NoExisteExcepcion.class, () -> claseGateway.eliminarClase(99));
     }
+
+    // SCRUM-80 (rediseno, bloque 2): obtenerClase() -- lee la fecha de la clase
+    // para aplicar VentanaRegistroAsistencia en AsistenciaServicio/ClaseServicio.
+    @Test
+    void obtenerClase_existente_retornaClaseMapeada() {
+        when(repoClase.findById(1)).thenReturn(Optional.of(entidadBase()));
+
+        Clase resultado = claseGateway.obtenerClase(1);
+
+        assertEquals(1, resultado.getCodigo());
+        assertEquals(FECHA, resultado.getFecha());
+    }
+
+    @Test
+    void obtenerClase_noExiste_lanzaNoExisteExcepcion() {
+        when(repoClase.findById(99)).thenReturn(Optional.empty());
+
+        assertThrows(NoExisteExcepcion.class, () -> claseGateway.obtenerClase(99));
+    }
 }

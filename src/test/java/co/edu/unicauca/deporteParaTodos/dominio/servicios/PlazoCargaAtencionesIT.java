@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.time.Clock;
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Base64;
@@ -44,6 +45,7 @@ import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosEntrada.IClase
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosEntrada.ICursoServicio;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosEntrada.IGrupoServicio;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosEntrada.IImagenServicio;
+import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosEntrada.IHorarioServicio;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosEntrada.IInstructorServicio;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IPerfilGateway;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.NoExisteExcepcion;
@@ -56,6 +58,8 @@ import co.edu.unicauca.deporteParaTodos.dominio.modelo.EstadoCurso;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.EstadoInscripciones;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.EstadoReporte;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Grupo;
+import co.edu.unicauca.deporteParaTodos.dominio.modelo.Horario;
+import co.edu.unicauca.deporteParaTodos.dominio.modelo.CalculadoraDuracionClase;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.PeriodoAcademico;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Perfil;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.ImagenDto;
@@ -121,6 +125,9 @@ class PlazoCargaAtencionesIT {
     private IImagenServicio imagenServicio;
 
     @Autowired
+    private IHorarioServicio horarioServicio;
+
+    @Autowired
     private IPerfilGateway perfilGateway;
 
     @Autowired
@@ -150,7 +157,11 @@ class PlazoCargaAtencionesIT {
         anioVigente = vigente.getAnio();
         periodoVigente = vigente.getPeriodo();
         LocalDate hoy = LocalDate.now(clock);
-        LocalDate fechaOtroPeriodo = hoy.plusMonths(6);
+        // SCRUM-80 (rediseno, bloque 2): se usa minusMonths (no plusMonths) porque
+        // la nueva regla de ClaseServicio.insertarClase rechaza cualquier fecha
+        // futura para TODOS los roles -- una fecha pasada cruza el mismo limite
+        // de periodo academico sin violar esa regla.
+        LocalDate fechaOtroPeriodo = hoy.minusMonths(6);
 
         ImagenDto imagenDto = new ImagenDto();
         imagenDto.setNombre("imagen-plazocarga-it.png");
@@ -189,32 +200,35 @@ class PlazoCargaAtencionesIT {
 
         // Grupo A1 (vigente): 1 clase con asistencia ACTIVA -> SI cuenta.
         Grupo grupoA1 = crearGrupo("A1-" + sufijo, instructorA, hoy);
-        Clase claseA1 = crearClase(grupoA1, instructorA, hoy);
+        Clase claseA1 = crearClase(grupoA1, instructorA, hoy, "coord-it", "Coordinador");
         asistenciaServicio.InsertarAsistencia(new Asistencia(alumno1, claseA1.getCodigo(), 0));
 
         // Grupo A2 (vigente): 1 clase cuya UNICA asistencia esta ELIMINADA -> NO cuenta.
+        // SCRUM-80 (rediseno, bloque 2): minusDays (no plusDays) -- ClaseServicio
+        // ya rechaza cualquier fecha futura; una fecha pasada distinta de "hoy"
+        // alcanza igual para que sea una fila de clase distinta a claseA1.
         Grupo grupoA2 = crearGrupo("A2-" + sufijo, instructorA, hoy);
-        Clase claseA2 = crearClase(grupoA2, instructorA, hoy.plusDays(1));
+        Clase claseA2 = crearClase(grupoA2, instructorA, hoy.minusDays(1), "coord-it", "Coordinador");
         asistenciaServicio.InsertarAsistencia(new Asistencia(alumno2, claseA2.getCodigo(), 0));
-        asistenciaServicio.eliminarAsistencia(alumno2, claseA2.getCodigo().longValue());
+        asistenciaServicio.eliminarAsistencia(alumno2, claseA2.getCodigo().longValue(), "coord-it", "Coordinador");
 
         // Grupo A3 (vigente, pero el GRUPO queda eliminado logicamente): clase +
         // asistencia activas, pero el grupo contenedor esta eliminado -> NO cuenta.
         Grupo grupoA3 = crearGrupo("A3-" + sufijo, instructorA, hoy);
-        Clase claseA3 = crearClase(grupoA3, instructorA, hoy.plusDays(2));
+        Clase claseA3 = crearClase(grupoA3, instructorA, hoy.minusDays(2), "coord-it", "Coordinador");
         asistenciaServicio.InsertarAsistencia(new Asistencia(alumno3, claseA3.getCodigo(), 0));
         grupoServicio.eliminarGrupo(CATEGORIA, grupoA3.getCurso(), grupoA3.getAnio(), grupoA3.getIterable());
 
-        // Grupo A4 de OTRO periodo (apertura +6 meses): clase + asistencia activas,
+        // Grupo A4 de OTRO periodo (apertura -6 meses): clase + asistencia activas,
         // pero el periodo del grupo no es el vigente -> NO cuenta.
         Grupo grupoA4 = crearGrupo("A4-" + sufijo, instructorA, fechaOtroPeriodo);
-        Clase claseA4 = crearClase(grupoA4, instructorA, fechaOtroPeriodo);
+        Clase claseA4 = crearClase(grupoA4, instructorA, fechaOtroPeriodo, "coord-it", "Coordinador");
         asistenciaServicio.InsertarAsistencia(new Asistencia(alumno4, claseA4.getCodigo(), 0));
 
         // Grupo del instructor X (vigente): 1 clase con asistencia ACTIVA -> prueba
         // que esta clase se le atribuye a X y NUNCA a A (agrupacion por instructor).
         Grupo grupoX1 = crearGrupo("X1-" + sufijo, instructorX, hoy);
-        Clase claseX1 = crearClase(grupoX1, instructorX, hoy);
+        Clase claseX1 = crearClase(grupoX1, instructorX, hoy, "coord-it", "Coordinador");
         asistenciaServicio.InsertarAsistencia(new Asistencia(alumno1, claseX1.getCodigo(), 0));
 
         // Instructor C: plazo VENCIDO insertado por JDBC -- por la API no se puede
@@ -301,10 +315,29 @@ class PlazoCargaAtencionesIT {
         // real (la misma que PeriodoAcademico reutiliza) lo calcule.
         nuevo.setPeriodo(0);
         // Los grupos se crean con insertarGrupo y se usa el iterable que DEVUELVE.
-        return grupoServicio.insertarGrupo(nuevo);
+        Grupo insertado = grupoServicio.insertarGrupo(nuevo);
+        crearHorariosParaGrupo(insertado);
+        return insertado;
     }
 
-    private Clase crearClase(Grupo grupo, String idInstructor, LocalDate fecha) {
+    private void crearHorariosParaGrupo(Grupo grupo) {
+        for (DayOfWeek dia : DayOfWeek.values()) {
+            Horario h = new Horario();
+            h.setCategoria(grupo.getCategoria());
+            h.setCurso(grupo.getCurso());
+            h.setAnio(grupo.getAnio());
+            h.setIterable(grupo.getIterable());
+            h.setDia(CalculadoraDuracionClase.nombreDia(dia));
+            h.setHoraInicio("08:00");
+            h.setHoraFin("10:00");
+            h.setEscenario("Cancha IT");
+            h.setEliminado(0);
+            horarioServicio.insertarHorario(h);
+        }
+    }
+
+    private Clase crearClase(Grupo grupo, String idInstructor, LocalDate fecha,
+            String perfIdLlamador, String rolLlamador) {
         Clase datos = new Clase();
         datos.setCategoria(grupo.getCategoria());
         datos.setCurso(grupo.getCurso());
@@ -314,7 +347,7 @@ class PlazoCargaAtencionesIT {
         datos.setFecha(fecha);
         datos.setHoras(1);
         datos.setMinutos(0);
-        return claseServicio.insertarClase(datos);
+        return claseServicio.insertarClase(datos, perfIdLlamador, rolLlamador);
     }
 
     private String buildJwt(String rol, String perfId) {

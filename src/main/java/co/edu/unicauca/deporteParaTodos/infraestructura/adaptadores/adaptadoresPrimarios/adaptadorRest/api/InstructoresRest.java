@@ -18,6 +18,8 @@ import org.springframework.web.bind.annotation.RestController;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosEntrada.IInstructorServicio;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Instructor;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Perfil;
+import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.AvisoRegistroDto;
+import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.EstadoRegistroDto;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.InstructorDto;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.InstructorRequest;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.PerfilDto;
@@ -243,6 +245,45 @@ public class InstructoresRest {
                         + ", mes=" + request.getMes() + ", dias=" + request.getDias());
         List<ProrrogaDto> respuesta = servicioInstructor.asignarProrrogaRegistro(
                 request.getIdsInstructores(), request.getAnio(), request.getMes(), request.getDias(), idCoordinador);
+        return new ResponseEntity<>(respuesta, HttpStatus.OK);
+    }
+
+    // ── SCRUM-80 (rediseno, bloque 3 de 4): estado-registro y avisos ─────────
+
+    @Operation(summary = "Estado del registro de asistencia del mes para cada instructor activo. "
+            + "Sin anio/mes usa el mes actual. mes futuro -> 422.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Estado de registro por instructor"),
+            @ApiResponse(responseCode = "400", description = "mes fuera de 1-12"),
+            @ApiResponse(responseCode = "422", description = "El mes es futuro")
+    })
+    @PreAuthorize("hasAnyAuthority('Coordinador','Administrador')")
+    @GetMapping("/instructores/estado-registro")
+    public ResponseEntity<List<EstadoRegistroDto>> obtenerEstadoRegistro(
+            @RequestParam(required = false) @Min(1) Integer anio,
+            @RequestParam(required = false) @Min(1) @Max(12) Integer mes) {
+        PeticionLogger.log(LOGGER, "GET", "/api/v2/instructores/estado-registro",
+                "anio=" + anio + ", mes=" + mes);
+        List<EstadoRegistroDto> respuesta = servicioInstructor.obtenerEstadoRegistro(anio, mes);
+        return new ResponseEntity<>(respuesta, HttpStatus.OK);
+    }
+
+    @Operation(summary = "Avisos de registro pendiente (mes actual y anterior) para el instructor "
+            + "autenticado: por vencer (<=3 dias) o vencido.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Avisos de registro pendiente"),
+            @ApiResponse(responseCode = "404", description = "El id no es un instructor activo")
+    })
+    @PreAuthorize("hasAuthority('Instructor')")
+    @GetMapping("/instructor/avisos-registro")
+    public ResponseEntity<List<AvisoRegistroDto>> obtenerAvisosRegistro(@AuthenticationPrincipal Jwt jwt) {
+        String perfId = jwt != null ? jwt.getClaimAsString("perf_id") : null;
+        if (perfId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        PeticionLogger.log(LOGGER, "GET", "/api/v2/instructor/avisos-registro",
+                "perfId: " + LogSanitizer.sanitizar(perfId));
+        List<AvisoRegistroDto> respuesta = servicioInstructor.obtenerAvisosRegistro(perfId);
         return new ResponseEntity<>(respuesta, HttpStatus.OK);
     }
 
