@@ -122,10 +122,11 @@ class NovedadClaseRestTest {
                 .thenThrow(new co.edu.unicauca.deporteParaTodos.dominio.excepciones.JustificacionInvalidaExcepcion(
                         "La descripci\u00f3n es obligatoria"));
 
+        String json = objectMapper.writeValueAsString(req);
         Exception ex = assertThrows(Exception.class, () ->
                 mockMvc.perform(post("/api/v2/novedades-clase")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(req))));
+                        .content(json)));
         assertTrue(ex.getCause() instanceof co.edu.unicauca.deporteParaTodos.dominio.excepciones.JustificacionInvalidaExcepcion);
         verify(servicio).registrarNovedad(any(), eq("INS001"), eq("Instructor"));
     }
@@ -136,10 +137,11 @@ class NovedadClaseRestTest {
                 .thenThrow(new co.edu.unicauca.deporteParaTodos.dominio.excepciones.NovedadDuplicadaExcepcion(
                         "Ya existe una novedad activa para este grupo y fecha"));
 
+        String json = objectMapper.writeValueAsString(requestBase());
         Exception ex = assertThrows(Exception.class, () ->
                 mockMvc.perform(post("/api/v2/novedades-clase")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(requestBase()))));
+                        .content(json)));
         assertTrue(ex.getCause() instanceof co.edu.unicauca.deporteParaTodos.dominio.excepciones.NovedadDuplicadaExcepcion);
         verify(servicio).registrarNovedad(any(), eq("INS001"), eq("Instructor"));
     }
@@ -152,10 +154,11 @@ class NovedadClaseRestTest {
                 .thenThrow(new co.edu.unicauca.deporteParaTodos.dominio.excepciones.FechaClaseFuturaExcepcion(
                         "La fecha no puede ser futura"));
 
+        String json = objectMapper.writeValueAsString(req);
         Exception ex = assertThrows(Exception.class, () ->
                 mockMvc.perform(post("/api/v2/novedades-clase")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(req))));
+                        .content(json)));
         assertTrue(ex.getCause() instanceof co.edu.unicauca.deporteParaTodos.dominio.excepciones.FechaClaseFuturaExcepcion);
         verify(servicio).registrarNovedad(any(), eq("INS001"), eq("Instructor"));
     }
@@ -209,10 +212,11 @@ class NovedadClaseRestTest {
                 .thenThrow(new co.edu.unicauca.deporteParaTodos.dominio.excepciones.NoExisteExcepcion(
                         "No existe la novedad"));
 
+        String json = objectMapper.writeValueAsString(requestBase());
         Exception ex = assertThrows(Exception.class, () ->
                 mockMvc.perform(put("/api/v2/novedades-clase/99")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(requestBase()))));
+                        .content(json)));
         assertTrue(ex.getCause() instanceof co.edu.unicauca.deporteParaTodos.dominio.excepciones.NoExisteExcepcion);
         verify(servicio).actualizarNovedad(eq(99L), any(), eq("INS001"), eq("Instructor"));
     }
