@@ -110,8 +110,8 @@ public class InstructorServicio implements IInstructorServicio {
         Instructor actual = instructorsGateway.obtenerInstructor(instructorId)
                 .orElseThrow(() -> new NoExisteExcepcion("No existe el instructor con el identificador " + instructorId));
         String correoActual = actual.getPerfil() != null ? actual.getPerfil().getCorreo() : null;
-        String nombreNuevo = datosInstructor.getPerfil().getNombre();
-        String correoNuevo = datosInstructor.getPerfil().getCorreo();
+        String nombreNuevo = datosInstructor.getPerfil() != null ? datosInstructor.getPerfil().getNombre() : null;
+        String correoNuevo = datosInstructor.getPerfil() != null ? datosInstructor.getPerfil().getCorreo() : null;
 
         Perfil datosPerfilActualizar = new Perfil();
         datosPerfilActualizar.setNombre(nombreNuevo);
@@ -207,15 +207,21 @@ public class InstructorServicio implements IInstructorServicio {
     @Override
     public List<PlazoCargaDto> obtenerPlazosCarga() {
         List<Instructor> activos = instructorsGateway.obtenerInstructores();
-        if (activos.isEmpty()) {
+        if (activos == null || activos.isEmpty()) {
             return List.of();
         }
         LocalDate hoy = LocalDate.now(clock);
         PeriodoAcademico vigente = PeriodoAcademico.vigente(clock);
         Map<String, PlazoCargaAtenciones> plazosPorInstructor =
                 plazoCargaGateway.obtenerPlazosPorPeriodo(vigente.getAnio(), vigente.getPeriodo());
+        if (plazosPorInstructor == null) {
+            plazosPorInstructor = Map.of();
+        }
         Map<String, Integer> conteosPorInstructor =
                 plazoCargaGateway.contarClasesConAsistenciaPorInstructor(vigente.getAnio(), vigente.getPeriodo());
+        if (conteosPorInstructor == null) {
+            conteosPorInstructor = Map.of();
+        }
 
         List<PlazoCargaDto> resultado = new ArrayList<>();
         for (Instructor instructor : activos) {

@@ -3,6 +3,7 @@ package co.edu.unicauca.deporteParaTodos.dominio.servicios;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosEntrada.IClaseServicio;
@@ -46,7 +47,7 @@ public class ClaseServicio implements IClaseServicio {
     @Override
     public List<Clase> obtenerClasesGrupo(String categoria, String curso, Integer anio, Integer iterable) {
         List<Clase> listado = claseGateway.obtenerClasesGrupo(categoria, curso, anio, iterable);
-        if (listado.isEmpty()) {
+        if (listado == null || listado.isEmpty()) {
             throw new ListadoVacioExcepcion("No existen registros");
         }
         return listado;
@@ -62,9 +63,11 @@ public class ClaseServicio implements IClaseServicio {
     // -- la ventana de registro se evalua contra quien registra, no contra
     // datoClase.getIdInstructor().
     private LocalDate limiteProrrogaDe(String perfIdLlamador, LocalDate fecha) {
-        ProrrogaRegistroAsistencia prorroga = prorrogaGateway
-                .obtenerProrrogasPorMes(fecha.getYear(), fecha.getMonthValue())
-                .get(perfIdLlamador);
+        Map<String, ProrrogaRegistroAsistencia> prorrogas = prorrogaGateway.obtenerProrrogasPorMes(fecha.getYear(), fecha.getMonthValue());
+        if (prorrogas == null) {
+            return null;
+        }
+        ProrrogaRegistroAsistencia prorroga = prorrogas.get(perfIdLlamador);
         return prorroga != null ? prorroga.getFechaLimite() : null;
     }
 
@@ -118,6 +121,9 @@ public class ClaseServicio implements IClaseServicio {
             // Coordinador/Administrador: no se valido dia arriba, se pide el horario aqui.
             franjasDelGrupo = horarioGateway.listarHorariosPorGrupo(
                     datoClase.getCategoria(), datoClase.getCurso(), datoClase.getAnio(), datoClase.getIterable());
+        }
+        if (franjasDelGrupo == null) {
+            franjasDelGrupo = List.of();
         }
         String diaSemana = CalculadoraDuracionClase.nombreDia(datoClase.getFecha().getDayOfWeek());
         List<Horario> franjasDelDia = franjasDelGrupo.stream()
@@ -174,6 +180,9 @@ public class ClaseServicio implements IClaseServicio {
             throw new NoExisteExcepcion();
         }
         Clase actual = claseGateway.obtenerClase(id);
+        if (actual == null) {
+            throw new NoExisteExcepcion("No existe la clase con codigo " + id);
+        }
 
         boolean esExentoDePlazo = !"Instructor".equals(rolLlamador);
         LocalDate hoy = LocalDate.now(clock);

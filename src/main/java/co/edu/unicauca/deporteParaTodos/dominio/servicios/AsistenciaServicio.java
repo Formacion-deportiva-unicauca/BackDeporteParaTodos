@@ -4,6 +4,7 @@ import java.time.Clock;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import org.springframework.stereotype.Service;
@@ -62,7 +63,7 @@ public class AsistenciaServicio implements IAsistenciaServicio {
     @Override
     public List<AtencionDto> obtenerAtencionesPorClase(Integer claseId) {
         List<Asistencia> asistencias = asistenciaGateway.obtenerAtencionesPorClase(claseId);
-        if (asistencias.isEmpty()) {
+        if (asistencias == null || asistencias.isEmpty()) {
             throw new ListadoVacioExcepcion("No hay atenciones registradas para la clase consultada");
         }
         List<AtencionDto> listaDtos = new ArrayList<>();
@@ -77,9 +78,11 @@ public class AsistenciaServicio implements IAsistenciaServicio {
         if (esExentoDePlazo || fecha.isAfter(hoy)) {
             return null;
         }
-        ProrrogaRegistroAsistencia prorroga = prorrogaGateway
-                .obtenerProrrogasPorMes(fecha.getYear(), fecha.getMonthValue())
-                .get(perfIdLlamador);
+        Map<String, ProrrogaRegistroAsistencia> prorrogas = prorrogaGateway.obtenerProrrogasPorMes(fecha.getYear(), fecha.getMonthValue());
+        if (prorrogas == null) {
+            return null;
+        }
+        ProrrogaRegistroAsistencia prorroga = prorrogas.get(perfIdLlamador);
         return prorroga != null ? prorroga.getFechaLimite() : null;
     }
 
@@ -200,9 +203,8 @@ public class AsistenciaServicio implements IAsistenciaServicio {
             return VentanaRegistroDto.fabricarDeModelo(null, hoy, rolLlamador);
         }
         LocalDate mesAnterior = hoy.minusMonths(1);
-        ProrrogaRegistroAsistencia prorroga = prorrogaGateway
-                .obtenerProrrogasPorMes(mesAnterior.getYear(), mesAnterior.getMonthValue())
-                .get(perfIdLlamador);
+        Map<String, ProrrogaRegistroAsistencia> prorrogas = prorrogaGateway.obtenerProrrogasPorMes(mesAnterior.getYear(), mesAnterior.getMonthValue());
+        ProrrogaRegistroAsistencia prorroga = prorrogas != null ? prorrogas.get(perfIdLlamador) : null;
         LocalDate limiteProrrogaMesAnterior = prorroga != null ? prorroga.getFechaLimite() : null;
         LocalDate fechaMinima = VentanaRegistroAsistencia.calcularFechaMinima(hoy, limiteProrrogaMesAnterior);
         return VentanaRegistroDto.fabricarDeModelo(fechaMinima, hoy, rolLlamador);
