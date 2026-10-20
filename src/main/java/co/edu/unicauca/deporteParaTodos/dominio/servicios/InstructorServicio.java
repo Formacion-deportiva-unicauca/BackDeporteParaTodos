@@ -296,9 +296,10 @@ public class InstructorServicio implements IInstructorServicio {
     public List<ProrrogaDto> obtenerProrrogasRegistro(int anio, int mes) {
         validarMesNoFuturo(anio, mes);
         List<ProrrogaDto> resultado = new ArrayList<>();
-        prorrogaGateway.obtenerProrrogasPorMes(anio, mes)
-                .values()
-                .forEach(prorroga -> resultado.add(ProrrogaDto.fabricarDeModelo(prorroga)));
+        Map<String, ProrrogaRegistroAsistencia> prorrogas = prorrogaGateway.obtenerProrrogasPorMes(anio, mes);
+        if (prorrogas != null) {
+            prorrogas.values().forEach(prorroga -> resultado.add(ProrrogaDto.fabricarDeModelo(prorroga)));
+        }
         return resultado;
     }
 
@@ -366,8 +367,14 @@ public class InstructorServicio implements IInstructorServicio {
         }
 
         List<Instructor> instructoresActivos = instructorsGateway.obtenerInstructores();
+        if (instructoresActivos == null) {
+            instructoresActivos = List.of();
+        }
         Map<String, ProrrogaRegistroAsistencia> prorrogasPorInstructor =
                 prorrogaGateway.obtenerProrrogasPorMes(anio, mes);
+        if (prorrogasPorInstructor == null) {
+            prorrogasPorInstructor = Map.of();
+        }
 
         List<EstadoRegistroDto> resultado = new ArrayList<>();
         for (Instructor instructor : instructoresActivos) {
@@ -401,8 +408,8 @@ public class InstructorServicio implements IInstructorServicio {
             int anio = referencia.getYear();
             int mes = referencia.getMonthValue();
             ConteoGrupos conteo = contarGruposDelMes(idInstructor, anio, mes);
-            ProrrogaRegistroAsistencia prorroga = prorrogaGateway.obtenerProrrogasPorMes(anio, mes)
-                    .get(idInstructor);
+            Map<String, ProrrogaRegistroAsistencia> prorrogasMes = prorrogaGateway.obtenerProrrogasPorMes(anio, mes);
+            ProrrogaRegistroAsistencia prorroga = prorrogasMes != null ? prorrogasMes.get(idInstructor) : null;
             LocalDate fechaLimite = EstadoRegistroMensual.fechaLimiteEfectiva(
                     anio, mes, prorroga != null ? prorroga.getFechaLimite() : null);
             EstadoAvisoRegistro.calcular(conteo.activos, conteo.registrados, fechaLimite, hoy)
@@ -415,7 +422,11 @@ public class InstructorServicio implements IInstructorServicio {
     private ConteoGrupos contarGruposDelMes(String idInstructor, int anio, int mes) {
         int activos = 0;
         int registrados = 0;
-        for (Grupo grupo : grupoGateway.obtenerGruposInstructor(idInstructor)) {
+        List<Grupo> grupos = grupoGateway.obtenerGruposInstructor(idInstructor);
+        if (grupos == null) {
+            grupos = List.of();
+        }
+        for (Grupo grupo : grupos) {
             if (!EstadoRegistroMensual.grupoActivoEnMes(
                     grupo.getFechaCreacion(), grupo.getFechaFinalizacion(), anio, mes)) {
                 continue;
@@ -429,8 +440,12 @@ public class InstructorServicio implements IInstructorServicio {
     }
 
     private boolean tieneClaseEnMes(Grupo grupo, int anio, int mes) {
-        for (Clase clase : claseGateway.obtenerClasesGrupo(
-                grupo.getCategoria(), grupo.getCurso(), grupo.getAnio(), grupo.getIterable())) {
+        List<Clase> clases = claseGateway.obtenerClasesGrupo(
+                grupo.getCategoria(), grupo.getCurso(), grupo.getAnio(), grupo.getIterable());
+        if (clases == null) {
+            return false;
+        }
+        for (Clase clase : clases) {
             if (EstadoRegistroMensual.claseDentroDelMes(clase.getFecha(), anio, mes)) {
                 return true;
             }

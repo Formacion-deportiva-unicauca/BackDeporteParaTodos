@@ -31,22 +31,18 @@ public class AlumnoDto {
     private Integer imagen;
 
     public static AlumnoDto fabricarDeModelo(Alumno modelo) {
-        try {
-            AlumnoDto dto = new AlumnoDto();
-            dto.setEliminadoestado(modelo.getEliminadoestado());
-            dto.setCodigo(modelo.getAlm_codigo());
-            dto.setTipo(modelo.getTipoAlumno());
-            if (modelo.getPerfil() != null) {
-                dto.setId(modelo.getPerfil().getId());
-                dto.setNombre(modelo.getPerfil().getNombre());
-                dto.setCorreo(modelo.getPerfil().getCorreo());
-                dto.setSexo(modelo.getPerfil().getSexo());
-                dto.setTipoid(modelo.getPerfil().getTipoId());
-                dto.setImagen(modelo.getPerfil().getImagen());
-            }
-            return dto;
-        } catch (Exception e) {
-            return null;
+        AlumnoDto dto = new AlumnoDto();
+        dto.setEliminadoestado(modelo.getEliminadoestado());
+        dto.setCodigo(modelo.getAlm_codigo());
+        dto.setTipo(modelo.getTipoAlumno());
+        if (modelo.getPerfil() != null) {
+            dto.setId(modelo.getPerfil().getId());
+            dto.setNombre(modelo.getPerfil().getNombre());
+            dto.setCorreo(modelo.getPerfil().getCorreo());
+            dto.setSexo(modelo.getPerfil().getSexo());
+            dto.setTipoid(modelo.getPerfil().getTipoId());
+            dto.setImagen(modelo.getPerfil().getImagen());
         }
+        return dto;
     }
 }

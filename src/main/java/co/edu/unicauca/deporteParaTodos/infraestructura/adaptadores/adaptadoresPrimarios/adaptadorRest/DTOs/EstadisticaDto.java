@@ -26,77 +26,57 @@ public class EstadisticaDto {
 
     public static EstadisticaDto fromObjectCategorias(Object[] objects){
         EstadisticaDto estadistica = new EstadisticaDto();
-        try{
-            estadistica.setLeyenda1(objects[0].toString());
-            estadistica.setClases(Double.parseDouble(objects[1].toString()));
-            estadistica.setHoras(Double.parseDouble(objects[2].toString()));
-            estadistica.setMinutos(Double.parseDouble(objects[3].toString()));
-            estadistica.setDuracion(Double.parseDouble(objects[4].toString()));
-            return estadistica;
-        }catch(Exception e){
-            return null;
-        }
+        estadistica.setLeyenda1(objects[0].toString());
+        estadistica.setClases(Double.parseDouble(objects[1].toString()));
+        estadistica.setHoras(Double.parseDouble(objects[2].toString()));
+        estadistica.setMinutos(Double.parseDouble(objects[3].toString()));
+        estadistica.setDuracion(Double.parseDouble(objects[4].toString()));
+        return estadistica;
     }
 
     public static EstadisticaDto fromObjectAlumno(Object[] objects){
         EstadisticaDto estadistica = new EstadisticaDto();
-        try{
-            estadistica.setLeyenda1(objects[0].toString());
-            estadistica.setLeyenda2(objects[1].toString());
-            estadistica.setClases(Double.parseDouble(objects[2].toString()));
-            estadistica.setHoras(Double.parseDouble(objects[3].toString()));
-            estadistica.setMinutos(Double.parseDouble(objects[4].toString()));
-            estadistica.setDuracion(Double.parseDouble(objects[5].toString()));
-            return estadistica;
-        }catch(Exception e){
-            return null;
-        }
+        estadistica.setLeyenda1(objects[0].toString());
+        estadistica.setLeyenda2(objects[1].toString());
+        estadistica.setClases(Double.parseDouble(objects[2].toString()));
+        estadistica.setHoras(Double.parseDouble(objects[3].toString()));
+        estadistica.setMinutos(Double.parseDouble(objects[4].toString()));
+        estadistica.setDuracion(Double.parseDouble(objects[5].toString()));
+        return estadistica;
     }
 
     public static EstadisticaDto fromObjectInstructor(Object[] objects){
         EstadisticaDto estadistica = new EstadisticaDto();
-        try{
-            estadistica.setLeyenda1(objects[0].toString());
-            estadistica.setLeyenda2(objects[1].toString());
-            estadistica.setClases(Double.parseDouble(objects[2].toString()));
-            estadistica.setHoras(Double.parseDouble(objects[3].toString()));
-            estadistica.setMinutos(Double.parseDouble(objects[4].toString()));
-            estadistica.setDuracion(Double.parseDouble(objects[5].toString()));
-            return estadistica;
-        }catch(Exception e){
-            return null;
-        }
+        estadistica.setLeyenda1(objects[0].toString());
+        estadistica.setLeyenda2(objects[1].toString());
+        estadistica.setClases(Double.parseDouble(objects[2].toString()));
+        estadistica.setHoras(Double.parseDouble(objects[3].toString()));
+        estadistica.setMinutos(Double.parseDouble(objects[4].toString()));
+        estadistica.setDuracion(Double.parseDouble(objects[5].toString()));
+        return estadistica;
     }
 
     public static EstadisticaDto fromObjectCursos(Object[] objects){
         EstadisticaDto estadistica = new EstadisticaDto();
-        try{
-            estadistica.setLeyenda1(objects[0].toString());
-            estadistica.setLeyenda2(objects[1].toString());
-            estadistica.setClases(Double.parseDouble(objects[2].toString()));
-            estadistica.setHoras(Double.parseDouble(objects[3].toString()));
-            estadistica.setMinutos(Double.parseDouble(objects[4].toString()));
-            estadistica.setDuracion(Double.parseDouble(objects[5].toString()));
-            return estadistica;
-        }catch(Exception e){
-            return null;
-        }
+        estadistica.setLeyenda1(objects[0].toString());
+        estadistica.setLeyenda2(objects[1].toString());
+        estadistica.setClases(Double.parseDouble(objects[2].toString()));
+        estadistica.setHoras(Double.parseDouble(objects[3].toString()));
+        estadistica.setMinutos(Double.parseDouble(objects[4].toString()));
+        estadistica.setDuracion(Double.parseDouble(objects[5].toString()));
+        return estadistica;
     }
 
     public static EstadisticaDto fromObjectGrupos(Object[] objects){
         EstadisticaDto estadistica = new EstadisticaDto();
-        try{
-            estadistica.setLeyenda1(objects[0].toString());
-            estadistica.setLeyenda2(objects[1].toString());
-            estadistica.setLeyenda3(objects[2].toString());
-            estadistica.setLeyenda4(objects[3].toString());
-            estadistica.setClases(Double.parseDouble(objects[4].toString()));
-            estadistica.setHoras(Double.parseDouble(objects[5].toString()));
-            estadistica.setMinutos(Double.parseDouble(objects[6].toString()));
-            estadistica.setDuracion(Double.parseDouble(objects[7].toString()));
-            return estadistica;
-        }catch(Exception e){
-            return null;
-        }
+        estadistica.setLeyenda1(objects[0].toString());
+        estadistica.setLeyenda2(objects[1].toString());
+        estadistica.setLeyenda3(objects[2].toString());
+        estadistica.setLeyenda4(objects[3].toString());
+        estadistica.setClases(Double.parseDouble(objects[4].toString()));
+        estadistica.setHoras(Double.parseDouble(objects[5].toString()));
+        estadistica.setMinutos(Double.parseDouble(objects[6].toString()));
+        estadistica.setDuracion(Double.parseDouble(objects[7].toString()));
+        return estadistica;
     }
 }
