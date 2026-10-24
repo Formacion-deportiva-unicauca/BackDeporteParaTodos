@@ -214,6 +214,11 @@ public class InscripcionServicio implements IInscripcionServicio {
     }
 
     @Override
+    public boolean tieneInscritos(String categoria, String curso, int anio, int iterable) {
+        return gateway.contarInscripcionesActivasGrupo(categoria, curso, anio, iterable) > 0;
+    }
+
+    @Override
     public List<InscripcionEnEspera> listarEnEspera(String categoria, String curso, int anio, int iterable) {
         return gateway.listarEnEspera(categoria, curso, anio, iterable);
     }

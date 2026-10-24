@@ -163,6 +163,22 @@ class NovedadClaseRestTest {
         verify(servicio).registrarNovedad(any(), eq("INS001"), eq("Instructor"));
     }
 
+    @Test
+    void registrarNovedad_diaSinHorario_lanzaDiaFueraDeHorarioExcepcion() throws Exception {
+        NovedadClaseRequestDto req = requestBase(); // fecha = 2026-10-15 (jueves)
+        when(servicio.registrarNovedad(any(), anyString(), anyString()))
+                .thenThrow(new co.edu.unicauca.deporteParaTodos.dominio.excepciones.DiaFueraDeHorarioExcepcion(
+                        "El Instructor solo puede registrar asistencia los dias en que el grupo tiene horario asignado: JUEVES."));
+
+        String json = objectMapper.writeValueAsString(req);
+        Exception ex = assertThrows(Exception.class, () ->
+                mockMvc.perform(post("/api/v2/novedades-clase")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json)));
+        assertTrue(ex.getCause() instanceof co.edu.unicauca.deporteParaTodos.dominio.excepciones.DiaFueraDeHorarioExcepcion);
+        verify(servicio).registrarNovedad(any(), eq("INS001"), eq("Instructor"));
+    }
+
     // ──────────────────────────────────────────────────────────────────────────
     // GET /novedades-clase
     // ──────────────────────────────────────────────────────────────────────────

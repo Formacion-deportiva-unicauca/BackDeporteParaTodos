@@ -300,8 +300,21 @@ class InscripcionConcurrenciaIT {
         String alumnoOcupaCupo = ALUMNO_OCUPA_CUPO;
         String alumnoEnEspera = ALUMNO_EN_ESPERA;
 
-        // Ocupa el unico cupo del grupo (o queda EN_ESPERA si ya estaba ocupado por
-        // una corrida local anterior -- de cualquier forma, el grupo queda sin cupos).
+        // Limpiar cualquier inscripcion previa de estos alumnos para garantizar
+        // aislamiento entre corridas (el @BeforeAll solo crea los alumnos, no las
+        // inscripciones, que persisten entre corridas en BD persistente).
+        try {
+            servicio.desvincularInscripcion(alumnoOcupaCupo, categoria, curso, anio, iterable);
+        } catch (NoExisteExcepcion e) {
+            // No hay inscripcion activa; es el caso normal en la primera corrida.
+        }
+        try {
+            servicio.desvincularInscripcion(alumnoEnEspera, categoria, curso, anio, iterable);
+        } catch (NoExisteExcepcion e) {
+            // No hay inscripcion activa; es el caso normal en la primera corrida.
+        }
+
+        // Ocupa el unico cupo del grupo.
         servicio.inscribir(new Inscripcion(alumnoOcupaCupo, categoria, curso, anio, iterable, null, null, null));
 
         Inscripcion resultado = servicio.inscribir(
@@ -335,6 +348,20 @@ class InscripcionConcurrenciaIT {
      */
     @Test
     void promoverManualmente_concurrente_soloUnaPermitida_cuandoHayUnCupoLiberado() throws Exception {
+        // Limpiar inscripciones previas de candidatos para garantizar
+        // aislamiento entre corridas (el @BeforeAll solo crea los alumnos, no las
+        // inscripciones, que persisten entre corridas en BD persistente).
+        try {
+            servicio.desvincularInscripcion(ALUMNO_CANDIDATO_1, CATEGORIA, CURSO, ANIO, ITERABLE_PROMOCION);
+        } catch (NoExisteExcepcion e) {
+            // No hay inscripción activa; es el caso normal en la primera corrida.
+        }
+        try {
+            servicio.desvincularInscripcion(ALUMNO_CANDIDATO_2, CATEGORIA, CURSO, ANIO, ITERABLE_PROMOCION);
+        } catch (NoExisteExcepcion e) {
+            // No hay inscripción activa; es el caso normal en la primera corrida.
+        }
+
         servicio.inscribir(new Inscripcion(
                 ALUMNO_FILLER_PROMOCION, CATEGORIA, CURSO, ANIO, ITERABLE_PROMOCION, null, null, null));
         servicio.inscribir(new Inscripcion(

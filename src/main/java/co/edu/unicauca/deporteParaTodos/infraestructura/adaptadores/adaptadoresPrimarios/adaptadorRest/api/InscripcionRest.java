@@ -106,6 +106,18 @@ public class InscripcionRest {
         return new ResponseEntity<>(InscripcionMapper.toDto(resultado), HttpStatus.OK);
     }
 
+    @PreAuthorize("hasAnyAuthority('Instructor', 'Coordinador')")
+    @GetMapping("/inscripcion/tieneInscritos")
+    public ResponseEntity<Boolean> tieneInscritos(
+            @RequestParam String prmCategoria,
+            @RequestParam String prmCurso,
+            @RequestParam int prmAnio,
+            @RequestParam int prmIterable) {
+        PeticionLogger.log(LOGGER, "GET", "/api/v2/inscripcion/tieneInscritos", prmCategoria);
+        boolean resultado = servicio.tieneInscritos(prmCategoria, prmCurso, prmAnio, prmIterable);
+        return new ResponseEntity<>(resultado, HttpStatus.OK);
+    }
+
     @PreAuthorize("hasAnyAuthority('Alumno', 'Coordinador')")
     @GetMapping("/inscripcion/disponibilidad")
     public ResponseEntity<DisponibilidadDto> obtenerDisponibilidad(

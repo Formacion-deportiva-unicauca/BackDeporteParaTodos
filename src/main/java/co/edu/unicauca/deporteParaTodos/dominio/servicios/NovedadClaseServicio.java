@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosEntrada.INovedadClaseServicio;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IGrupoGateway;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.INovedadClaseGateway;
+import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IHorarioGateway;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IProrrogaRegistroAsistenciaGateway;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.DiaFueraDeHorarioExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.FechaClaseFuturaExcepcion;
@@ -18,9 +19,11 @@ import co.edu.unicauca.deporteParaTodos.dominio.excepciones.NoExisteExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.NovedadDuplicadaExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.RegistroAsistenciaVencidoExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Grupo;
+import co.edu.unicauca.deporteParaTodos.dominio.modelo.Horario;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.NovedadClase;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.ProrrogaRegistroAsistencia;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.VentanaRegistroAsistencia;
+import co.edu.unicauca.deporteParaTodos.dominio.modelo.CalculadoraDuracionClase;
 
 /**
  * Caso de uso para registrar, consultar y actualizar novedades de clases no
@@ -40,6 +43,9 @@ public class NovedadClaseServicio implements INovedadClaseServicio {
 
     @Autowired
     private IProrrogaRegistroAsistenciaGateway prorrogaGateway;
+
+    @Autowired
+    private IHorarioGateway horarioGateway;
 
     @Autowired
     private Clock clock;
@@ -73,13 +79,20 @@ public class NovedadClaseServicio implements INovedadClaseServicio {
         LocalDate limiteProrroga = limiteProrrogaSiAplica(esExentoDePlazo, perfIdLlamador, datos.getFecha(), hoy);
         VentanaRegistroAsistencia.validarRegistro(datos.getFecha(), hoy, esExentoDePlazo, limiteProrroga);
 
-        // 4. Validar motivo del cat\u00e1logo
+        // 4. Validar día con horario para el Instructor (SCRUM-80)
+        if (esInstructor) {
+            List<Horario> franjasDelGrupo = horarioGateway.listarHorariosPorGrupo(
+                    datos.getCategoria(), datos.getCurso(), datos.getAnio(), datos.getIterable());
+            CalculadoraDuracionClase.validarDiaConHorario(franjasDelGrupo, datos.getFecha());
+        }
+
+        // 5. Validar motivo del catálogo
         validarMotivo(datos.getMotivo());
 
-        // 5. Descripci\u00f3n obligatoria si el motivo es OTRO
+        // 6. Descripci\u00f3n obligatoria si el motivo es OTRO
         validarDescripcionCondicional(datos.getMotivo(), datos.getDescripcion());
 
-        // 6. Unicidad: s\u00f3lo una novedad activa por grupo y fecha
+        // 7. Unicidad: s\u00f3lo una novedad activa por grupo y fecha
         if (novedadGateway.existeNovedadActiva(
                 datos.getCategoria(), datos.getCurso(), datos.getAnio(), datos.getIterable(), datos.getFecha())) {
             throw new NovedadDuplicadaExcepcion("Ya existe una novedad activa para este grupo y fecha");

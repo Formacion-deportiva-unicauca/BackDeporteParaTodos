@@ -522,6 +522,24 @@ class InscripcionServicioTest {
         verify(grupoGateway).obtenerGrupoConLock("cat1", "cur1", 2026, 1);
     }
 
+    // ── tieneInscritos ────────────────────────────────────────────────────────
+
+    @Test
+    void tieneInscritos_conInscritos_retornaTrue() {
+        when(gateway.contarInscripcionesActivasGrupo("cat1", "cur1", 2026, 1)).thenReturn(3L);
+
+        assertTrue(servicio.tieneInscritos("cat1", "cur1", 2026, 1));
+        verify(gateway).contarInscripcionesActivasGrupo("cat1", "cur1", 2026, 1);
+    }
+
+    @Test
+    void tieneInscritos_sinInscritos_retornaFalse() {
+        when(gateway.contarInscripcionesActivasGrupo("cat1", "cur1", 2026, 1)).thenReturn(0L);
+
+        assertFalse(servicio.tieneInscritos("cat1", "cur1", 2026, 1));
+        verify(gateway).contarInscripcionesActivasGrupo("cat1", "cur1", 2026, 1);
+    }
+
     // ── obtenerDisponibilidad ─────────────────────────────────────────────────
 
     @Test
