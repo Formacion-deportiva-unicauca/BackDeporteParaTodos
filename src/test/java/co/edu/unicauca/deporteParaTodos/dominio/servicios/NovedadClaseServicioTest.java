@@ -20,13 +20,16 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IGrupoGateway;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.INovedadClaseGateway;
+import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IHorarioGateway;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IProrrogaRegistroAsistenciaGateway;
+import co.edu.unicauca.deporteParaTodos.dominio.excepciones.DiaFueraDeHorarioExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.FechaClaseFuturaExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.JustificacionInvalidaExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.NovedadDuplicadaExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.NoExisteExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.RegistroAsistenciaVencidoExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Grupo;
+import co.edu.unicauca.deporteParaTodos.dominio.modelo.Horario;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.NovedadClase;
 
 @ExtendWith(MockitoExtension.class)
@@ -40,6 +43,9 @@ class NovedadClaseServicioTest {
 
     @Mock
     private IProrrogaRegistroAsistenciaGateway prorrogaGateway;
+
+    @Mock
+    private IHorarioGateway horarioGateway;
 
     @Mock
     private Clock clock;
@@ -77,6 +83,14 @@ class NovedadClaseServicioTest {
         return g;
     }
 
+    private Horario franjaJueves() {
+        return new Horario(1, "Futbol", "Avanzado", 2026, 1, "JUEVES", "14:00", "16:00", "Cancha A", 0);
+    }
+
+    private List<Horario> horariosGrupoSinFranjas() {
+        return List.of();
+    }
+
     private void sinProrroga() {
         lenient().when(prorrogaGateway.obtenerProrrogasPorMes(anyInt(), anyInt())).thenReturn(Map.of());
     }
@@ -89,6 +103,8 @@ class NovedadClaseServicioTest {
     void registrarNovedad_valido_instructorAsignado_exito() {
         NovedadClase datos = datosValidos();
         when(grupoGateway.obtenerGrupo("Futbol", "Avanzado", 2026, 1)).thenReturn(grupoConInstructor(INS));
+        when(horarioGateway.listarHorariosPorGrupo("Futbol", "Avanzado", 2026, 1))
+                .thenReturn(List.of(franjaJueves()));
         when(novedadGateway.existeNovedadActiva("Futbol", "Avanzado", 2026, 1, HOY_FIJO)).thenReturn(false);
         // thenAnswer devuelve el mismo objeto que el servicio modificó (con idUsuarioCreador, fechaCreacion, etc.)
         when(novedadGateway.insertarNovedad(any(NovedadClase.class)))
@@ -101,6 +117,7 @@ class NovedadClaseServicioTest {
         assertEquals(0, resultado.getEliminado());
         assertEquals(HOY_FIJO, resultado.getFecha());
         verify(novedadGateway).insertarNovedad(any(NovedadClase.class));
+        verify(horarioGateway).listarHorariosPorGrupo("Futbol", "Avanzado", 2026, 1);
     }
 
     @Test
@@ -126,12 +143,15 @@ class NovedadClaseServicioTest {
         datos.setMotivo("OTRO");
         datos.setDescripcion(null);
         when(grupoGateway.obtenerGrupo("Futbol", "Avanzado", 2026, 1)).thenReturn(grupoConInstructor(INS));
+        when(horarioGateway.listarHorariosPorGrupo("Futbol", "Avanzado", 2026, 1))
+                .thenReturn(List.of(franjaJueves()));
         sinProrroga();
 
         JustificacionInvalidaExcepcion ex = assertThrows(JustificacionInvalidaExcepcion.class,
                 () -> servicio.registrarNovedad(datos, INS, "Instructor"));
         assertTrue(ex.getMessage().contains("descripci\u00f3n es obligatoria"));
         verify(novedadGateway, never()).insertarNovedad(any());
+        verify(horarioGateway).listarHorariosPorGrupo("Futbol", "Avanzado", 2026, 1);
     }
 
     @Test
@@ -140,12 +160,15 @@ class NovedadClaseServicioTest {
         datos.setMotivo("OTRO");
         datos.setDescripcion("Cancha inundada por la lluvia");
         when(grupoGateway.obtenerGrupo("Futbol", "Avanzado", 2026, 1)).thenReturn(grupoConInstructor(INS));
+        when(horarioGateway.listarHorariosPorGrupo("Futbol", "Avanzado", 2026, 1))
+                .thenReturn(List.of(franjaJueves()));
         when(novedadGateway.existeNovedadActiva("Futbol", "Avanzado", 2026, 1, HOY_FIJO)).thenReturn(false);
         NovedadClase guardada = new NovedadClase();
         when(novedadGateway.insertarNovedad(any(NovedadClase.class))).thenReturn(guardada);
         sinProrroga();
 
         assertDoesNotThrow(() -> servicio.registrarNovedad(datos, INS, "Instructor"));
+        verify(horarioGateway).listarHorariosPorGrupo("Futbol", "Avanzado", 2026, 1);
     }
 
     // ──────────────────────────────────────────────────────────────────────────
@@ -180,6 +203,74 @@ class NovedadClaseServicioTest {
     }
 
     // ──────────────────────────────────────────────────────────────────────────
+    // Día con horario (SCRUM-80)
+    // ──────────────────────────────────────────────────────────────────────────
+
+    @Test
+    void registrarNovedad_instructorDiaSinHorario_lanzaDiaFueraDeHorarioExcepcion() {
+        NovedadClase datos = datosValidos(); // fecha = HOY_FIJO (jueves)
+        lenient().when(grupoGateway.obtenerGrupo("Futbol", "Avanzado", 2026, 1)).thenReturn(grupoConInstructor(INS));
+        lenient().when(novedadGateway.existeNovedadActiva("Futbol", "Avanzado", 2026, 1, HOY_FIJO)).thenReturn(false);
+
+        DiaFueraDeHorarioExcepcion ex = assertThrows(DiaFueraDeHorarioExcepcion.class,
+                () -> servicio.registrarNovedad(datos, INS, "Instructor"));
+
+        assertTrue(ex.getMessage().toLowerCase().contains("horario"));
+        verify(novedadGateway, never()).insertarNovedad(any());
+        verify(horarioGateway).listarHorariosPorGrupo("Futbol", "Avanzado", 2026, 1);
+    }
+
+    @Test
+    void registrarNovedad_instructorDiaConHorario_permite() {
+        NovedadClase datos = datosValidos(); // fecha = HOY_FIJO (jueves)
+        when(grupoGateway.obtenerGrupo("Futbol", "Avanzado", 2026, 1)).thenReturn(grupoConInstructor(INS));
+        when(horarioGateway.listarHorariosPorGrupo("Futbol", "Avanzado", 2026, 1))
+                .thenReturn(List.of(franjaJueves()));
+        when(novedadGateway.existeNovedadActiva("Futbol", "Avanzado", 2026, 1, HOY_FIJO)).thenReturn(false);
+        when(novedadGateway.insertarNovedad(any(NovedadClase.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
+
+        NovedadClase resultado = servicio.registrarNovedad(datos, INS, "Instructor");
+
+        assertNotNull(resultado);
+        assertEquals(HOY_FIJO, resultado.getFecha());
+        verify(novedadGateway).insertarNovedad(any(NovedadClase.class));
+        verify(horarioGateway).listarHorariosPorGrupo("Futbol", "Avanzado", 2026, 1);
+    }
+
+    @Test
+    void registrarNovedad_coordinadorDiaSinHorario_permite() {
+        NovedadClase datos = datosValidos(); // fecha = HOY_FIJO (jueves)
+        when(grupoGateway.obtenerGrupo("Futbol", "Avanzado", 2026, 1)).thenReturn(grupoConInstructor(INS));
+        when(novedadGateway.existeNovedadActiva("Futbol", "Avanzado", 2026, 1, HOY_FIJO)).thenReturn(false);
+        NovedadClase guardada = new NovedadClase();
+        when(novedadGateway.insertarNovedad(any(NovedadClase.class))).thenReturn(guardada);
+
+        assertDoesNotThrow(() -> servicio.registrarNovedad(datos, COORD, "Coordinador"));
+        verify(novedadGateway).insertarNovedad(any(NovedadClase.class));
+    }
+
+    @Test
+    void registrarNovedad_instructorFechaDistintaAHoy_conHorario_permite() {
+        LocalDate fechaViernesPasado = LocalDate.of(2026, 10, 9); // viernes pasado, dentro del mes vigente
+        NovedadClase datos = datosValidos();
+        datos.setFecha(fechaViernesPasado);
+        when(grupoGateway.obtenerGrupo("Futbol", "Avanzado", 2026, 1)).thenReturn(grupoConInstructor(INS));
+        when(horarioGateway.listarHorariosPorGrupo("Futbol", "Avanzado", 2026, 1))
+                .thenReturn(List.of(new Horario(1, "Futbol", "Avanzado", 2026, 1, "VIERNES", "08:00", "10:00", "Cancha B", 0)));
+        when(novedadGateway.existeNovedadActiva("Futbol", "Avanzado", 2026, 1, fechaViernesPasado)).thenReturn(false);
+        when(novedadGateway.insertarNovedad(any(NovedadClase.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
+
+        NovedadClase resultado = servicio.registrarNovedad(datos, INS, "Instructor");
+
+        assertNotNull(resultado);
+        assertEquals(fechaViernesPasado, resultado.getFecha());
+        verify(novedadGateway).insertarNovedad(any(NovedadClase.class));
+        verify(horarioGateway).listarHorariosPorGrupo("Futbol", "Avanzado", 2026, 1);
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
     // Instructor no autorizado (no es el instructor del grupo)
     // ──────────────────────────────────────────────────────────────────────────
 
@@ -201,12 +292,15 @@ class NovedadClaseServicioTest {
     void registrarNovedad_novedadYaExistente_lanzaNovedadDuplicada() {
         NovedadClase datos = datosValidos();
         when(grupoGateway.obtenerGrupo("Futbol", "Avanzado", 2026, 1)).thenReturn(grupoConInstructor(INS));
+        when(horarioGateway.listarHorariosPorGrupo("Futbol", "Avanzado", 2026, 1))
+                .thenReturn(List.of(franjaJueves()));
         when(novedadGateway.existeNovedadActiva("Futbol", "Avanzado", 2026, 1, HOY_FIJO)).thenReturn(true);
         sinProrroga();
 
         assertThrows(NovedadDuplicadaExcepcion.class,
                 () -> servicio.registrarNovedad(datos, INS, "Instructor"));
         verify(novedadGateway, never()).insertarNovedad(any());
+        verify(horarioGateway).listarHorariosPorGrupo("Futbol", "Avanzado", 2026, 1);
     }
 
     // ──────────────────────────────────────────────────────────────────────────
@@ -292,6 +386,8 @@ class NovedadClaseServicioTest {
     void registrarNovedad_noTocaAsistenciasSoloRegistraNovedad() {
         NovedadClase datos = datosValidos();
         when(grupoGateway.obtenerGrupo("Futbol", "Avanzado", 2026, 1)).thenReturn(grupoConInstructor(INS));
+        when(horarioGateway.listarHorariosPorGrupo("Futbol", "Avanzado", 2026, 1))
+                .thenReturn(List.of(franjaJueves()));
         when(novedadGateway.existeNovedadActiva("Futbol", "Avanzado", 2026, 1, HOY_FIJO)).thenReturn(false);
         when(novedadGateway.insertarNovedad(any(NovedadClase.class))).thenReturn(new NovedadClase());
 
@@ -300,5 +396,6 @@ class NovedadClaseServicioTest {
         // El servicio de novedad no inyecta ningún gateway de asistencia, por lo tanto
         // no puede modificar tbl_asistencia. Solo verifica que se insertó la novedad.
         verify(novedadGateway).insertarNovedad(any(NovedadClase.class));
+        verify(horarioGateway).listarHorariosPorGrupo("Futbol", "Avanzado", 2026, 1);
     }
 }

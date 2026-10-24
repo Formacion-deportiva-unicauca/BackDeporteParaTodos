@@ -19,6 +19,8 @@ public interface IInscripcionServicio {
 
     Disponibilidad obtenerDisponibilidad(String categoria, String curso, int anio, int iterable);
 
+    boolean tieneInscritos(String categoria, String curso, int anio, int iterable);
+
     List<InscripcionEnEspera> listarEnEspera(String categoria, String curso, int anio, int iterable);
 
     List<InscripcionResumen> listarMisCursos(String alumnoId);

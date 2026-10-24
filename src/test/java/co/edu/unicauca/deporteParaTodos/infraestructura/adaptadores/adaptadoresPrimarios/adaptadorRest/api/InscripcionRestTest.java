@@ -122,6 +122,34 @@ class InscripcionRestTest {
     }
 
     @Test
+    void getTieneInscritos_conInscritos_retornaTrue() throws Exception {
+        when(servicio.tieneInscritos(anyString(), anyString(), anyInt(), anyInt()))
+                .thenReturn(true);
+
+        mockMvc.perform(get("/api/v2/inscripcion/tieneInscritos")
+                        .param("prmCategoria", CATEGORIA)
+                        .param("prmCurso", CURSO)
+                        .param("prmAnio", String.valueOf(ANIO))
+                        .param("prmIterable", String.valueOf(ITERABLE)))
+                .andExpect(status().isOk())
+                .andExpect(content().string("true"));
+    }
+
+    @Test
+    void getTieneInscritos_sinInscritos_retornaFalse() throws Exception {
+        when(servicio.tieneInscritos(anyString(), anyString(), anyInt(), anyInt()))
+                .thenReturn(false);
+
+        mockMvc.perform(get("/api/v2/inscripcion/tieneInscritos")
+                        .param("prmCategoria", CATEGORIA)
+                        .param("prmCurso", CURSO)
+                        .param("prmAnio", String.valueOf(ANIO))
+                        .param("prmIterable", String.valueOf(ITERABLE)))
+                .andExpect(status().isOk())
+                .andExpect(content().string("false"));
+    }
+
+    @Test
     void putDesvincularInscripcion_retornaOk() throws Exception {
         Inscripcion desvinculada = new Inscripcion(ALUMNO_ID, CATEGORIA, CURSO, ANIO, ITERABLE, AHORA, AHORA, null);
         when(servicio.desvincularInscripcion(anyString(), anyString(), anyString(), anyInt(), anyInt()))
