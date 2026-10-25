@@ -109,8 +109,13 @@ public class PerfilGateway implements IPerfilGateway {
 
     @Override
     public Optional<Perfil> obtenerPerfil(String perfilId) {
+        // PerfilMapper.toDominio(), NO el ModelMapper generico: PerfilEntidad.correo
+        // esta mapeado a la columna perf_correo a traves del campo Java "perfcorreo"
+        // (sin guion bajo, ver PerfilMapper), un nombre que el matching implicito de
+        // ModelMapper no relaciona con "correo" en el dominio -- con el ModelMapper
+        // generico el correo llegaba null aqui.
         Optional<PerfilEntidad> entidadRecuperada = repoPerfil.findById(perfilId);
-        return entidadRecuperada.map(perfilEndidad -> mapper.map(perfilEndidad, Perfil.class));
+        return entidadRecuperada.map(PerfilMapper::toDominio);
     }
 
     @Override
