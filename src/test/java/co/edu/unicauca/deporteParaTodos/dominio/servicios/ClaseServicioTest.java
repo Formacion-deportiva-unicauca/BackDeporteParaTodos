@@ -3,6 +3,7 @@ package co.edu.unicauca.deporteParaTodos.dominio.servicios;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IClaseGateway;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IHorarioGateway;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IProrrogaRegistroAsistenciaGateway;
+import co.edu.unicauca.deporteParaTodos.dominio.excepciones.AccesoGrupoDenegadoExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.DiaFueraDeHorarioExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.DuracionManualInvalidaExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.FechaClaseFuturaExcepcion;
@@ -42,6 +43,9 @@ class ClaseServicioTest {
 
     @Mock
     private IProrrogaRegistroAsistenciaGateway prorrogaGateway;
+
+    @Mock
+    private AutorizacionGrupoServicio autorizacionGrupo;
 
     @Mock
     private Clock clock;
@@ -590,5 +594,64 @@ class ClaseServicioTest {
 
         assertDoesNotThrow(() -> claseServicio.eliminarClase(1, COORD, "Coordinador"));
         verify(prorrogaGateway, never()).obtenerProrrogasPorMes(anyInt(), anyInt());
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // Autorizacion por grupo (rol Instructor) -- insertarClase / eliminarClase
+    // ──────────────────────────────────────────────────────────────────────────
+
+    @Test
+    void insertarClase_instructorDeOtroGrupo_lanzaAccesoGrupoDenegadoAntesDeValidarFecha() {
+        Clase datos = claseBase();
+        doThrow(new AccesoGrupoDenegadoExcepcion("no es su grupo"))
+                .when(autorizacionGrupo).verificarPropietario(CATEGORIA, CURSO, ANIO, ITERABLE, INS, "Instructor");
+
+        assertThrows(AccesoGrupoDenegadoExcepcion.class,
+                () -> claseServicio.insertarClase(datos, INS, "Instructor"));
+
+        verify(claseGateway, never()).existeClaseEnFecha(any(), any(), any(), any(), any());
+        verify(claseGateway, never()).insertarClase(any());
+        verify(horarioGateway, never()).listarHorariosPorGrupo(any(), any(), anyInt(), anyInt());
+    }
+
+    @Test
+    void insertarClase_llamaAutorizacionGrupoConLaClaveYElLlamadorCorrectos() {
+        Clase datos = claseBase(); // fecha = HOY_FIJO, jueves
+        when(horarioGateway.listarHorariosPorGrupo(CATEGORIA, CURSO, ANIO, ITERABLE))
+                .thenReturn(List.of(franja(1, "JUEVES", "14:00", "16:00")));
+        when(claseGateway.existeClaseEnFecha(any(), any(), any(), any(), any())).thenReturn(false);
+        when(claseGateway.insertarClase(any(Clase.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        claseServicio.insertarClase(datos, INS, "Instructor");
+
+        verify(autorizacionGrupo).verificarPropietario(CATEGORIA, CURSO, ANIO, ITERABLE, INS, "Instructor");
+    }
+
+    @Test
+    void eliminarClase_instructorDeOtroGrupo_lanzaAccesoGrupoDenegadoAntesDeValidarFecha() {
+        Clase existente = claseBase();
+        when(claseGateway.existeClase(1)).thenReturn(true);
+        when(claseGateway.obtenerClase(1)).thenReturn(existente);
+        doThrow(new AccesoGrupoDenegadoExcepcion("no es su grupo"))
+                .when(autorizacionGrupo).verificarPropietario(CATEGORIA, CURSO, ANIO, ITERABLE, INS, "Instructor");
+
+        assertThrows(AccesoGrupoDenegadoExcepcion.class,
+                () -> claseServicio.eliminarClase(1, INS, "Instructor"));
+
+        verify(claseGateway, never()).eliminarClase(anyInt());
+        verify(prorrogaGateway, never()).obtenerProrrogasPorMes(anyInt(), anyInt());
+    }
+
+    @Test
+    void eliminarClase_llamaAutorizacionGrupoConLaClaveDeLaClaseExistente() {
+        Clase existente = claseBase();
+        when(claseGateway.existeClase(1)).thenReturn(true);
+        when(claseGateway.obtenerClase(1)).thenReturn(existente);
+        when(prorrogaGateway.obtenerProrrogasPorMes(anyInt(), anyInt())).thenReturn(Map.of());
+        when(claseGateway.eliminarClase(1)).thenReturn(existente);
+
+        claseServicio.eliminarClase(1, INS, "Instructor");
+
+        verify(autorizacionGrupo).verificarPropietario(CATEGORIA, CURSO, ANIO, ITERABLE, INS, "Instructor");
     }
 }

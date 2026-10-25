@@ -29,6 +29,9 @@ import java.util.Base64;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -71,7 +74,7 @@ class AlumnoRestSecurityTest {
 
     @Test
     void actualizarAlumno_correoYaUsado_retorna409ConMensajeLegible() throws Exception {
-        when(servicioAlumno.actualizarAlumno(anyString(), any(Alumno.class)))
+        when(servicioAlumno.actualizarAlumno(anyString(), any(Alumno.class), eq("coord1"), eq("Coordinador")))
                 .thenThrow(new YaExisteElementoExcepcion(
                         "El correo correo-de-otro@unicauca.edu.co ya esta en uso por otro perfil"));
 
@@ -94,7 +97,8 @@ class AlumnoRestSecurityTest {
         Alumno actualizado = new Alumno();
         actualizado.setTipoAlumno("Estudiante");
         actualizado.setPerfil(perfil);
-        when(servicioAlumno.actualizarAlumno(anyString(), any(Alumno.class))).thenReturn(actualizado);
+        when(servicioAlumno.actualizarAlumno(anyString(), any(Alumno.class), eq("coord1"), eq("Coordinador")))
+                .thenReturn(actualizado);
 
         mockMvc.perform(put("/api/v2/alumnos/alum1")
                 .contentType("application/json")
@@ -110,5 +114,39 @@ class AlumnoRestSecurityTest {
                 .content(BODY)
                 .header("Authorization", "Bearer " + buildJwt("Alumno", "alum1")))
                 .andExpect(status().isForbidden());
+    }
+
+    // Autorizacion por grupo (caso 3 del ticket, ver AutorizacionGrupoIT para el
+    // camino completo con BD real): aqui solo se confirma que Spring Security
+    // ahora deja pasar al rol Instructor (antes solo Coordinador).
+    @Test
+    void actualizarAlumno_rolInstructor_llegaAlServicioConSuPerfId() throws Exception {
+        Perfil perfil = new Perfil();
+        perfil.setId("alum1");
+        perfil.setNombre("Juan Perez");
+        perfil.setCorreo("correo-de-otro@unicauca.edu.co");
+        Alumno actualizado = new Alumno();
+        actualizado.setTipoAlumno("Estudiante");
+        actualizado.setPerfil(perfil);
+        when(servicioAlumno.actualizarAlumno(anyString(), any(Alumno.class), eq("ins1"), eq("Instructor")))
+                .thenReturn(actualizado);
+
+        mockMvc.perform(put("/api/v2/alumnos/alum1")
+                .contentType("application/json")
+                .content(BODY)
+                .header("Authorization", "Bearer " + buildJwt("Instructor", "ins1")))
+                .andExpect(status().isOk());
+
+        verify(servicioAlumno).actualizarAlumno(eq("alum1"), any(Alumno.class), eq("ins1"), eq("Instructor"));
+    }
+
+    @Test
+    void actualizarAlumno_sinJwt_retorna401() throws Exception {
+        mockMvc.perform(put("/api/v2/alumnos/alum1")
+                .contentType("application/json")
+                .content(BODY))
+                .andExpect(status().isUnauthorized());
+
+        verify(servicioAlumno, never()).actualizarAlumno(any(), any(), any(), any());
     }
 }

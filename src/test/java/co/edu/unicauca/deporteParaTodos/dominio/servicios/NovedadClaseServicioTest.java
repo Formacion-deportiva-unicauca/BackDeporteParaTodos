@@ -22,11 +22,11 @@ import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IGrupoG
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.INovedadClaseGateway;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IHorarioGateway;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IProrrogaRegistroAsistenciaGateway;
+import co.edu.unicauca.deporteParaTodos.dominio.excepciones.AccesoGrupoDenegadoExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.DiaFueraDeHorarioExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.FechaClaseFuturaExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.JustificacionInvalidaExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.NovedadDuplicadaExcepcion;
-import co.edu.unicauca.deporteParaTodos.dominio.excepciones.NoExisteExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.RegistroAsistenciaVencidoExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Grupo;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Horario;
@@ -46,6 +46,9 @@ class NovedadClaseServicioTest {
 
     @Mock
     private IHorarioGateway horarioGateway;
+
+    @Mock
+    private AutorizacionGrupoServicio autorizacionGrupo;
 
     @Mock
     private Clock clock;
@@ -275,11 +278,14 @@ class NovedadClaseServicioTest {
     // ──────────────────────────────────────────────────────────────────────────
 
     @Test
-    void registrarNovedad_instructorNoEsElDelGrupo_lanzaNoExiste() {
+    void registrarNovedad_instructorNoEsElDelGrupo_lanzaAccesoGrupoDenegado() {
         NovedadClase datos = datosValidos();
-        when(grupoGateway.obtenerGrupo("Futbol", "Avanzado", 2026, 1)).thenReturn(grupoConInstructor("OTRO_INS"));
+        Grupo grupoDeOtro = grupoConInstructor("OTRO_INS");
+        when(grupoGateway.obtenerGrupo("Futbol", "Avanzado", 2026, 1)).thenReturn(grupoDeOtro);
+        doThrow(new AccesoGrupoDenegadoExcepcion("no es su grupo"))
+                .when(autorizacionGrupo).verificarPropietario(grupoDeOtro, INS, "Instructor");
 
-        assertThrows(NoExisteExcepcion.class,
+        assertThrows(AccesoGrupoDenegadoExcepcion.class,
                 () -> servicio.registrarNovedad(datos, INS, "Instructor"));
         verify(novedadGateway, never()).insertarNovedad(any());
     }
@@ -330,10 +336,18 @@ class NovedadClaseServicioTest {
     void actualizarNovedad_valido_actualizaYConservaCamposCreacion() {
         NovedadClase existente = new NovedadClase();
         existente.setCodigo(1L);
+        existente.setCategoria("Futbol");
+        existente.setCurso("Avanzado");
+        existente.setAnio(2026);
+        existente.setIterable(1);
         existente.setIdUsuarioCreador(INS); // el instructor es el creador
         existente.setFechaCreacion(LocalDate.of(2026, 9, 1).atStartOfDay());
         existente.setVersion(0);
         existente.setEliminado(0);
+        // Punto C: la autorizacion ahora valida contra el idInstructor ACTUAL
+        // del grupo (no contra idUsuarioCreador) -- el instructor sigue siendo
+        // el mismo en este caso.
+        when(grupoGateway.obtenerGrupo("Futbol", "Avanzado", 2026, 1)).thenReturn(grupoConInstructor(INS));
 
         NovedadClase datos = new NovedadClase();
         datos.setCategoria("Futbol");
@@ -358,12 +372,23 @@ class NovedadClaseServicioTest {
         verify(novedadGateway).actualizarNovedad(any(NovedadClase.class));
     }
 
+    // Punto C del ticket: se valida contra el idInstructor ACTUAL del grupo, no
+    // contra idUsuarioCreador -- aqui el grupo ya tiene OTRO instructor asignado.
     @Test
-    void actualizarNovedad_instructorNoEsCreador_lanzaNoExiste() {
+    void actualizarNovedad_instructorNoEsElDelGrupoActual_lanzaAccesoGrupoDenegado() {
         NovedadClase existente = new NovedadClase();
         existente.setCodigo(1L);
-        existente.setIdUsuarioCreador("otro-creador");
+        existente.setCategoria("Futbol");
+        existente.setCurso("Avanzado");
+        existente.setAnio(2026);
+        existente.setIterable(1);
+        existente.setIdUsuarioCreador(INS); // INS creo la novedad...
         when(novedadGateway.obtenerNovedadPorId(1L)).thenReturn(Optional.of(existente));
+        // ...pero el grupo ahora tiene OTRO instructor asignado.
+        Grupo grupoDeOtro = grupoConInstructor("OTRO_INS");
+        when(grupoGateway.obtenerGrupo("Futbol", "Avanzado", 2026, 1)).thenReturn(grupoDeOtro);
+        doThrow(new AccesoGrupoDenegadoExcepcion("no es su grupo"))
+                .when(autorizacionGrupo).verificarPropietario(grupoDeOtro, INS, "Instructor");
 
         NovedadClase datos = new NovedadClase();
         datos.setCategoria("Futbol");
@@ -373,7 +398,7 @@ class NovedadClaseServicioTest {
         datos.setFecha(HOY_FIJO);
         datos.setMotivo("CLIMA");
 
-        assertThrows(NoExisteExcepcion.class,
+        assertThrows(AccesoGrupoDenegadoExcepcion.class,
                 () -> servicio.actualizarNovedad(1L, datos, INS, "Instructor"));
         verify(novedadGateway, never()).actualizarNovedad(any());
     }

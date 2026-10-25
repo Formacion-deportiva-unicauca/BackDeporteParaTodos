@@ -179,7 +179,8 @@ class InscripcionMisCursosIT {
         grupoEspera.setPeriodo(1);
         iterableEnEspera = grupoServicio.insertarGrupo(grupoEspera).getIterable();
         inscripcionServicio.inscribir(new Inscripcion(
-                alumnoOcupaCupo, CATEGORIA, CURSO_ESPERA, ANIO, iterableEnEspera, null, null, null));
+                alumnoOcupaCupo, CATEGORIA, CURSO_ESPERA, ANIO, iterableEnEspera, null, null, null),
+                "coord-it", "Coordinador");
 
         // Grupo normal para la inscripcion que se desvincula (no debe aparecer).
         Grupo grupoDesvinculado = new Grupo();
@@ -200,15 +201,20 @@ class InscripcionMisCursosIT {
         String otroAlumno = "alumno-it-miscursos-otro-" + sufijo;
         crearAlumnoSiNoExiste(otroAlumno);
         inscripcionServicio.inscribir(new Inscripcion(
-                otroAlumno, CATEGORIA, CURSO_INSCRITO, ANIO, iterableInscrito, null, null, null));
+                otroAlumno, CATEGORIA, CURSO_INSCRITO, ANIO, iterableInscrito, null, null, null),
+                "coord-it", "Coordinador");
 
         inscripcionServicio.inscribir(new Inscripcion(
-                alumnoId, CATEGORIA, CURSO_INSCRITO, ANIO, iterableInscrito, null, null, null));
+                alumnoId, CATEGORIA, CURSO_INSCRITO, ANIO, iterableInscrito, null, null, null),
+                "coord-it", "Coordinador");
         inscripcionServicio.inscribir(new Inscripcion(
-                alumnoId, CATEGORIA, CURSO_ESPERA, ANIO, iterableEnEspera, null, null, null));
+                alumnoId, CATEGORIA, CURSO_ESPERA, ANIO, iterableEnEspera, null, null, null),
+                "coord-it", "Coordinador");
         inscripcionServicio.inscribir(new Inscripcion(
-                alumnoId, CATEGORIA, CURSO_DESVINCULADO, ANIO, iterableDesvinculado, null, null, null));
-        inscripcionServicio.desvincularInscripcion(alumnoId, CATEGORIA, CURSO_DESVINCULADO, ANIO, iterableDesvinculado);
+                alumnoId, CATEGORIA, CURSO_DESVINCULADO, ANIO, iterableDesvinculado, null, null, null),
+                "coord-it", "Coordinador");
+        inscripcionServicio.desvincularInscripcion(alumnoId, CATEGORIA, CURSO_DESVINCULADO, ANIO, iterableDesvinculado,
+                "coord-it", "Coordinador");
     }
 
     private void insertarHorario(String curso, int iterable, String dia, String horaInicio, String horaFin) {

@@ -45,18 +45,22 @@ public class InscripcionRest {
         this.servicio = servicio;
     }
 
-    @PreAuthorize("hasAnyAuthority('Alumno', 'Coordinador')")
+    @PreAuthorize("hasAnyAuthority('Alumno', 'Coordinador', 'Instructor')")
     @PostMapping("/inscripcion")
     public ResponseEntity<InscripcionDto> inscribir(
             @RequestBody InscripcionDto dto,
             @AuthenticationPrincipal Jwt jwt) {
-        if (jwt != null && "Alumno".equals(jwt.getClaimAsString("rol"))
-                && !dto.getAlumnoId().equals(jwt.getClaimAsString("perf_id"))) {
+        String perfIdLlamador = jwt != null ? jwt.getClaimAsString("perf_id") : null;
+        if (perfIdLlamador == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        String rolLlamador = jwt.getClaimAsString("rol");
+        if ("Alumno".equals(rolLlamador) && !dto.getAlumnoId().equals(perfIdLlamador)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
         PeticionLogger.log(LOGGER, "POST", "/api/v2/inscripcion", dto);
         Inscripcion inscripcion = InscripcionMapper.fromDto(dto);
-        Inscripcion resultado = servicio.inscribir(inscripcion);
+        Inscripcion resultado = servicio.inscribir(inscripcion, perfIdLlamador, rolLlamador);
         return new ResponseEntity<>(InscripcionMapper.toDto(resultado), HttpStatus.CREATED);
     }
 
@@ -78,18 +82,23 @@ public class InscripcionRest {
         return new ResponseEntity<>(resultado, HttpStatus.OK);
     }
 
-    @PreAuthorize("hasAnyAuthority('Alumno', 'Coordinador')")
+    @PreAuthorize("hasAnyAuthority('Alumno', 'Coordinador', 'Instructor')")
     @PutMapping("/desvincularInscripcion")
     public ResponseEntity<InscripcionDto> desvincularInscripcion(
             @RequestBody InscripcionDto dto,
             @AuthenticationPrincipal Jwt jwt) {
-        if (jwt != null && "Alumno".equals(jwt.getClaimAsString("rol"))
-                && !dto.getAlumnoId().equals(jwt.getClaimAsString("perf_id"))) {
+        String perfIdLlamador = jwt != null ? jwt.getClaimAsString("perf_id") : null;
+        if (perfIdLlamador == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        String rolLlamador = jwt.getClaimAsString("rol");
+        if ("Alumno".equals(rolLlamador) && !dto.getAlumnoId().equals(perfIdLlamador)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
         PeticionLogger.log(LOGGER, "PUT", "/api/v2/desvincularInscripcion", dto);
         Inscripcion resultado = servicio.desvincularInscripcion(
-                dto.getAlumnoId(), dto.getCategoria(), dto.getCurso(), dto.getAnio(), dto.getIterable());
+                dto.getAlumnoId(), dto.getCategoria(), dto.getCurso(), dto.getAnio(), dto.getIterable(),
+                perfIdLlamador, rolLlamador);
         return new ResponseEntity<>(InscripcionMapper.toDto(resultado), HttpStatus.OK);
     }
 

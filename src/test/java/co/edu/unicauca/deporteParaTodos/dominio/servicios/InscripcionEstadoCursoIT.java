@@ -181,9 +181,11 @@ class InscripcionEstadoCursoIT {
         iterablePromocion = grupoServicio.insertarGrupo(grupo).getIterable();
 
         servicio.inscribir(new Inscripcion(
-                alumnoOcupaCupo, CATEGORIA, CURSO_INACTIVO, ANIO, iterablePromocion, null, null, null));
+                alumnoOcupaCupo, CATEGORIA, CURSO_INACTIVO, ANIO, iterablePromocion, null, null, null),
+                "coord-it", "Coordinador");
         servicio.inscribir(new Inscripcion(
-                alumnoEnEsperaPromocion, CATEGORIA, CURSO_INACTIVO, ANIO, iterablePromocion, null, null, null));
+                alumnoEnEsperaPromocion, CATEGORIA, CURSO_INACTIVO, ANIO, iterablePromocion, null, null, null),
+                "coord-it", "Coordinador");
 
         Grupo grupoActual = grupoServicio.obtenerGrupoPorId(CATEGORIA, CURSO_INACTIVO, ANIO, iterablePromocion);
         grupoActual.setCupos(2);

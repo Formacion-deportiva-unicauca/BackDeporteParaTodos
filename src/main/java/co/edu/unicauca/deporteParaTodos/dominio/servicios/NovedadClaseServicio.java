@@ -48,6 +48,9 @@ public class NovedadClaseServicio implements INovedadClaseServicio {
     private IHorarioGateway horarioGateway;
 
     @Autowired
+    private AutorizacionGrupoServicio autorizacionGrupo;
+
+    @Autowired
     private Clock clock;
 
     @Override
@@ -64,15 +67,13 @@ public class NovedadClaseServicio implements INovedadClaseServicio {
             throw new NoExisteExcepcion("El grupo no est\u00e1 disponible");
         }
 
-        // 2. Autorizaci\u00f3n: instructor asignado al grupo, o Coordinador/Administrador
+        // 2. Autorizaci\u00f3n: instructor asignado al grupo, o Coordinador/Administrador.
+        // Centralizada en AutorizacionGrupoServicio -- lanza AccesoGrupoDenegadoExcepcion
+        // (403), ya no NoExisteExcepcion (404): el Swagger de este endpoint documentaba
+        // 403, que es lo correcto (ver informe de entrega, alineacion de contrato).
         boolean esInstructor = "Instructor".equals(rolLlamador);
         boolean esExentoDePlazo = !esInstructor;
-        if (esInstructor) {
-            String idInstructorGrupo = grupo.getIdInstructor();
-            if (idInstructorGrupo == null || !idInstructorGrupo.equals(perfIdLlamador)) {
-                throw new NoExisteExcepcion("No est\u00e1 autorizado para registrar novedades de este grupo");
-            }
-        }
+        autorizacionGrupo.verificarPropietario(grupo, perfIdLlamador, rolLlamador);
 
         // 3. Validar ventana de registro (reutiliza reglas de SCRUM-80)
         LocalDate hoy = LocalDate.now(clock);
@@ -122,13 +123,13 @@ public class NovedadClaseServicio implements INovedadClaseServicio {
     public NovedadClase actualizarNovedad(Long codigo, NovedadClase datos, String perfIdLlamador, String rolLlamador) {
         NovedadClase existente = obtenerNovedad(codigo);
 
-        // Autorizaci\u00f3n: creador original, o Coordinador/Administrador
-        boolean esInstructor = "Instructor".equals(rolLlamador);
-        if (esInstructor) {
-            if (!existente.getIdUsuarioCreador().equals(perfIdLlamador)) {
-                throw new NoExisteExcepcion("No est\u00e1 autorizado para modificar esta novedad");
-            }
-        }
+        // Autorizaci\u00f3n (punto C del ticket): se valida contra el idInstructor
+        // ACTUAL del grupo, no contra idUsuarioCreador -- si el grupo cambio de
+        // instructor despues de creada la novedad, el creador original ya no
+        // debe poder modificarla, y el instructor actual si debe poder.
+        Grupo grupo = grupoGateway.obtenerGrupo(
+                existente.getCategoria(), existente.getCurso(), existente.getAnio(), existente.getIterable());
+        autorizacionGrupo.verificarPropietario(grupo, perfIdLlamador, rolLlamador);
 
         validarMotivo(datos.getMotivo());
         validarDescripcionCondicional(datos.getMotivo(), datos.getDescripcion());

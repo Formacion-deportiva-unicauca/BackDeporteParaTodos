@@ -13,7 +13,11 @@ public interface IAlumnoServicio {
 
     public Alumno obtenerAlumno(String alumnoId);
 
-    public Alumno actualizarAlumno(String alumnoId, Alumno datosAlumno);
+    // perfIdLlamador/rolLlamador salen del JWT en el controller -- el
+    // Instructor solo puede actualizar un alumno con inscripcion activa en un
+    // grupo que tiene a cargo, y no puede modificar el correo (ver
+    // AlumnoServicio para la decision documentada).
+    public Alumno actualizarAlumno(String alumnoId, Alumno datosAlumno, String perfIdLlamador, String rolLlamador);
 
     public Alumno eliminarAlumno(String alumnoId);
 

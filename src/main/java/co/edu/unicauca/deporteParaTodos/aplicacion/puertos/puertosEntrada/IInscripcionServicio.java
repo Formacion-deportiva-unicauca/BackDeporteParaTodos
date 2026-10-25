@@ -9,11 +9,15 @@ import java.util.List;
 
 public interface IInscripcionServicio {
 
-    Inscripcion inscribir(Inscripcion datos);
+    // perfIdLlamador/rolLlamador salen del JWT en el controller -- autorizacion
+    // por grupo (AutorizacionGrupoServicio): el Instructor solo puede
+    // inscribir/desvincular alumnos en el grupo que tiene a cargo.
+    Inscripcion inscribir(Inscripcion datos, String perfIdLlamador, String rolLlamador);
 
     boolean validarInscripcion(String alumnoId, String categoria, String curso, int anio, int iterable);
 
-    Inscripcion desvincularInscripcion(String alumnoId, String categoria, String curso, int anio, int iterable);
+    Inscripcion desvincularInscripcion(String alumnoId, String categoria, String curso, int anio, int iterable,
+            String perfIdLlamador, String rolLlamador);
 
     Inscripcion promoverManualmente(String alumnoId, String categoria, String curso, int anio, int iterable);
 

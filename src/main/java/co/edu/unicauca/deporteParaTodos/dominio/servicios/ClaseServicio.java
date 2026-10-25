@@ -42,6 +42,9 @@ public class ClaseServicio implements IClaseServicio {
     private IProrrogaRegistroAsistenciaGateway prorrogaGateway;
 
     @Autowired
+    private AutorizacionGrupoServicio autorizacionGrupo;
+
+    @Autowired
     private Clock clock;
 
     @Override
@@ -85,6 +88,12 @@ public class ClaseServicio implements IClaseServicio {
 
     @Override
     public Clase insertarClase(Clase datoClase, String perfIdLlamador, String rolLlamador) {
+        // Autorizacion por grupo: se valida ANTES que cualquier regla de
+        // fecha/plazo/horario -- un Instructor sin el grupo a cargo no debe
+        // ni llegar a esas validaciones de negocio.
+        autorizacionGrupo.verificarPropietario(datoClase.getCategoria(), datoClase.getCurso(),
+                datoClase.getAnio(), datoClase.getIterable(), perfIdLlamador, rolLlamador);
+
         boolean esInstructor = "Instructor".equals(rolLlamador);
         boolean esExentoDePlazo = !esInstructor;
         LocalDate hoy = LocalDate.now(clock);
@@ -183,6 +192,9 @@ public class ClaseServicio implements IClaseServicio {
         if (actual == null) {
             throw new NoExisteExcepcion("No existe la clase con codigo " + id);
         }
+
+        autorizacionGrupo.verificarPropietario(actual.getCategoria(), actual.getCurso(),
+                actual.getAnio(), actual.getIterable(), perfIdLlamador, rolLlamador);
 
         boolean esExentoDePlazo = !"Instructor".equals(rolLlamador);
         LocalDate hoy = LocalDate.now(clock);

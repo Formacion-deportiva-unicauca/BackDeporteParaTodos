@@ -48,18 +48,21 @@ public class InscripcionServicio implements IInscripcionServicio {
     private final IGrupoGateway grupoGateway;
     private final IHorarioGateway horarioGateway;
     private final IInstructorGateway instructorGateway;
+    private final AutorizacionGrupoServicio autorizacionGrupo;
     private final Clock clock;
 
     @Value("${inscripciones.limite-cursos-alumno:3}")
     private int limiteCursosAlumno;
 
     public InscripcionServicio(IInscripcionGateway gateway, ICursoGateway cursoGateway, IGrupoGateway grupoGateway,
-            IHorarioGateway horarioGateway, IInstructorGateway instructorGateway, Clock clock) {
+            IHorarioGateway horarioGateway, IInstructorGateway instructorGateway,
+            AutorizacionGrupoServicio autorizacionGrupo, Clock clock) {
         this.gateway = gateway;
         this.cursoGateway = cursoGateway;
         this.grupoGateway = grupoGateway;
         this.horarioGateway = horarioGateway;
         this.instructorGateway = instructorGateway;
+        this.autorizacionGrupo = autorizacionGrupo;
         this.clock = clock;
     }
 
@@ -73,7 +76,7 @@ public class InscripcionServicio implements IInscripcionServicio {
     // bajo concurrencia real (ver InscripcionConcurrenciaIT). READ_COMMITTED hace que
     // cada SELECT tome su propio snapshot al ejecutarse.
     @Transactional(isolation = Isolation.READ_COMMITTED)
-    public Inscripcion inscribir(Inscripcion datos) {
+    public Inscripcion inscribir(Inscripcion datos, String perfIdLlamador, String rolLlamador) {
         Curso curso = cursoGateway.obtenerCurso(datos.getCategoria(), datos.getCurso());
         if (curso == null || !EstadoInscripciones.ABIERTO.equals(curso.getEstadoInscripciones())) {
             throw new InscripcionesCerradasExcepcion(
@@ -88,6 +91,11 @@ public class InscripcionServicio implements IInscripcionServicio {
 
         Grupo grupo = grupoGateway.obtenerGrupoConLock(
                 datos.getCategoria(), datos.getCurso(), datos.getAnio(), datos.getIterable());
+
+        // Autorizacion por grupo: el Instructor solo puede inscribir alumnos en
+        // el grupo que tiene a cargo. Reutiliza el Grupo ya obtenido con lock
+        // arriba -- no se vuelve a consultar.
+        autorizacionGrupo.verificarPropietario(grupo, perfIdLlamador, rolLlamador);
 
         // SCRUM-185: ventana de inscripcion del grupo (apertura/cierre), evaluada con
         // "hoy" en America/Bogota -- unica regla, la misma que usa el catalogo
@@ -161,7 +169,10 @@ public class InscripcionServicio implements IInscripcionServicio {
 
     @Override
     @Transactional
-    public Inscripcion desvincularInscripcion(String alumnoId, String categoria, String curso, int anio, int iterable) {
+    public Inscripcion desvincularInscripcion(String alumnoId, String categoria, String curso, int anio, int iterable,
+            String perfIdLlamador, String rolLlamador) {
+        autorizacionGrupo.verificarPropietario(categoria, curso, anio, iterable, perfIdLlamador, rolLlamador);
+
         if (!gateway.existeInscripcionSinDesvincular(alumnoId, categoria, curso, anio, iterable)) {
             throw new NoExisteExcepcion("La inscripcion a desvincular no existe");
         }
