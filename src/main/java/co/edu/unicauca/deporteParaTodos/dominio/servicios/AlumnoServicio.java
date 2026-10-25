@@ -118,15 +118,19 @@ public class AlumnoServicio implements IAlumnoServicio {
 
     // Autorizacion por grupo (caso 3 del ticket): el alumno esta "a cargo" de
     // un Instructor si tiene AL MENOS una inscripcion activa (INSCRITO, sin
-    // desvincular) en un grupo cuyo idInstructor es ese Instructor. Una
-    // inscripcion desvinculada o EN_ESPERA no cuenta -- existeInscripcionActiva()
-    // ya aplica esa misma definicion (ver IInscripcionRepositorio).
+    // desvincular) en un grupo cuyo idInstructor es ese Instructor.
+    // obtenerInscripcionesAlumno() (findMisCursos) ya filtra eliminado=0 AND
+    // fechaDesvinculacion IS NULL; solo falta descartar EN_ESPERA aqui. NO se
+    // usa existeInscripcionActiva() -- esa consulta ademas exige
+    // fechaInscripcion <= CURRENT_TIMESTAMP, lo que compara contra el reloj del
+    // servidor de BD: si esta inscripcion se creo en la misma peticion HTTP
+    // anterior (como en el flujo real de este endpoint), ese chequeo puede
+    // fallar por una diferencia de milisegundos/huso horario entre el reloj de
+    // la app y el de la BD aunque la fila sea genuinamente INSCRITO.
     private boolean tieneAlumnoACargo(String alumnoId, String perfIdLlamador) {
         List<Inscripcion> inscripciones = inscripcionGateway.obtenerInscripcionesAlumno(alumnoId);
         for (Inscripcion inscripcion : inscripciones) {
-            boolean activa = inscripcionGateway.existeInscripcionActiva(alumnoId,
-                    inscripcion.getCategoria(), inscripcion.getCurso(), inscripcion.getAnio(), inscripcion.getIterable());
-            if (!activa) {
+            if (!"INSCRITO".equals(inscripcion.getEstado())) {
                 continue;
             }
             Grupo grupo = grupoGateway.obtenerGrupo(

@@ -182,6 +182,11 @@ class AlumnoServicioTest {
                 Timestamp.valueOf("2026-01-01 00:00:00"), null, "INSCRITO");
     }
 
+    private Inscripcion inscripcionEnEspera() {
+        return new Inscripcion(ID, CATEGORIA, CURSO, ANIO, ITERABLE,
+                Timestamp.valueOf("2026-01-01 00:00:00"), null, "EN_ESPERA");
+    }
+
     private Grupo grupoDe(String idInstructor) {
         Grupo g = new Grupo();
         g.setCategoria(CATEGORIA);
@@ -197,7 +202,6 @@ class AlumnoServicioTest {
         Alumno datosNuevos = alumnoModelo(); // mismo correo que el actual -- no se intenta cambiar
         when(alumnoGateway.existeAlumno(ID)).thenReturn(true);
         when(inscripcionGateway.obtenerInscripcionesAlumno(ID)).thenReturn(List.of(inscripcionActiva()));
-        when(inscripcionGateway.existeInscripcionActiva(ID, CATEGORIA, CURSO, ANIO, ITERABLE)).thenReturn(true);
         Grupo grupo = grupoDe(INS);
         when(grupoGateway.obtenerGrupo(CATEGORIA, CURSO, ANIO, ITERABLE)).thenReturn(grupo);
         when(autorizacionGrupo.esPropietario(grupo, INS)).thenReturn(true);
@@ -218,7 +222,6 @@ class AlumnoServicioTest {
     void actualizarAlumno_instructorSinAlumnoACargo_lanzaAccesoGrupoDenegado() {
         when(alumnoGateway.existeAlumno(ID)).thenReturn(true);
         when(inscripcionGateway.obtenerInscripcionesAlumno(ID)).thenReturn(List.of(inscripcionActiva()));
-        when(inscripcionGateway.existeInscripcionActiva(ID, CATEGORIA, CURSO, ANIO, ITERABLE)).thenReturn(true);
         Grupo grupoDeOtro = grupoDe("OTRO_INS");
         when(grupoGateway.obtenerGrupo(CATEGORIA, CURSO, ANIO, ITERABLE)).thenReturn(grupoDeOtro);
         when(autorizacionGrupo.esPropietario(grupoDeOtro, INS)).thenReturn(false);
@@ -242,12 +245,12 @@ class AlumnoServicioTest {
         verify(grupoGateway, never()).obtenerGrupo(any(), any(), any(), any());
     }
 
-    // Inscripcion desvinculada (o EN_ESPERA) no cuenta como "a cargo".
+    // Inscripcion EN_ESPERA (findMisCursos ya excluye eliminadas/desvinculadas
+    // a nivel de consulta) no cuenta como "a cargo".
     @Test
-    void actualizarAlumno_instructorConInscripcionNoActiva_noCuentaComoACargo_lanzaAccesoGrupoDenegado() {
+    void actualizarAlumno_instructorConInscripcionEnEspera_noCuentaComoACargo_lanzaAccesoGrupoDenegado() {
         when(alumnoGateway.existeAlumno(ID)).thenReturn(true);
-        when(inscripcionGateway.obtenerInscripcionesAlumno(ID)).thenReturn(List.of(inscripcionActiva()));
-        when(inscripcionGateway.existeInscripcionActiva(ID, CATEGORIA, CURSO, ANIO, ITERABLE)).thenReturn(false);
+        when(inscripcionGateway.obtenerInscripcionesAlumno(ID)).thenReturn(List.of(inscripcionEnEspera()));
 
         assertThrows(AccesoGrupoDenegadoExcepcion.class,
                 () -> alumnoServicio.actualizarAlumno(ID, alumnoModelo(), INS, "Instructor"));
@@ -266,7 +269,6 @@ class AlumnoServicioTest {
 
         when(alumnoGateway.existeAlumno(ID)).thenReturn(true);
         when(inscripcionGateway.obtenerInscripcionesAlumno(ID)).thenReturn(List.of(inscripcionActiva()));
-        when(inscripcionGateway.existeInscripcionActiva(ID, CATEGORIA, CURSO, ANIO, ITERABLE)).thenReturn(true);
         Grupo grupo = grupoDe(INS);
         when(grupoGateway.obtenerGrupo(CATEGORIA, CURSO, ANIO, ITERABLE)).thenReturn(grupo);
         when(autorizacionGrupo.esPropietario(grupo, INS)).thenReturn(true);
@@ -286,7 +288,6 @@ class AlumnoServicioTest {
 
         when(alumnoGateway.existeAlumno(ID)).thenReturn(true);
         when(inscripcionGateway.obtenerInscripcionesAlumno(ID)).thenReturn(List.of(inscripcionActiva()));
-        when(inscripcionGateway.existeInscripcionActiva(ID, CATEGORIA, CURSO, ANIO, ITERABLE)).thenReturn(true);
         Grupo grupo = grupoDe(INS);
         when(grupoGateway.obtenerGrupo(CATEGORIA, CURSO, ANIO, ITERABLE)).thenReturn(grupo);
         when(autorizacionGrupo.esPropietario(grupo, INS)).thenReturn(true);
