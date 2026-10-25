@@ -45,7 +45,7 @@ public class InscripcionRest {
         this.servicio = servicio;
     }
 
-    @PreAuthorize("hasAnyAuthority('Alumno', 'Coordinador', 'Instructor')")
+    @PreAuthorize("hasAnyAuthority('Alumno', 'Coordinador', 'Instructor', 'Administrador')")
     @PostMapping("/inscripcion")
     public ResponseEntity<InscripcionDto> inscribir(
             @RequestBody InscripcionDto dto,
@@ -82,7 +82,7 @@ public class InscripcionRest {
         return new ResponseEntity<>(resultado, HttpStatus.OK);
     }
 
-    @PreAuthorize("hasAnyAuthority('Alumno', 'Coordinador', 'Instructor')")
+    @PreAuthorize("hasAnyAuthority('Alumno', 'Coordinador', 'Instructor', 'Administrador')")
     @PutMapping("/desvincularInscripcion")
     public ResponseEntity<InscripcionDto> desvincularInscripcion(
             @RequestBody InscripcionDto dto,

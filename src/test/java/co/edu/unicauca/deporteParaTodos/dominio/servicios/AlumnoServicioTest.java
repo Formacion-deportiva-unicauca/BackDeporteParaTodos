@@ -201,7 +201,7 @@ class AlumnoServicioTest {
         Grupo grupo = grupoDe(INS);
         when(grupoGateway.obtenerGrupo(CATEGORIA, CURSO, ANIO, ITERABLE)).thenReturn(grupo);
         when(autorizacionGrupo.esPropietario(grupo, INS)).thenReturn(true);
-        when(alumnoGateway.obtenerAlumno(ID)).thenReturn(Optional.of(alumnoModelo()));
+        when(perfilGateway.obtenerPerfil(ID)).thenReturn(Optional.of(alumnoModelo().getPerfil()));
         when(alumnoGateway.actualizarAlumno(eq(ID), any(Alumno.class))).thenReturn(datosNuevos);
 
         Alumno resultado = alumnoServicio.actualizarAlumno(ID, datosNuevos, INS, "Instructor");
@@ -270,13 +270,13 @@ class AlumnoServicioTest {
         Grupo grupo = grupoDe(INS);
         when(grupoGateway.obtenerGrupo(CATEGORIA, CURSO, ANIO, ITERABLE)).thenReturn(grupo);
         when(autorizacionGrupo.esPropietario(grupo, INS)).thenReturn(true);
-        when(alumnoGateway.obtenerAlumno(ID)).thenReturn(Optional.of(actual));
+        when(perfilGateway.obtenerPerfil(ID)).thenReturn(Optional.of(actual.getPerfil()));
 
         assertThrows(CorreoNoModificablePorInstructorExcepcion.class,
                 () -> alumnoServicio.actualizarAlumno(ID, datosConCorreoNuevo, INS, "Instructor"));
 
         verify(alumnoGateway, never()).actualizarAlumno(any(), any());
-        verifyNoInteractions(perfilGateway);
+        verify(perfilGateway, never()).actualizarPerfil(any(), any());
     }
 
     @Test
@@ -290,7 +290,7 @@ class AlumnoServicioTest {
         Grupo grupo = grupoDe(INS);
         when(grupoGateway.obtenerGrupo(CATEGORIA, CURSO, ANIO, ITERABLE)).thenReturn(grupo);
         when(autorizacionGrupo.esPropietario(grupo, INS)).thenReturn(true);
-        when(alumnoGateway.obtenerAlumno(ID)).thenReturn(Optional.of(actual));
+        when(perfilGateway.obtenerPerfil(ID)).thenReturn(Optional.of(actual.getPerfil()));
         when(alumnoGateway.actualizarAlumno(eq(ID), any(Alumno.class))).thenReturn(datosMismoCorreo);
 
         assertDoesNotThrow(() -> alumnoServicio.actualizarAlumno(ID, datosMismoCorreo, INS, "Instructor"));

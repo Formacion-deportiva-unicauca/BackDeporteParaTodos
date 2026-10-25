@@ -210,11 +210,29 @@ class AutorizacionGrupoIT {
         nuevo.setCurso(curso);
         nuevo.setImagenGrupo(imagenId);
         nuevo.setIdInstructor(idInstructor);
-        nuevo.setCupos(10);
+        // Alto a proposito: esta clase comparte un unico grupo entre ~15 metodos de
+        // prueba (PER_CLASS, orden no garantizado) que se van inscribiendo -- un
+        // valor bajo haria que algunas inscripciones cayeran en EN_ESPERA segun el
+        // orden real de ejecucion, lo que rompe "repetible sin depender del orden".
+        nuevo.setCupos(999);
         nuevo.setFechaCreacion(fechaInscripcionApertura);
         nuevo.setFechaInscripcionApertura(fechaInscripcionApertura);
         nuevo.setPeriodo(0);
         return grupoServicio.insertarGrupo(nuevo);
+    }
+
+    // Grupo dedicado para los escenarios de clase/asistencia: cada uno crea el
+    // suyo (en vez de reusar el `grupo` compartido) para poder usar siempre
+    // fecha=hoy sin chocar con clases de otras pruebas ni con el dia-de-semana
+    // de un horario ajeno -- el horario cubre TODOS los dias, asi que la fecha
+    // usada nunca dispara DiaFueraDeHorarioExcepcion.
+    private Grupo crearGrupoClases(String sufijo) {
+        Grupo g = crearGrupo("clases-" + sufijo, instructorA, hoy);
+        for (String dia : new String[] {"LUNES", "MARTES", "MIERCOLES", "JUEVES", "VIERNES", "SABADO", "DOMINGO"}) {
+            horarioServicio.insertarHorario(new Horario(null, g.getCategoria(), g.getCurso(),
+                    g.getAnio(), g.getIterable(), dia, "00:00", "23:59", "Cancha", 0));
+        }
+        return g;
     }
 
     private String buildJwt(String rol, String perfId) {
@@ -442,39 +460,40 @@ class AutorizacionGrupoIT {
 
     @Test
     void claseGrupo_instructorAjeno_retorna403YNoCreaLaClase() throws Exception {
-        LocalDate fecha = hoy.minusDays(1).isAfter(hoy) ? hoy : hoy; // fecha de hoy, dentro de ventana
-        long antes = contarClases(fecha);
+        Grupo grupoClases = crearGrupoClases("ajeno");
+        long antes = contarClases(grupoClases, hoy);
 
         mockMvc.perform(post("/api/v2/claseGrupo")
                         .contentType("application/json")
-                        .content(payloadClase(grupo, hoy, instructorA))
+                        .content(payloadClase(grupoClases, hoy, instructorA))
                         .header("Authorization", "Bearer " + buildJwt("Instructor", instructorB)))
                 .andExpect(status().isForbidden());
 
-        assertEquals(antes, contarClases(fecha), "no debe haberse creado ninguna clase tras el 403");
+        assertEquals(antes, contarClases(grupoClases, hoy), "no debe haberse creado ninguna clase tras el 403");
     }
 
-    private long contarClases(LocalDate fecha) {
+    private long contarClases(Grupo g, LocalDate fecha) {
         Long n = jdbc.queryForObject(
                 "SELECT COUNT(*) FROM tbl_clase WHERE CAT_TITULO = ? AND CUR_NOMBRE = ? AND GRP_ANIO = ? "
                         + "AND GRP_ITERABLE = ? AND CLS_FECHA = ?",
-                Long.class, grupo.getCategoria(), grupo.getCurso(), grupo.getAnio(), grupo.getIterable(), fecha);
+                Long.class, g.getCategoria(), g.getCurso(), g.getAnio(), g.getIterable(), fecha);
         return n == null ? 0 : n;
     }
 
     @Test
     void claseGrupo_instructorTitular_retorna201_elIdDelBodyNoSeUsaParaAutorizar() throws Exception {
+        Grupo grupoClases = crearGrupoClases("titular");
         // instructorA (titular) manda en el body el id de instructorB -- el id real
         // para autorizar sale del JWT (perf_id), nunca del campo idInstructor del body.
         MvcResult creada = mockMvc.perform(post("/api/v2/claseGrupo")
                         .contentType("application/json")
-                        .content(payloadClase(grupo, hoy, instructorB))
+                        .content(payloadClase(grupoClases, hoy, instructorB))
                         .header("Authorization", "Bearer " + buildJwt("Instructor", instructorA)))
                 .andExpect(status().isCreated())
                 .andReturn();
 
         int codigo = JsonPath.read(creada.getResponse().getContentAsString(), "$.codigo");
-        assertEquals(1, contarClases(hoy));
+        assertEquals(1, contarClases(grupoClases, hoy));
 
         // DELETE /clase: el mismo codigo, probado por instructor ajeno -> 403, sin borrar.
         mockMvc.perform(delete("/api/v2/clase")
@@ -494,12 +513,12 @@ class AutorizacionGrupoIT {
 
     @Test
     void claseGrupo_coordinadorYAdministrador_noEstanSujetosALaRegla() throws Exception {
-        LocalDate fechaCoord = hoy.minusMonths(1); // fecha distinta para no chocar con otras pruebas
-        LocalDate fechaAdmin = hoy.minusMonths(2);
+        Grupo grupoCoord = crearGrupoClases("coord");
+        Grupo grupoAdmin = crearGrupoClases("admin");
 
         mockMvc.perform(post("/api/v2/claseGrupo")
                         .contentType("application/json")
-                        .content(payloadClase(grupo, fechaCoord, instructorA)
+                        .content(payloadClase(grupoCoord, hoy, instructorA)
                                 .replace("\"horas\":0,\"minutos\":0",
                                         "\"horas\":1,\"minutos\":0,\"justificacion\":"
                                                 + "\"clase dictada por el coordinador en grupo ajeno\""))
@@ -508,7 +527,7 @@ class AutorizacionGrupoIT {
 
         mockMvc.perform(post("/api/v2/claseGrupo")
                         .contentType("application/json")
-                        .content(payloadClase(grupo, fechaAdmin, instructorA)
+                        .content(payloadClase(grupoAdmin, hoy, instructorA)
                                 .replace("\"horas\":0,\"minutos\":0",
                                         "\"horas\":1,\"minutos\":0,\"justificacion\":"
                                                 + "\"clase dictada por el administrador en grupo ajeno\""))
@@ -518,10 +537,10 @@ class AutorizacionGrupoIT {
 
     // ── 5 y 6. POST /atenciones y DELETE /asistencia ────────────────────────
 
-    private int crearClaseComoTitular(LocalDate fecha) throws Exception {
+    private int crearClaseComoTitular(Grupo g, LocalDate fecha) throws Exception {
         MvcResult creada = mockMvc.perform(post("/api/v2/claseGrupo")
                         .contentType("application/json")
-                        .content(payloadClase(grupo, fecha, instructorA))
+                        .content(payloadClase(g, fecha, instructorA))
                         .header("Authorization", "Bearer " + buildJwt("Instructor", instructorA)))
                 .andExpect(status().isCreated())
                 .andReturn();
@@ -537,7 +556,8 @@ class AutorizacionGrupoIT {
 
     @Test
     void atenciones_instructorAjeno_retorna403YNoRegistraNada() throws Exception {
-        int claseId = crearClaseComoTitular(hoy.minusDays(1));
+        Grupo grupoClases = crearGrupoClases("aten-ajeno");
+        int claseId = crearClaseComoTitular(grupoClases, hoy);
         String alumno = crearAlumno("aten-ajeno");
         String cuerpo = "[{\"idPerfil\":\"" + alumno + "\",\"idClase\":" + claseId + ",\"estaAtendido\":true}]";
 
@@ -553,7 +573,8 @@ class AutorizacionGrupoIT {
 
     @Test
     void atenciones_instructorTitular_retorna200_yDeleteAsistencia_ajenoBloqueadoTitularPermitido() throws Exception {
-        int claseId = crearClaseComoTitular(hoy.minusDays(2));
+        Grupo grupoClases = crearGrupoClases("aten-titular");
+        int claseId = crearClaseComoTitular(grupoClases, hoy);
         String alumno = crearAlumno("aten-titular");
         String cuerpo = "[{\"idPerfil\":\"" + alumno + "\",\"idClase\":" + claseId + ",\"estaAtendido\":true}]";
 
@@ -586,28 +607,33 @@ class AutorizacionGrupoIT {
 
     @Test
     void getAlumnosGrupoYClasesGrupo_instructorAjeno_sigueLeyendoSinBloqueo() throws Exception {
+        // Grupo dedicado, con su propio alumno inscrito y su propia clase, para que
+        // ambos GET tengan garantizado algo que devolver (200) sin depender de que
+        // otras pruebas ya hayan poblado el grupo compartido antes que esta.
+        Grupo grupoLectura = crearGrupoClases("lectura");
         String alumno = crearAlumno("get-ajeno");
         mockMvc.perform(post("/api/v2/inscripcion")
                         .contentType("application/json")
-                        .content(payloadInscripcion(alumno, grupo))
+                        .content(payloadInscripcion(alumno, grupoLectura))
                         .header("Authorization", "Bearer " + buildJwt("Instructor", instructorA)))
                 .andExpect(status().isCreated());
+        crearClaseComoTitular(grupoLectura, hoy);
 
         mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/api/v2/alumnosGrupo")
-                        .param("categoria", grupo.getCategoria())
-                        .param("curso", grupo.getCurso())
-                        .param("anio", String.valueOf(grupo.getAnio()))
-                        .param("iterable", String.valueOf(grupo.getIterable()))
+                        .param("categoria", grupoLectura.getCategoria())
+                        .param("curso", grupoLectura.getCurso())
+                        .param("anio", String.valueOf(grupoLectura.getAnio()))
+                        .param("iterable", String.valueOf(grupoLectura.getIterable()))
                         .header("Authorization", "Bearer " + buildJwt("Instructor", instructorB)))
                 .andExpect(status().isOk());
 
         mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/api/v2/clasesGrupo")
-                        .param("categoria", grupo.getCategoria())
-                        .param("curso", grupo.getCurso())
-                        .param("anio", String.valueOf(grupo.getAnio()))
-                        .param("iterable", String.valueOf(grupo.getIterable()))
+                        .param("categoria", grupoLectura.getCategoria())
+                        .param("curso", grupoLectura.getCurso())
+                        .param("anio", String.valueOf(grupoLectura.getAnio()))
+                        .param("iterable", String.valueOf(grupoLectura.getIterable()))
                         .header("Authorization", "Bearer " + buildJwt("Instructor", instructorB)))
-                .andExpect(status().is4xxClientError()); // 404 si aun no hay clases -- sigue sin ser 403
+                .andExpect(status().isOk());
     }
 
     // ── Sin token ────────────────────────────────────────────────────────────

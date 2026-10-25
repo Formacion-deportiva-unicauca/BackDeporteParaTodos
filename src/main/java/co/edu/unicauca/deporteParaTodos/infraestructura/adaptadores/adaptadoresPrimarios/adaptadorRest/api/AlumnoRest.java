@@ -72,7 +72,7 @@ public class AlumnoRest {
         @ApiResponse(responseCode = "400", description = "Datos de entrada inválidos"),
         @ApiResponse(responseCode = "404", description = "No existe el alumno con el identificador indicado")
     })
-    @PreAuthorize("hasAnyAuthority('Coordinador', 'Instructor')")
+    @PreAuthorize("hasAnyAuthority('Coordinador', 'Instructor', 'Administrador')")
     @PutMapping("/alumnos/{id}")
     public ResponseEntity<AlumnoDto> actualizarAlumno(
             @Parameter(description = "Cédula del alumno")

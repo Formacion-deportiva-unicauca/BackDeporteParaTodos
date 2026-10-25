@@ -89,8 +89,12 @@ public class AlumnoServicio implements IAlumnoServicio {
             // Decision (ver informe de entrega): el correo del alumno afecta su
             // inicio de sesion -- solo el Coordinador puede modificarlo. El
             // Instructor puede seguir actualizando nombre y tipoAlumno.
-            String correoActual = alumnoGateway.obtenerAlumno(alumnoId)
-                    .map(Alumno::getPerfil)
+            // Se lee via perfilGateway (findById JPA) y NO via alumnoGateway
+            // .obtenerAlumno() -- ese ultimo usa una native query con mapeo por
+            // indice (ver AlumnoGateway.construirAlumnoDesdeRegistro) que ya
+            // esta documentada como inestable (ArrayIndexOutOfBoundsException)
+            // cuando se relee dentro de una transaccion @Transactional activa.
+            String correoActual = perfilGateway.obtenerPerfil(alumnoId)
                     .map(Perfil::getCorreo)
                     .orElse(null);
             String correoNuevo = datosAlumno.getPerfil() != null ? datosAlumno.getPerfil().getCorreo() : null;
