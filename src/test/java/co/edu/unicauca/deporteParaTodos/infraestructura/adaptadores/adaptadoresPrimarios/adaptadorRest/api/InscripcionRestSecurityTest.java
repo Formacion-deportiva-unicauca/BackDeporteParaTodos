@@ -85,7 +85,7 @@ class InscripcionRestSecurityTest {
     void inscribir_alumnoInscribeAsiMismo_retorna201() throws Exception {
         Inscripcion resultado = new Inscripcion("alum1", "cat1", "cur1", 2026, 1,
                 Timestamp.from(Instant.now()), null, "INSCRITO");
-        when(servicio.inscribir(any(Inscripcion.class))).thenReturn(resultado);
+        when(servicio.inscribir(any(Inscripcion.class), eq("alum1"), eq("Alumno"))).thenReturn(resultado);
 
         mockMvc.perform(post("/api/v2/inscripcion")
                 .contentType("application/json")
@@ -98,7 +98,7 @@ class InscripcionRestSecurityTest {
     // prefijo generico que lo contradiga ("<llaveMensaje>, <mensaje especifico>").
     @Test
     void inscribir_grupoFueraDeVentanaDeInscripcion_retorna422ConMensajeLegible() throws Exception {
-        when(servicio.inscribir(any(Inscripcion.class)))
+        when(servicio.inscribir(any(Inscripcion.class), eq("alum1"), eq("Alumno")))
                 .thenThrow(new InscripcionFueraDeFechasExcepcion("Las inscripciones de este grupo cerraron el 14/06/2026"));
 
         mockMvc.perform(post("/api/v2/inscripcion")
@@ -108,6 +108,41 @@ class InscripcionRestSecurityTest {
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.mensaje").value(
                         org.hamcrest.Matchers.containsString("Las inscripciones de este grupo cerraron el 14/06/2026")));
+    }
+
+    // Autorizacion por grupo (ver AutorizacionGrupoIT para el camino completo con
+    // BD real): aqui solo se confirma que Spring Security ahora deja pasar al rol
+    // Instructor en estos dos endpoints (antes solo Alumno/Coordinador).
+    @Test
+    void inscribir_rolInstructor_llegaAlServicioConSuPerfId() throws Exception {
+        Inscripcion resultado = new Inscripcion("alum1", "cat1", "cur1", 2026, 1,
+                Timestamp.from(Instant.now()), null, "INSCRITO");
+        when(servicio.inscribir(any(Inscripcion.class), eq("ins1"), eq("Instructor"))).thenReturn(resultado);
+
+        mockMvc.perform(post("/api/v2/inscripcion")
+                .contentType("application/json")
+                .content("{\"alumnoId\":\"alum1\",\"categoria\":\"cat1\",\"curso\":\"cur1\",\"anio\":2026,\"iterable\":1}")
+                .header("Authorization", "Bearer " + buildJwt("Instructor", "ins1")))
+                .andExpect(status().isCreated());
+
+        org.mockito.Mockito.verify(servicio).inscribir(any(Inscripcion.class), eq("ins1"), eq("Instructor"));
+    }
+
+    @Test
+    void desvincularInscripcion_rolInstructor_llegaAlServicioConSuPerfId() throws Exception {
+        Inscripcion desvinculada = new Inscripcion("alum1", "cat1", "cur1", 2026, 1,
+                Timestamp.from(Instant.now()), Timestamp.from(Instant.now()), "INSCRITO");
+        when(servicio.desvincularInscripcion(anyString(), anyString(), anyString(), anyInt(), anyInt(), eq("ins1"), eq("Instructor")))
+                .thenReturn(desvinculada);
+
+        mockMvc.perform(put("/api/v2/desvincularInscripcion")
+                .contentType("application/json")
+                .content("{\"alumnoId\":\"alum1\",\"categoria\":\"cat1\",\"curso\":\"cur1\",\"anio\":2026,\"iterable\":1}")
+                .header("Authorization", "Bearer " + buildJwt("Instructor", "ins1")))
+                .andExpect(status().isOk());
+
+        org.mockito.Mockito.verify(servicio).desvincularInscripcion(
+                anyString(), anyString(), anyString(), anyInt(), anyInt(), eq("ins1"), eq("Instructor"));
     }
 
     // ── GET /validarInscripcion — BOLA: Alumno solo consulta su propio estado ─
@@ -219,7 +254,7 @@ class InscripcionRestSecurityTest {
     void desvincularInscripcion_alumnoDesvinculaPropio_retorna200() throws Exception {
         Inscripcion desvinculada = new Inscripcion("alum1", "cat1", "cur1", 2026, 1,
                 Timestamp.from(Instant.now()), Timestamp.from(Instant.now()), "INSCRITO");
-        when(servicio.desvincularInscripcion(anyString(), anyString(), anyString(), anyInt(), anyInt()))
+        when(servicio.desvincularInscripcion(anyString(), anyString(), anyString(), anyInt(), anyInt(), eq("alum1"), eq("Alumno")))
                 .thenReturn(desvinculada);
 
         mockMvc.perform(put("/api/v2/desvincularInscripcion")

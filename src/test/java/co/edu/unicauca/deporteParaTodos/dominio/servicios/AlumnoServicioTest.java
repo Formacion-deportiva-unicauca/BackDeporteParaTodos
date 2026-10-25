@@ -1,8 +1,14 @@
 package co.edu.unicauca.deporteParaTodos.dominio.servicios;
 
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IAlumnoGateway;
+import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IGrupoGateway;
+import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IInscripcionGateway;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IPerfilGateway;
+import co.edu.unicauca.deporteParaTodos.dominio.excepciones.AccesoGrupoDenegadoExcepcion;
+import co.edu.unicauca.deporteParaTodos.dominio.excepciones.CorreoNoModificablePorInstructorExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Alumno;
+import co.edu.unicauca.deporteParaTodos.dominio.modelo.Grupo;
+import co.edu.unicauca.deporteParaTodos.dominio.modelo.Inscripcion;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Perfil;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.AlumnoDto;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.ListadoVacioExcepcion;
@@ -13,6 +19,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.sql.Timestamp;
 import java.util.List;
 import java.util.Optional;
 
@@ -25,6 +32,9 @@ class AlumnoServicioTest {
 
     @Mock private IAlumnoGateway alumnoGateway;
     @Mock private IPerfilGateway perfilGateway;
+    @Mock private IInscripcionGateway inscripcionGateway;
+    @Mock private IGrupoGateway grupoGateway;
+    @Mock private AutorizacionGrupoServicio autorizacionGrupo;
     @InjectMocks private AlumnoServicio alumnoServicio;
 
     private static final String  ID       = "12345678";
@@ -32,6 +42,8 @@ class AlumnoServicioTest {
     private static final String  CURSO    = "Natacion";
     private static final Integer ANIO     = 2025;
     private static final Integer ITERABLE = 1;
+    private static final String  INS      = "INS001";
+    private static final String  COORD    = "coord-1";
 
     private Alumno alumnoModelo() {
         Perfil perfil = new Perfil();
@@ -140,25 +152,149 @@ class AlumnoServicioTest {
         when(alumnoGateway.existeAlumno(ID)).thenReturn(false);
 
         assertThrows(NoExisteExcepcion.class,
-                () -> alumnoServicio.actualizarAlumno(ID, alumnoModelo()));
+                () -> alumnoServicio.actualizarAlumno(ID, alumnoModelo(), COORD, "Coordinador"));
 
         verify(alumnoGateway, never()).actualizarAlumno(any(), any());
         verifyNoInteractions(perfilGateway);
     }
 
     @Test
-    void actualizarAlumno_existente_actualizaPerfilYAlumno() {
+    void actualizarAlumno_existente_coordinador_actualizaPerfilYAlumno() {
         // Verifica que el servicio coordina ambos gateways: primero actualiza el perfil
         // (nombre/correo en tbl_perfil via perfilGateway) y luego el alumno (tipo en
         // tbl_alumno via alumnoGateway). Ambas llamadas son requeridas para que SCRUM-66
-        // PUT /alumnos/{id} funcione correctamente.
+        // PUT /alumnos/{id} funcione correctamente. Coordinador: sin restricciones.
         when(alumnoGateway.existeAlumno(ID)).thenReturn(true);
         when(alumnoGateway.actualizarAlumno(eq(ID), any(Alumno.class))).thenReturn(alumnoModelo());
 
-        Alumno resultado = alumnoServicio.actualizarAlumno(ID, alumnoModelo());
+        Alumno resultado = alumnoServicio.actualizarAlumno(ID, alumnoModelo(), COORD, "Coordinador");
 
         assertNotNull(resultado);
         verify(perfilGateway).actualizarPerfil(eq(ID), any(Perfil.class));
+        verify(alumnoGateway).actualizarAlumno(eq(ID), any(Alumno.class));
+        verifyNoInteractions(inscripcionGateway);
+    }
+
+    // ── Autorizacion por grupo (caso 3 del ticket): Instructor ──────────────────
+
+    private Inscripcion inscripcionActiva() {
+        return new Inscripcion(ID, CATEGORIA, CURSO, ANIO, ITERABLE,
+                Timestamp.valueOf("2026-01-01 00:00:00"), null, "INSCRITO");
+    }
+
+    private Inscripcion inscripcionEnEspera() {
+        return new Inscripcion(ID, CATEGORIA, CURSO, ANIO, ITERABLE,
+                Timestamp.valueOf("2026-01-01 00:00:00"), null, "EN_ESPERA");
+    }
+
+    private Grupo grupoDe(String idInstructor) {
+        Grupo g = new Grupo();
+        g.setCategoria(CATEGORIA);
+        g.setCurso(CURSO);
+        g.setAnio(ANIO);
+        g.setIterable(ITERABLE);
+        g.setIdInstructor(idInstructor);
+        return g;
+    }
+
+    @Test
+    void actualizarAlumno_instructorConAlumnoACargo_permiteActualizarNombreYTipo() {
+        Alumno datosNuevos = alumnoModelo(); // mismo correo que el actual -- no se intenta cambiar
+        when(alumnoGateway.existeAlumno(ID)).thenReturn(true);
+        when(inscripcionGateway.obtenerInscripcionesAlumno(ID)).thenReturn(List.of(inscripcionActiva()));
+        Grupo grupo = grupoDe(INS);
+        when(grupoGateway.obtenerGrupo(CATEGORIA, CURSO, ANIO, ITERABLE)).thenReturn(grupo);
+        when(autorizacionGrupo.esPropietario(grupo, INS)).thenReturn(true);
+        when(perfilGateway.obtenerPerfil(ID)).thenReturn(Optional.of(alumnoModelo().getPerfil()));
+        when(alumnoGateway.actualizarAlumno(eq(ID), any(Alumno.class))).thenReturn(datosNuevos);
+
+        Alumno resultado = alumnoServicio.actualizarAlumno(ID, datosNuevos, INS, "Instructor");
+
+        assertNotNull(resultado);
+        verify(alumnoGateway).actualizarAlumno(eq(ID), any(Alumno.class));
+    }
+
+    // "Grupo sin instructor asignado: denegado para el Instructor" -- cubierto
+    // aqui porque grupoDe(null) nunca hace match con esPropietario (delegado al
+    // componente real en AutorizacionGrupoServicioTest); el mock de
+    // autorizacionGrupo.esPropietario(...) default false ya representa ese caso.
+    @Test
+    void actualizarAlumno_instructorSinAlumnoACargo_lanzaAccesoGrupoDenegado() {
+        when(alumnoGateway.existeAlumno(ID)).thenReturn(true);
+        when(inscripcionGateway.obtenerInscripcionesAlumno(ID)).thenReturn(List.of(inscripcionActiva()));
+        Grupo grupoDeOtro = grupoDe("OTRO_INS");
+        when(grupoGateway.obtenerGrupo(CATEGORIA, CURSO, ANIO, ITERABLE)).thenReturn(grupoDeOtro);
+        when(autorizacionGrupo.esPropietario(grupoDeOtro, INS)).thenReturn(false);
+
+        assertThrows(AccesoGrupoDenegadoExcepcion.class,
+                () -> alumnoServicio.actualizarAlumno(ID, alumnoModelo(), INS, "Instructor"));
+
+        verify(alumnoGateway, never()).actualizarAlumno(any(), any());
+        verifyNoInteractions(perfilGateway);
+    }
+
+    @Test
+    void actualizarAlumno_instructorSinInscripcionesDelAlumno_lanzaAccesoGrupoDenegado() {
+        when(alumnoGateway.existeAlumno(ID)).thenReturn(true);
+        when(inscripcionGateway.obtenerInscripcionesAlumno(ID)).thenReturn(List.of());
+
+        assertThrows(AccesoGrupoDenegadoExcepcion.class,
+                () -> alumnoServicio.actualizarAlumno(ID, alumnoModelo(), INS, "Instructor"));
+
+        verify(alumnoGateway, never()).actualizarAlumno(any(), any());
+        verify(grupoGateway, never()).obtenerGrupo(any(), any(), any(), any());
+    }
+
+    // Inscripcion EN_ESPERA (findMisCursos ya excluye eliminadas/desvinculadas
+    // a nivel de consulta) no cuenta como "a cargo".
+    @Test
+    void actualizarAlumno_instructorConInscripcionEnEspera_noCuentaComoACargo_lanzaAccesoGrupoDenegado() {
+        when(alumnoGateway.existeAlumno(ID)).thenReturn(true);
+        when(inscripcionGateway.obtenerInscripcionesAlumno(ID)).thenReturn(List.of(inscripcionEnEspera()));
+
+        assertThrows(AccesoGrupoDenegadoExcepcion.class,
+                () -> alumnoServicio.actualizarAlumno(ID, alumnoModelo(), INS, "Instructor"));
+
+        verify(grupoGateway, never()).obtenerGrupo(any(), any(), any(), any());
+        verify(alumnoGateway, never()).actualizarAlumno(any(), any());
+    }
+
+    // Decision documentada: el Instructor NO puede cambiar el correo del alumno
+    // (afecta su inicio de sesion) -- 422 con codigo propio, sin tocar nada.
+    @Test
+    void actualizarAlumno_instructorIntentaCambiarCorreo_lanzaCorreoNoModificable() {
+        Alumno actual = alumnoModelo(); // correo actual: juan@unicauca.edu.co
+        Alumno datosConCorreoNuevo = alumnoModelo();
+        datosConCorreoNuevo.getPerfil().setCorreo("otro-correo@unicauca.edu.co");
+
+        when(alumnoGateway.existeAlumno(ID)).thenReturn(true);
+        when(inscripcionGateway.obtenerInscripcionesAlumno(ID)).thenReturn(List.of(inscripcionActiva()));
+        Grupo grupo = grupoDe(INS);
+        when(grupoGateway.obtenerGrupo(CATEGORIA, CURSO, ANIO, ITERABLE)).thenReturn(grupo);
+        when(autorizacionGrupo.esPropietario(grupo, INS)).thenReturn(true);
+        when(perfilGateway.obtenerPerfil(ID)).thenReturn(Optional.of(actual.getPerfil()));
+
+        assertThrows(CorreoNoModificablePorInstructorExcepcion.class,
+                () -> alumnoServicio.actualizarAlumno(ID, datosConCorreoNuevo, INS, "Instructor"));
+
+        verify(alumnoGateway, never()).actualizarAlumno(any(), any());
+        verify(perfilGateway, never()).actualizarPerfil(any(), any());
+    }
+
+    @Test
+    void actualizarAlumno_instructorEnviaElMismoCorreoActual_noLanzaNada() {
+        Alumno actual = alumnoModelo(); // correo: juan@unicauca.edu.co
+        Alumno datosMismoCorreo = alumnoModelo(); // mismo correo exacto
+
+        when(alumnoGateway.existeAlumno(ID)).thenReturn(true);
+        when(inscripcionGateway.obtenerInscripcionesAlumno(ID)).thenReturn(List.of(inscripcionActiva()));
+        Grupo grupo = grupoDe(INS);
+        when(grupoGateway.obtenerGrupo(CATEGORIA, CURSO, ANIO, ITERABLE)).thenReturn(grupo);
+        when(autorizacionGrupo.esPropietario(grupo, INS)).thenReturn(true);
+        when(perfilGateway.obtenerPerfil(ID)).thenReturn(Optional.of(actual.getPerfil()));
+        when(alumnoGateway.actualizarAlumno(eq(ID), any(Alumno.class))).thenReturn(datosMismoCorreo);
+
+        assertDoesNotThrow(() -> alumnoServicio.actualizarAlumno(ID, datosMismoCorreo, INS, "Instructor"));
         verify(alumnoGateway).actualizarAlumno(eq(ID), any(Alumno.class));
     }
 

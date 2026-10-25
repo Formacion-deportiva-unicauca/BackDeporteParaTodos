@@ -38,16 +38,18 @@ public class AsistenciaServicio implements IAsistenciaServicio {
     private final IClaseGateway claseGateway;
     private final IProrrogaRegistroAsistenciaGateway prorrogaGateway;
     private final IHorarioGateway horarioGateway;
+    private final AutorizacionGrupoServicio autorizacionGrupo;
     private final Clock clock;
 
     public AsistenciaServicio(IAsistenciaGateway asistenciaGateway, IAlumnoGateway alumnoGateway,
             IClaseGateway claseGateway, IProrrogaRegistroAsistenciaGateway prorrogaGateway,
-            IHorarioGateway horarioGateway, Clock clock) {
+            IHorarioGateway horarioGateway, AutorizacionGrupoServicio autorizacionGrupo, Clock clock) {
         this.asistenciaGateway = asistenciaGateway;
         this.alumnoGateway = alumnoGateway;
         this.claseGateway = claseGateway;
         this.prorrogaGateway = prorrogaGateway;
         this.horarioGateway = horarioGateway;
+        this.autorizacionGrupo = autorizacionGrupo;
         this.clock = clock;
     }
 
@@ -88,6 +90,9 @@ public class AsistenciaServicio implements IAsistenciaServicio {
 
     private void validarVentanaRegistro(Integer claseId, String perfIdLlamador, String rolLlamador) {
         Clase clase = claseGateway.obtenerClase(claseId);
+        autorizacionGrupo.verificarPropietario(clase.getCategoria(), clase.getCurso(),
+                clase.getAnio(), clase.getIterable(), perfIdLlamador, rolLlamador);
+
         boolean esExentoDePlazo = !"Instructor".equals(rolLlamador);
         LocalDate hoy = LocalDate.now(clock);
         LocalDate limiteProrroga = limiteProrrogaSiAplica(esExentoDePlazo, perfIdLlamador, clase.getFecha(), hoy);
@@ -107,6 +112,9 @@ public class AsistenciaServicio implements IAsistenciaServicio {
         // para el Instructor, el dia-en-horario -- una clase fuera de horario
         // creada por un Coordinador NO exime al Instructor de esta regla.
         Clase clase = claseGateway.obtenerClase(claseId);
+        autorizacionGrupo.verificarPropietario(clase.getCategoria(), clase.getCurso(),
+                clase.getAnio(), clase.getIterable(), perfIdLlamador, rolLlamador);
+
         boolean esInstructor = "Instructor".equals(rolLlamador);
         boolean esExentoDePlazo = !esInstructor;
         LocalDate hoy = LocalDate.now(clock);

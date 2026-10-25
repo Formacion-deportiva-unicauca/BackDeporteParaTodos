@@ -31,6 +31,8 @@ public enum CodigoError {
         DURACION_MANUAL_INVALIDA("GC-0022", "La duracion de la clase no es valida"),
         CONSULTA_MES_FUTURO("GC-0023", "No se puede consultar un mes futuro"),
         DIA_FUERA_DE_HORARIO("GC-0024", "La fecha no corresponde a un dia con horario asignado"),
+        ACCESO_GRUPO_DENEGADO("GC-0025", "El Instructor no tiene a cargo el grupo indicado"),
+        CORREO_NO_MODIFICABLE_INSTRUCTOR("GC-0026", "El Instructor no puede modificar el correo del alumno"),
         ;
 
         private final String codigo;

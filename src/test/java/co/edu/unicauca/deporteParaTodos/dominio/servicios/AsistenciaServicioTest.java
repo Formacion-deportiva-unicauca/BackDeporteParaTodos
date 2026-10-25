@@ -23,6 +23,7 @@ import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IAsiste
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IClaseGateway;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IHorarioGateway;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IProrrogaRegistroAsistenciaGateway;
+import co.edu.unicauca.deporteParaTodos.dominio.excepciones.AccesoGrupoDenegadoExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.DiaFueraDeHorarioExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.FechaClaseFuturaExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.ListadoVacioExcepcion;
@@ -53,6 +54,9 @@ class AsistenciaServicioTest {
 
     @Mock
     private IHorarioGateway horarioGateway;
+
+    @Mock
+    private AutorizacionGrupoServicio autorizacionGrupo;
 
     @Mock
     private Clock clock;
@@ -598,5 +602,77 @@ class AsistenciaServicioTest {
         assertNull(dto.getFechaMinima());
         assertEquals("2026-10-15", dto.getFechaMaxima());
         verify(prorrogaGateway, never()).obtenerProrrogasPorMes(anyInt(), anyInt());
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // Autorizacion por grupo (rol Instructor) -- registrarAtencionesPorClase / eliminarAsistencia
+    // ──────────────────────────────────────────────────────────────────────────
+
+    @Test
+    void registrarAtencionesPorClase_instructorDeOtroGrupo_lanzaAccesoGrupoDenegadoAntesDeValidarFecha() {
+        when(claseGateway.existeClase(CLASE_ID)).thenReturn(true);
+        when(claseGateway.obtenerClase(CLASE_ID)).thenReturn(claseConFecha(HOY_FIJO));
+        doThrow(new AccesoGrupoDenegadoExcepcion("no es su grupo"))
+                .when(autorizacionGrupo).verificarPropietario("Recreativo", "Natacion", 2026, 1, INS, "Instructor");
+
+        assertThrows(AccesoGrupoDenegadoExcepcion.class,
+                () -> servicio.registrarAtencionesPorClase(List.of(), CLASE_ID, INS, "Instructor"));
+
+        verify(prorrogaGateway, never()).obtenerProrrogasPorMes(anyInt(), anyInt());
+        verify(horarioGateway, never()).listarHorariosPorGrupo(any(), any(), anyInt(), anyInt());
+        verify(alumnoGateway, never()).existeAlumno(any());
+    }
+
+    @Test
+    void registrarAtencionesPorClase_llamaAutorizacionGrupoConLaClaveDeLaClase() {
+        when(claseGateway.existeClase(CLASE_ID)).thenReturn(true);
+        when(claseGateway.obtenerClase(CLASE_ID)).thenReturn(claseConFecha(HOY_FIJO));
+        sinProrroga();
+
+        servicio.registrarAtencionesPorClase(List.of(), CLASE_ID, INS, "Instructor");
+
+        verify(autorizacionGrupo).verificarPropietario("Recreativo", "Natacion", 2026, 1, INS, "Instructor");
+    }
+
+    @Test
+    void eliminarAsistencia_instructorDeOtroGrupo_lanzaAccesoGrupoDenegadoAntesDeValidarFecha() {
+        stubAsistenciaActiva("perf1");
+        when(claseGateway.obtenerClase(CLASE_ID)).thenReturn(claseConFecha(HOY_FIJO));
+        doThrow(new AccesoGrupoDenegadoExcepcion("no es su grupo"))
+                .when(autorizacionGrupo).verificarPropietario("Recreativo", "Natacion", 2026, 1, INS, "Instructor");
+
+        assertThrows(AccesoGrupoDenegadoExcepcion.class,
+                () -> servicio.eliminarAsistencia("perf1", (long) CLASE_ID, INS, "Instructor"));
+
+        verify(asistenciaGateway, never()).eliminarAsistencia(any(), any());
+        verify(prorrogaGateway, never()).obtenerProrrogasPorMes(anyInt(), anyInt());
+    }
+
+    @Test
+    void eliminarAsistencia_llamaAutorizacionGrupoConLaClaveDeLaClase() {
+        stubAsistenciaActiva("perf1");
+        when(claseGateway.obtenerClase(CLASE_ID)).thenReturn(claseConFecha(HOY_FIJO));
+        sinProrroga();
+        when(asistenciaGateway.eliminarAsistencia("perf1", (long) CLASE_ID))
+                .thenReturn(new Asistencia("perf1", CLASE_ID, 1));
+
+        servicio.eliminarAsistencia("perf1", (long) CLASE_ID, INS, "Instructor");
+
+        verify(autorizacionGrupo).verificarPropietario("Recreativo", "Natacion", 2026, 1, INS, "Instructor");
+    }
+
+    // Caso D del ticket: tras un 403, nada debe cambiar en la base de datos --
+    // ya cubierto arriba con verify(..., never()), se deja explicito aqui para
+    // la asistencia ya eliminada (no debe ni intentar reactivarla).
+    @Test
+    void eliminarAsistencia_yaEliminadaYInstructorDeOtroGrupo_noLlegaAVerificarAutorizacion() {
+        Asistencia yaEliminada = new Asistencia("perf1", CLASE_ID, 1);
+        when(asistenciaGateway.existeAsistencia("perf1", CLASE_ID)).thenReturn(true);
+        when(asistenciaGateway.obtenerAsistencia("perf1", CLASE_ID)).thenReturn(Optional.of(yaEliminada));
+
+        assertThrows(YaExisteElementoExcepcion.class,
+                () -> servicio.eliminarAsistencia("perf1", (long) CLASE_ID, INS, "Instructor"));
+
+        verify(autorizacionGrupo, never()).verificarPropietario(any(), any(), any(), any(), any(), any());
     }
 }

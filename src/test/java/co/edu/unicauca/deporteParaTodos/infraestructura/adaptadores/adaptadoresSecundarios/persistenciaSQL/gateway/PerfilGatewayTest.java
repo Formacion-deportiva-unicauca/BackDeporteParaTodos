@@ -122,6 +122,34 @@ class PerfilGatewayTest {
         verify(repoPerfil, never()).save(any());
     }
 
+    // ── obtenerPerfil ───────────────────────────────────────────────────────
+    // Regresion: antes usaba el ModelMapper generico, que NO relaciona el
+    // campo entidad "perfcorreo" (sin guion bajo, columna perf_correo) con
+    // "correo" en el dominio -- el correo llegaba null a cualquier llamador
+    // (p.ej. AlumnoServicio.actualizarAlumno comparando el correo actual del
+    // Instructor, SCRUM-80). Ahora usa PerfilMapper.toDominio() explicito.
+
+    @Test
+    void obtenerPerfil_existente_retornaPerfilConCorreoMapeado() {
+        when(repoPerfil.findById(ID)).thenReturn(Optional.of(entidadBase()));
+
+        Optional<Perfil> resultado = perfilGateway.obtenerPerfil(ID);
+
+        assertTrue(resultado.isPresent());
+        assertEquals(CORREO, resultado.get().getCorreo());
+        assertEquals(NOMBRE, resultado.get().getNombre());
+        verifyNoInteractions(mapper);
+    }
+
+    @Test
+    void obtenerPerfil_noExistente_retornaOptionalVacio() {
+        when(repoPerfil.findById(ID)).thenReturn(Optional.empty());
+
+        Optional<Perfil> resultado = perfilGateway.obtenerPerfil(ID);
+
+        assertTrue(resultado.isEmpty());
+    }
+
     // ── obtenerUsuario ──────────────────────────────────────────────────────
 
     @Test

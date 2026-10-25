@@ -237,9 +237,9 @@ class InscripcionVentanaFechasIT {
         crearAlumnoSiNoExiste(alumnoEnEsperaAutoPromocion);
 
         servicio.inscribir(new Inscripcion(alumnoOcupaCupoAutoPromocion, CATEGORIA, CURSO_AUTO_PROMOCION,
-                grupoNuevo.getAnio(), grupoNuevo.getIterable(), null, null, null));
+                grupoNuevo.getAnio(), grupoNuevo.getIterable(), null, null, null), "coord-it", "Coordinador");
         servicio.inscribir(new Inscripcion(alumnoEnEsperaAutoPromocion, CATEGORIA, CURSO_AUTO_PROMOCION,
-                grupoNuevo.getAnio(), grupoNuevo.getIterable(), null, null, null));
+                grupoNuevo.getAnio(), grupoNuevo.getIterable(), null, null, null), "coord-it", "Coordinador");
 
         Grupo grupoCerrado = grupoServicio.obtenerGrupoPorId(
                 CATEGORIA, CURSO_AUTO_PROMOCION, grupoNuevo.getAnio(), grupoNuevo.getIterable());

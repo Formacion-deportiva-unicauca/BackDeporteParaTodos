@@ -213,10 +213,14 @@ class GrupoMisGruposIT {
         crearAlumnoSiNoExiste(alumno1);
         crearAlumnoSiNoExiste(alumno2);
         crearAlumnoSiNoExiste(alumno3);
-        inscripcionServicio.inscribir(new Inscripcion(alumno1, CATEGORIA, CURSO_A1, ANIO, iterableA1, null, null, null));
-        inscripcionServicio.inscribir(new Inscripcion(alumno2, CATEGORIA, CURSO_A1, ANIO, iterableA1, null, null, null));
-        inscripcionServicio.inscribir(new Inscripcion(alumno3, CATEGORIA, CURSO_A1, ANIO, iterableA1, null, null, null));
-        inscripcionServicio.desvincularInscripcion(alumno3, CATEGORIA, CURSO_A1, ANIO, iterableA1);
+        inscripcionServicio.inscribir(new Inscripcion(alumno1, CATEGORIA, CURSO_A1, ANIO, iterableA1, null, null, null),
+                "coord-it", "Coordinador");
+        inscripcionServicio.inscribir(new Inscripcion(alumno2, CATEGORIA, CURSO_A1, ANIO, iterableA1, null, null, null),
+                "coord-it", "Coordinador");
+        inscripcionServicio.inscribir(new Inscripcion(alumno3, CATEGORIA, CURSO_A1, ANIO, iterableA1, null, null, null),
+                "coord-it", "Coordinador");
+        inscripcionServicio.desvincularInscripcion(alumno3, CATEGORIA, CURSO_A1, ANIO, iterableA1,
+                "coord-it", "Coordinador");
     }
 
     private void insertarHorario(String curso, int iterable, String dia, String horaInicio, String horaFin) {

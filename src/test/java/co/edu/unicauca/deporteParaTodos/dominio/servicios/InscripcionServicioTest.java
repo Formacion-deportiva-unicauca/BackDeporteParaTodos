@@ -64,6 +64,9 @@ class InscripcionServicioTest {
     private IInstructorGateway instructorGateway;
 
     @Mock
+    private AutorizacionGrupoServicio autorizacionGrupo;
+
+    @Mock
     private Clock clock;
 
     @InjectMocks
@@ -74,6 +77,11 @@ class InscripcionServicioTest {
     private Grupo grupoCon5Cupos;
 
     private static final LocalDate HOY_FIJO = LocalDate.of(2026, 6, 15);
+    // Coordinador: exento de autorizacion por grupo -- se usa como llamador por
+    // defecto en los tests existentes de cupos/ventana/fecha, que no son sobre
+    // autorizacion y por lo tanto no necesitan stubbear grupoGateway.obtenerGrupo()
+    // para la comprobacion de propiedad (ver tests dedicados mas abajo).
+    private static final String COORD = "coord-1";
 
     @BeforeEach
     void setUp() {
@@ -101,7 +109,7 @@ class InscripcionServicioTest {
         cursoCerrado.setEstadoInscripciones(EstadoInscripciones.CERRADO);
         when(cursoGateway.obtenerCurso("cat1", "cur1")).thenReturn(cursoCerrado);
 
-        assertThrows(InscripcionesCerradasExcepcion.class, () -> servicio.inscribir(datos));
+        assertThrows(InscripcionesCerradasExcepcion.class, () -> servicio.inscribir(datos, COORD, "Coordinador"));
         verify(grupoGateway, never()).obtenerGrupoConLock(any(), any(), anyInt(), anyInt());
     }
 
@@ -109,7 +117,7 @@ class InscripcionServicioTest {
     void inscribir_cursoNoExiste_lanzaInscripcionesCerradasExcepcion() {
         when(cursoGateway.obtenerCurso("cat1", "cur1")).thenReturn(null);
 
-        assertThrows(InscripcionesCerradasExcepcion.class, () -> servicio.inscribir(datos));
+        assertThrows(InscripcionesCerradasExcepcion.class, () -> servicio.inscribir(datos, COORD, "Coordinador"));
         verify(grupoGateway, never()).obtenerGrupoConLock(any(), any(), anyInt(), anyInt());
     }
 
@@ -122,7 +130,7 @@ class InscripcionServicioTest {
         cursoInactivo.setEstadoCurso(EstadoCurso.INACTIVO);
         when(cursoGateway.obtenerCurso("cat1", "cur1")).thenReturn(cursoInactivo);
 
-        assertThrows(InscripcionesCerradasExcepcion.class, () -> servicio.inscribir(datos));
+        assertThrows(InscripcionesCerradasExcepcion.class, () -> servicio.inscribir(datos, COORD, "Coordinador"));
         verify(grupoGateway, never()).obtenerGrupoConLock(any(), any(), anyInt(), anyInt());
     }
 
@@ -133,7 +141,7 @@ class InscripcionServicioTest {
         when(cursoGateway.obtenerCurso("cat1", "cur1")).thenReturn(cursoAbierto);
         when(grupoGateway.obtenerGrupoConLock("cat1", "cur1", 2026, 1)).thenReturn(grupoSinCupos);
 
-        assertThrows(CuposAgotadosExcepcion.class, () -> servicio.inscribir(datos));
+        assertThrows(CuposAgotadosExcepcion.class, () -> servicio.inscribir(datos, COORD, "Coordinador"));
         verify(gateway, never()).guardarInscripcion(any());
     }
 
@@ -148,7 +156,7 @@ class InscripcionServicioTest {
         when(gateway.existeInscripcion("alum1", "cat1", "cur1", 2026, 1)).thenReturn(false);
         when(gateway.guardarInscripcion(any())).thenReturn(guardada);
 
-        Inscripcion resultado = servicio.inscribir(datos);
+        Inscripcion resultado = servicio.inscribir(datos, COORD, "Coordinador");
 
         assertNotNull(resultado);
         assertEquals("EN_ESPERA", resultado.getEstado());
@@ -162,7 +170,7 @@ class InscripcionServicioTest {
         when(gateway.contarInscripcionesActivasGrupo("cat1", "cur1", 2026, 1)).thenReturn(5L);
         when(gateway.existeEnEspera("alum1", "cat1", "cur1", 2026, 1)).thenReturn(true);
 
-        assertThrows(YaExisteElementoExcepcion.class, () -> servicio.inscribir(datos));
+        assertThrows(YaExisteElementoExcepcion.class, () -> servicio.inscribir(datos, COORD, "Coordinador"));
         verify(gateway, never()).guardarInscripcion(any());
     }
 
@@ -173,7 +181,7 @@ class InscripcionServicioTest {
         when(gateway.contarInscripcionesActivasGrupo("cat1", "cur1", 2026, 1)).thenReturn(2L);
         when(gateway.contarCursosActivosAlumno("alum1")).thenReturn(3L);
 
-        assertThrows(LimiteCursosExcepcion.class, () -> servicio.inscribir(datos));
+        assertThrows(LimiteCursosExcepcion.class, () -> servicio.inscribir(datos, COORD, "Coordinador"));
         verify(gateway, never()).guardarInscripcion(any());
     }
 
@@ -188,7 +196,7 @@ class InscripcionServicioTest {
         when(gateway.existeInscripcion("alum1", "cat1", "cur1", 2026, 1)).thenReturn(false);
         when(gateway.guardarInscripcion(any())).thenReturn(guardada);
 
-        Inscripcion resultado = servicio.inscribir(datos);
+        Inscripcion resultado = servicio.inscribir(datos, COORD, "Coordinador");
 
         assertNotNull(resultado);
         assertNotNull(resultado.getFechaInscripcion());
@@ -209,7 +217,7 @@ class InscripcionServicioTest {
         when(gateway.obtenerInscripcion("alum1", "cat1", "cur1", 2026, 1)).thenReturn(existente);
         when(gateway.guardarInscripcion(any())).thenReturn(reactivada);
 
-        Inscripcion resultado = servicio.inscribir(datos);
+        Inscripcion resultado = servicio.inscribir(datos, COORD, "Coordinador");
 
         assertNull(resultado.getFechaDesvinculacion());
     }
@@ -231,7 +239,7 @@ class InscripcionServicioTest {
         when(gateway.obtenerInscripcion("alum1", "cat1", "cur1", 2026, 1)).thenReturn(existente);
         when(gateway.guardarInscripcion(any())).thenReturn(reactivada);
 
-        Inscripcion resultado = servicio.inscribir(datos);
+        Inscripcion resultado = servicio.inscribir(datos, COORD, "Coordinador");
 
         assertEquals("EN_ESPERA", resultado.getEstado());
         assertNull(resultado.getFechaDesvinculacion());
@@ -250,7 +258,7 @@ class InscripcionServicioTest {
         when(gateway.existeInscripcion("alum1", "cat1", "cur1", 2026, 1)).thenReturn(false);
         when(gateway.guardarInscripcion(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        servicio.inscribir(datos);
+        servicio.inscribir(datos, COORD, "Coordinador");
 
         ArgumentCaptor<Inscripcion> guardada = ArgumentCaptor.forClass(Inscripcion.class);
         verify(gateway).guardarInscripcion(guardada.capture());
@@ -268,7 +276,7 @@ class InscripcionServicioTest {
         when(gateway.existeInscripcion("alum1", "cat1", "cur1", 2026, 1)).thenReturn(false);
         when(gateway.guardarInscripcion(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        servicio.inscribir(datos);
+        servicio.inscribir(datos, COORD, "Coordinador");
 
         ArgumentCaptor<Inscripcion> guardada = ArgumentCaptor.forClass(Inscripcion.class);
         verify(gateway).guardarInscripcion(guardada.capture());
@@ -285,7 +293,7 @@ class InscripcionServicioTest {
         when(grupoGateway.obtenerGrupoConLock("cat1", "cur1", 2026, 1)).thenReturn(grupoCon5Cupos);
 
         InscripcionFueraDeFechasExcepcion ex = assertThrows(InscripcionFueraDeFechasExcepcion.class,
-                () -> servicio.inscribir(datos));
+                () -> servicio.inscribir(datos, COORD, "Coordinador"));
 
         assertTrue(ex.getMessage().contains("abren el 20/06/2026"),
                 "mensaje real: " + ex.getMessage());
@@ -300,7 +308,7 @@ class InscripcionServicioTest {
         when(grupoGateway.obtenerGrupoConLock("cat1", "cur1", 2026, 1)).thenReturn(grupoCon5Cupos);
 
         InscripcionFueraDeFechasExcepcion ex = assertThrows(InscripcionFueraDeFechasExcepcion.class,
-                () -> servicio.inscribir(datos));
+                () -> servicio.inscribir(datos, COORD, "Coordinador"));
 
         assertTrue(ex.getMessage().contains("cerraron el 14/06/2026"),
                 "mensaje real: " + ex.getMessage());
@@ -321,7 +329,7 @@ class InscripcionServicioTest {
         when(gateway.existeInscripcion("alum1", "cat1", "cur1", 2026, 1)).thenReturn(false);
         when(gateway.guardarInscripcion(any())).thenReturn(guardada);
 
-        assertDoesNotThrow(() -> servicio.inscribir(datos));
+        assertDoesNotThrow(() -> servicio.inscribir(datos, COORD, "Coordinador"));
         verify(gateway).guardarInscripcion(any());
     }
 
@@ -337,7 +345,7 @@ class InscripcionServicioTest {
         when(gateway.existeInscripcion("alum1", "cat1", "cur1", 2026, 1)).thenReturn(false);
         when(gateway.guardarInscripcion(any())).thenReturn(guardada);
 
-        assertDoesNotThrow(() -> servicio.inscribir(datos));
+        assertDoesNotThrow(() -> servicio.inscribir(datos, COORD, "Coordinador"));
         verify(gateway).guardarInscripcion(any());
     }
 
@@ -380,7 +388,7 @@ class InscripcionServicioTest {
         when(gateway.existeInscripcionSinDesvincular("alum1", "cat1", "cur1", 2026, 1)).thenReturn(false);
 
         assertThrows(NoExisteExcepcion.class,
-                () -> servicio.desvincularInscripcion("alum1", "cat1", "cur1", 2026, 1));
+                () -> servicio.desvincularInscripcion("alum1", "cat1", "cur1", 2026, 1, COORD, "Coordinador"));
         verify(gateway, never()).desvincularInscripcion(any(), any(), any(), anyInt(), anyInt());
     }
 
@@ -391,7 +399,7 @@ class InscripcionServicioTest {
         when(gateway.existeInscripcionSinDesvincular("alum1", "cat1", "cur1", 2026, 1)).thenReturn(true);
         when(gateway.desvincularInscripcion("alum1", "cat1", "cur1", 2026, 1)).thenReturn(desvinculada);
 
-        Inscripcion resultado = servicio.desvincularInscripcion("alum1", "cat1", "cur1", 2026, 1);
+        Inscripcion resultado = servicio.desvincularInscripcion("alum1", "cat1", "cur1", 2026, 1, COORD, "Coordinador");
 
         assertNotNull(resultado);
         verify(gateway).promoverPrimeroEnEspera("cat1", "cur1", 2026, 1);
@@ -406,7 +414,7 @@ class InscripcionServicioTest {
         when(gateway.existeInscripcionSinDesvincular("alum1", "cat1", "cur1", 2026, 1)).thenReturn(true);
         when(gateway.desvincularInscripcion("alum1", "cat1", "cur1", 2026, 1)).thenReturn(desvinculada);
 
-        Inscripcion resultado = servicio.desvincularInscripcion("alum1", "cat1", "cur1", 2026, 1);
+        Inscripcion resultado = servicio.desvincularInscripcion("alum1", "cat1", "cur1", 2026, 1, COORD, "Coordinador");
 
         assertNotNull(resultado);
         verify(gateway, never()).promoverPrimeroEnEspera(any(), any(), anyInt(), anyInt());
@@ -423,12 +431,12 @@ class InscripcionServicioTest {
                 .thenReturn(false);
         when(gateway.desvincularInscripcion("alum1", "cat1", "cur1", 2026, 1)).thenReturn(desvinculada);
 
-        Inscripcion primeraLlamada = servicio.desvincularInscripcion("alum1", "cat1", "cur1", 2026, 1);
+        Inscripcion primeraLlamada = servicio.desvincularInscripcion("alum1", "cat1", "cur1", 2026, 1, COORD, "Coordinador");
         assertNotNull(primeraLlamada);
         verify(gateway, times(1)).promoverPrimeroEnEspera("cat1", "cur1", 2026, 1);
 
         assertThrows(NoExisteExcepcion.class,
-                () -> servicio.desvincularInscripcion("alum1", "cat1", "cur1", 2026, 1));
+                () -> servicio.desvincularInscripcion("alum1", "cat1", "cur1", 2026, 1, COORD, "Coordinador"));
         verify(gateway, times(1)).promoverPrimeroEnEspera("cat1", "cur1", 2026, 1);
         verify(gateway, times(1)).desvincularInscripcion(any(), any(), any(), anyInt(), anyInt());
     }
@@ -673,5 +681,81 @@ class InscripcionServicioTest {
 
         assertEquals(1, resultado.size(), "la inscripcion no debe ocultarse aunque el grupo este eliminado");
         assertFalse(resultado.get(0).isGrupoActivo());
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // Autorizacion por grupo (rol Instructor) -- inscribir / desvincularInscripcion
+    // ──────────────────────────────────────────────────────────────────────────
+
+    @Test
+    void inscribir_instructorDeOtroGrupo_lanzaAccesoGrupoDenegadoAntesDeValidarVentana() {
+        when(cursoGateway.obtenerCurso("cat1", "cur1")).thenReturn(cursoAbierto);
+        when(grupoGateway.obtenerGrupoConLock("cat1", "cur1", 2026, 1)).thenReturn(grupoCon5Cupos);
+        doThrow(new co.edu.unicauca.deporteParaTodos.dominio.excepciones.AccesoGrupoDenegadoExcepcion("no es su grupo"))
+                .when(autorizacionGrupo).verificarPropietario(grupoCon5Cupos, "INS001", "Instructor");
+
+        assertThrows(co.edu.unicauca.deporteParaTodos.dominio.excepciones.AccesoGrupoDenegadoExcepcion.class,
+                () -> servicio.inscribir(datos, "INS001", "Instructor"));
+
+        verify(gateway, never()).guardarInscripcion(any());
+    }
+
+    @Test
+    void inscribir_llamaAutorizacionGrupoConElGrupoYaObtenidoConLock_sinVolverAConsultar() {
+        Inscripcion guardada = new Inscripcion("alum1", "cat1", "cur1", 2026, 1,
+                Timestamp.from(Instant.now()), null, "INSCRITO");
+        when(cursoGateway.obtenerCurso("cat1", "cur1")).thenReturn(cursoAbierto);
+        when(grupoGateway.obtenerGrupoConLock("cat1", "cur1", 2026, 1)).thenReturn(grupoCon5Cupos);
+        when(gateway.contarInscripcionesActivasGrupo("cat1", "cur1", 2026, 1)).thenReturn(2L);
+        when(gateway.contarCursosActivosAlumno("alum1")).thenReturn(1L);
+        when(gateway.existeInscripcion("alum1", "cat1", "cur1", 2026, 1)).thenReturn(false);
+        when(gateway.guardarInscripcion(any())).thenReturn(guardada);
+
+        servicio.inscribir(datos, "INS001", "Instructor");
+
+        verify(autorizacionGrupo).verificarPropietario(grupoCon5Cupos, "INS001", "Instructor");
+        verify(grupoGateway, never()).obtenerGrupo(any(), any(), anyInt(), anyInt());
+    }
+
+    @Test
+    void desvincularInscripcion_instructorDeOtroGrupo_lanzaAccesoGrupoDenegadoAntesDeConsultarLaInscripcion() {
+        doThrow(new co.edu.unicauca.deporteParaTodos.dominio.excepciones.AccesoGrupoDenegadoExcepcion("no es su grupo"))
+                .when(autorizacionGrupo).verificarPropietario("cat1", "cur1", 2026, 1, "INS001", "Instructor");
+
+        assertThrows(co.edu.unicauca.deporteParaTodos.dominio.excepciones.AccesoGrupoDenegadoExcepcion.class,
+                () -> servicio.desvincularInscripcion("alum1", "cat1", "cur1", 2026, 1, "INS001", "Instructor"));
+
+        verify(gateway, never()).existeInscripcionSinDesvincular(any(), any(), any(), anyInt(), anyInt());
+        verify(gateway, never()).desvincularInscripcion(any(), any(), any(), anyInt(), anyInt());
+    }
+
+    @Test
+    void desvincularInscripcion_instructorTitular_permite() {
+        Timestamp ahora = Timestamp.from(Instant.now());
+        Inscripcion desvinculada = new Inscripcion("alum1", "cat1", "cur1", 2026, 1, ahora, ahora, "INSCRITO");
+        when(gateway.existeInscripcionSinDesvincular("alum1", "cat1", "cur1", 2026, 1)).thenReturn(true);
+        when(gateway.desvincularInscripcion("alum1", "cat1", "cur1", 2026, 1)).thenReturn(desvinculada);
+
+        Inscripcion resultado = servicio.desvincularInscripcion(
+                "alum1", "cat1", "cur1", 2026, 1, "INS001", "Instructor");
+
+        assertNotNull(resultado);
+        verify(autorizacionGrupo).verificarPropietario("cat1", "cur1", 2026, 1, "INS001", "Instructor");
+    }
+
+    @Test
+    void desvincularInscripcion_coordinador_noConsultaAutorizacionConElGrupoPorDentro_siguePermitiendo() {
+        // No verifica internals de AutorizacionGrupoServicio (eso es
+        // AutorizacionGrupoServicioTest); aqui solo confirma que la delegacion
+        // ocurre con los parametros correctos y el flujo sigue igual.
+        Timestamp ahora = Timestamp.from(Instant.now());
+        Inscripcion desvinculada = new Inscripcion("alum1", "cat1", "cur1", 2026, 1, ahora, ahora, "INSCRITO");
+        when(gateway.existeInscripcionSinDesvincular("alum1", "cat1", "cur1", 2026, 1)).thenReturn(true);
+        when(gateway.desvincularInscripcion("alum1", "cat1", "cur1", 2026, 1)).thenReturn(desvinculada);
+
+        assertDoesNotThrow(() -> servicio.desvincularInscripcion(
+                "alum1", "cat1", "cur1", 2026, 1, COORD, "Coordinador"));
+
+        verify(autorizacionGrupo).verificarPropietario("cat1", "cur1", 2026, 1, COORD, "Coordinador");
     }
 }

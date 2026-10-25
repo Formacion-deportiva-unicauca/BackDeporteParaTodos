@@ -209,6 +209,7 @@
 								<exclude>**/ProrrogaRegistroAsistenciaIT.java</exclude>
 								<exclude>**/ClaseVentanaRegistroIT.java</exclude>
 								<exclude>**/EstadoRegistroInstructorIT.java</exclude>
+								<exclude>**/AutorizacionGrupoIT.java</exclude>
 							</excludes>
 						</configuration>
 					</plugin>

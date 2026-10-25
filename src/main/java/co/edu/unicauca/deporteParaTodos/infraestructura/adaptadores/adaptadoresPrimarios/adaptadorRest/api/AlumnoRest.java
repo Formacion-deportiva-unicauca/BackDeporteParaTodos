@@ -25,6 +25,8 @@ import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresP
 import co.edu.unicauca.deporteParaTodos.infraestructura.logs.PeticionLogger;
 import io.swagger.v3.oas.annotations.Operation;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -70,12 +72,18 @@ public class AlumnoRest {
         @ApiResponse(responseCode = "400", description = "Datos de entrada inválidos"),
         @ApiResponse(responseCode = "404", description = "No existe el alumno con el identificador indicado")
     })
-    @PreAuthorize("hasAuthority('Coordinador')")
+    @PreAuthorize("hasAnyAuthority('Coordinador', 'Instructor', 'Administrador')")
     @PutMapping("/alumnos/{id}")
     public ResponseEntity<AlumnoDto> actualizarAlumno(
             @Parameter(description = "Cédula del alumno")
             @PathVariable String id,
-            @Valid @RequestBody AlumnoRequest request) {
+            @Valid @RequestBody AlumnoRequest request,
+            @AuthenticationPrincipal Jwt jwt) {
+        String perfIdLlamador = jwt != null ? jwt.getClaimAsString("perf_id") : null;
+        if (perfIdLlamador == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        String rolLlamador = jwt.getClaimAsString("rol");
         PeticionLogger.log(LOGGER, "PUT", "/api/v2/alumnos/" + id, "id=" + id);
 
         // Construir el modelo de dominio desde el DTO de entrada
@@ -87,7 +95,7 @@ public class AlumnoRest {
         datosActualizar.setTipoAlumno(request.getTipoAlumno());
         datosActualizar.setPerfil(perfil);
 
-        Alumno alumnoActualizado = servicioAlumno.actualizarAlumno(id, datosActualizar);
+        Alumno alumnoActualizado = servicioAlumno.actualizarAlumno(id, datosActualizar, perfIdLlamador, rolLlamador);
         AlumnoDto respuesta = AlumnoDto.fabricarDeModelo(alumnoActualizado);
         return new ResponseEntity<>(respuesta, HttpStatus.OK);
     }

@@ -181,9 +181,11 @@ class GrupoInstructorIT {
         crearAlumnoSiNoExiste(alumno1);
         crearAlumnoSiNoExiste(alumno2);
         inscripcionServicio.inscribir(new Inscripcion(
-                alumno1, CATEGORIA, cursoA1, grupoA1.getAnio(), grupoA1.getIterable(), null, null, null));
+                alumno1, CATEGORIA, cursoA1, grupoA1.getAnio(), grupoA1.getIterable(), null, null, null),
+                "coord-it", "Coordinador");
         inscripcionServicio.inscribir(new Inscripcion(
-                alumno2, CATEGORIA, cursoA1, grupoA1.getAnio(), grupoA1.getIterable(), null, null, null));
+                alumno2, CATEGORIA, cursoA1, grupoA1.getAnio(), grupoA1.getIterable(), null, null, null),
+                "coord-it", "Coordinador");
 
         // Grupo A2: instructor A, se crea y se elimina logicamente -- no debe aparecer.
         Grupo nuevoA2 = new Grupo();

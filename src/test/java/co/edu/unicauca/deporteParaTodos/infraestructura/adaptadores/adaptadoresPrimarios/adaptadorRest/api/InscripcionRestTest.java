@@ -7,6 +7,7 @@ import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresP
 
 import java.util.List;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -15,6 +16,10 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.MediaType;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.security.web.method.annotation.AuthenticationPrincipalArgumentResolver;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -23,7 +28,7 @@ import java.sql.Timestamp;
 import java.time.Instant;
 
 import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -45,6 +50,7 @@ class InscripcionRestTest {
     private static final int       ANIO      = 2026;
     private static final int       ITERABLE  = 1;
     private static final Timestamp AHORA     = Timestamp.from(Instant.now());
+    private static final String    COORD     = "coord-1";
 
     @BeforeEach
     void setUp() {
@@ -52,6 +58,27 @@ class InscripcionRestTest {
                 .setCustomArgumentResolvers(new AuthenticationPrincipalArgumentResolver())
                 .setMessageConverters(new MappingJackson2HttpMessageConverter())
                 .build();
+
+        // Por defecto: Coordinador (exento de autorizacion por grupo) -- los
+        // tests de rol Alumno/Instructor fijan su propio JWT cuando lo necesitan.
+        autenticarComo(COORD, "Coordinador");
+    }
+
+    @AfterEach
+    void limpiarSecurityContext() {
+        SecurityContextHolder.clearContext();
+    }
+
+    private void autenticarComo(String perfId, String rol) {
+        Jwt jwt = Jwt.withTokenValue("token")
+                .header("alg", "none")
+                .claim("perf_id", perfId)
+                .claim("rol", rol)
+                .issuedAt(Instant.now())
+                .expiresAt(Instant.now().plusSeconds(3600))
+                .build();
+        SecurityContextHolder.getContext().setAuthentication(
+                new JwtAuthenticationToken(jwt, List.of(new SimpleGrantedAuthority(rol))));
     }
 
     private Inscripcion inscripcionBase() {
@@ -60,7 +87,7 @@ class InscripcionRestTest {
 
     @Test
     void postInscribir_retornaCreated() throws Exception {
-        when(servicio.inscribir(any(Inscripcion.class))).thenReturn(inscripcionBase());
+        when(servicio.inscribir(any(Inscripcion.class), eq(COORD), eq("Coordinador"))).thenReturn(inscripcionBase());
 
         InscripcionDto dto = new InscripcionDto(ALUMNO_ID, CATEGORIA, CURSO, ANIO, ITERABLE, null, null, null);
 
@@ -71,6 +98,50 @@ class InscripcionRestTest {
                 .andExpect(jsonPath("$.alumnoId").value(ALUMNO_ID))
                 .andExpect(jsonPath("$.categoria").value(CATEGORIA))
                 .andExpect(jsonPath("$.curso").value(CURSO));
+    }
+
+    @Test
+    void postInscribir_sinJwt_retornaUnauthorized() throws Exception {
+        SecurityContextHolder.clearContext();
+        InscripcionDto dto = new InscripcionDto(ALUMNO_ID, CATEGORIA, CURSO, ANIO, ITERABLE, null, null, null);
+
+        mockMvc.perform(post("/api/v2/inscripcion")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(dto)))
+                .andExpect(status().isUnauthorized());
+
+        verify(servicio, never()).inscribir(any(), any(), any());
+    }
+
+    // El id del Instructor/Alumno sale del token, no de un parametro del body:
+    // un Alumno que manda en el body el id de OTRO alumno recibe 403, y el
+    // servicio nunca llega a invocarse.
+    @Test
+    void postInscribir_alumnoConIdAjenoEnElBody_retornaForbiddenYNoLlamaAlServicio() throws Exception {
+        autenticarComo(ALUMNO_ID, "Alumno");
+        InscripcionDto dto = new InscripcionDto("otro-alumno", CATEGORIA, CURSO, ANIO, ITERABLE, null, null, null);
+
+        mockMvc.perform(post("/api/v2/inscripcion")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(dto)))
+                .andExpect(status().isForbidden());
+
+        verify(servicio, never()).inscribir(any(), any(), any());
+    }
+
+    @Test
+    void postInscribir_instructor_retornaCreated() throws Exception {
+        autenticarComo("INS001", "Instructor");
+        when(servicio.inscribir(any(Inscripcion.class), eq("INS001"), eq("Instructor"))).thenReturn(inscripcionBase());
+
+        InscripcionDto dto = new InscripcionDto(ALUMNO_ID, CATEGORIA, CURSO, ANIO, ITERABLE, null, null, null);
+
+        mockMvc.perform(post("/api/v2/inscripcion")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(dto)))
+                .andExpect(status().isCreated());
+
+        verify(servicio).inscribir(any(Inscripcion.class), eq("INS001"), eq("Instructor"));
     }
 
     @Test
@@ -152,7 +223,7 @@ class InscripcionRestTest {
     @Test
     void putDesvincularInscripcion_retornaOk() throws Exception {
         Inscripcion desvinculada = new Inscripcion(ALUMNO_ID, CATEGORIA, CURSO, ANIO, ITERABLE, AHORA, AHORA, null);
-        when(servicio.desvincularInscripcion(anyString(), anyString(), anyString(), anyInt(), anyInt()))
+        when(servicio.desvincularInscripcion(anyString(), anyString(), anyString(), anyInt(), anyInt(), eq(COORD), eq("Coordinador")))
                 .thenReturn(desvinculada);
 
         InscripcionDto dto = new InscripcionDto(ALUMNO_ID, CATEGORIA, CURSO, ANIO, ITERABLE, null, null, null);
@@ -163,5 +234,18 @@ class InscripcionRestTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.alumnoId").value(ALUMNO_ID))
                 .andExpect(jsonPath("$.categoria").value(CATEGORIA));
+    }
+
+    @Test
+    void putDesvincularInscripcion_sinJwt_retornaUnauthorized() throws Exception {
+        SecurityContextHolder.clearContext();
+        InscripcionDto dto = new InscripcionDto(ALUMNO_ID, CATEGORIA, CURSO, ANIO, ITERABLE, null, null, null);
+
+        mockMvc.perform(put("/api/v2/desvincularInscripcion")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(dto)))
+                .andExpect(status().isUnauthorized());
+
+        verify(servicio, never()).desvincularInscripcion(any(), any(), any(), anyInt(), anyInt(), any(), any());
     }
 }

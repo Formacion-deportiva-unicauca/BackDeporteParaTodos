@@ -256,7 +256,8 @@ class InscripcionConcurrenciaIT {
                     // retorna estado EN_ESPERA. "Exitoso" significa realmente obtener
                     // el cupo (INSCRITO), no solo que la llamada no haya fallado.
                     Inscripcion resultado = servicio.inscribir(
-                            new Inscripcion(alumnoId, categoria, curso, anio, iterable, null, null, null));
+                            new Inscripcion(alumnoId, categoria, curso, anio, iterable, null, null, null),
+                            "coord-it", "Coordinador");
                     if ("INSCRITO".equals(resultado.getEstado())) {
                         exitosos.incrementAndGet();
                     } else {
@@ -304,27 +305,29 @@ class InscripcionConcurrenciaIT {
         // aislamiento entre corridas (el @BeforeAll solo crea los alumnos, no las
         // inscripciones, que persisten entre corridas en BD persistente).
         try {
-            servicio.desvincularInscripcion(alumnoOcupaCupo, categoria, curso, anio, iterable);
+            servicio.desvincularInscripcion(alumnoOcupaCupo, categoria, curso, anio, iterable, "coord-it", "Coordinador");
         } catch (NoExisteExcepcion e) {
             // No hay inscripcion activa; es el caso normal en la primera corrida.
         }
         try {
-            servicio.desvincularInscripcion(alumnoEnEspera, categoria, curso, anio, iterable);
+            servicio.desvincularInscripcion(alumnoEnEspera, categoria, curso, anio, iterable, "coord-it", "Coordinador");
         } catch (NoExisteExcepcion e) {
             // No hay inscripcion activa; es el caso normal en la primera corrida.
         }
 
         // Ocupa el unico cupo del grupo.
-        servicio.inscribir(new Inscripcion(alumnoOcupaCupo, categoria, curso, anio, iterable, null, null, null));
+        servicio.inscribir(new Inscripcion(alumnoOcupaCupo, categoria, curso, anio, iterable, null, null, null),
+                "coord-it", "Coordinador");
 
         Inscripcion resultado = servicio.inscribir(
-                new Inscripcion(alumnoEnEspera, categoria, curso, anio, iterable, null, null, null));
+                new Inscripcion(alumnoEnEspera, categoria, curso, anio, iterable, null, null, null),
+                "coord-it", "Coordinador");
         assertEquals("EN_ESPERA", resultado.getEstado(),
                 "Precondicion no cumplida: se esperaba que el grupo ya estuviera sin cupos");
 
         Disponibilidad antes = servicio.obtenerDisponibilidad(categoria, curso, anio, iterable);
 
-        servicio.desvincularInscripcion(alumnoEnEspera, categoria, curso, anio, iterable);
+        servicio.desvincularInscripcion(alumnoEnEspera, categoria, curso, anio, iterable, "coord-it", "Coordinador");
 
         Disponibilidad despues = servicio.obtenerDisponibilidad(categoria, curso, anio, iterable);
 
@@ -352,22 +355,27 @@ class InscripcionConcurrenciaIT {
         // aislamiento entre corridas (el @BeforeAll solo crea los alumnos, no las
         // inscripciones, que persisten entre corridas en BD persistente).
         try {
-            servicio.desvincularInscripcion(ALUMNO_CANDIDATO_1, CATEGORIA, CURSO, ANIO, ITERABLE_PROMOCION);
+            servicio.desvincularInscripcion(ALUMNO_CANDIDATO_1, CATEGORIA, CURSO, ANIO, ITERABLE_PROMOCION,
+                    "coord-it", "Coordinador");
         } catch (NoExisteExcepcion e) {
             // No hay inscripción activa; es el caso normal en la primera corrida.
         }
         try {
-            servicio.desvincularInscripcion(ALUMNO_CANDIDATO_2, CATEGORIA, CURSO, ANIO, ITERABLE_PROMOCION);
+            servicio.desvincularInscripcion(ALUMNO_CANDIDATO_2, CATEGORIA, CURSO, ANIO, ITERABLE_PROMOCION,
+                    "coord-it", "Coordinador");
         } catch (NoExisteExcepcion e) {
             // No hay inscripción activa; es el caso normal en la primera corrida.
         }
 
         servicio.inscribir(new Inscripcion(
-                ALUMNO_FILLER_PROMOCION, CATEGORIA, CURSO, ANIO, ITERABLE_PROMOCION, null, null, null));
+                ALUMNO_FILLER_PROMOCION, CATEGORIA, CURSO, ANIO, ITERABLE_PROMOCION, null, null, null),
+                "coord-it", "Coordinador");
         servicio.inscribir(new Inscripcion(
-                ALUMNO_CANDIDATO_1, CATEGORIA, CURSO, ANIO, ITERABLE_PROMOCION, null, null, null));
+                ALUMNO_CANDIDATO_1, CATEGORIA, CURSO, ANIO, ITERABLE_PROMOCION, null, null, null),
+                "coord-it", "Coordinador");
         servicio.inscribir(new Inscripcion(
-                ALUMNO_CANDIDATO_2, CATEGORIA, CURSO, ANIO, ITERABLE_PROMOCION, null, null, null));
+                ALUMNO_CANDIDATO_2, CATEGORIA, CURSO, ANIO, ITERABLE_PROMOCION, null, null, null),
+                "coord-it", "Coordinador");
 
         Grupo grupoActual = grupoServicio.obtenerGrupoPorId(CATEGORIA, CURSO, ANIO, ITERABLE_PROMOCION);
         grupoActual.setCupos(2);
@@ -433,9 +441,9 @@ class InscripcionConcurrenciaIT {
         Timestamp fechaForjada = Timestamp.valueOf(LocalDateTime.now().plusYears(1));
 
         servicio.inscribir(new Inscripcion(alumnoA, CATEGORIA, CURSO, ANIO,
-                ITERABLE_FECHA_DESVINCULACION, null, fechaForjada, null));
+                ITERABLE_FECHA_DESVINCULACION, null, fechaForjada, null), "coord-it", "Coordinador");
         servicio.inscribir(new Inscripcion(alumnoB, CATEGORIA, CURSO, ANIO,
-                ITERABLE_FECHA_DESVINCULACION, null, fechaForjada, null));
+                ITERABLE_FECHA_DESVINCULACION, null, fechaForjada, null), "coord-it", "Coordinador");
 
         for (String alumnoId : List.of(alumnoA, alumnoB)) {
             List<Timestamp> filas = jdbc.query(
