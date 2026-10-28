@@ -16,6 +16,7 @@ public final class AsistenciaMapper {
         modelo.setIdPerfil(entidad.getPerfilId());
         modelo.setClsCodigo(entidad.getClaseCodigo());
         modelo.setEliminado(entidad.getEliminado());
+        modelo.setEstado(entidad.getEstado());
         return modelo;
     }
 
@@ -26,6 +27,7 @@ public final class AsistenciaMapper {
         entidad.setPerfilId(modelo.getIdPerfil());
         entidad.setClaseCodigo(modelo.getClsCodigo());
         entidad.setEliminado(modelo.getEliminado());
+        entidad.setEstado(modelo.getEstado());
         return entidad;
     }
 
@@ -35,8 +37,10 @@ public final class AsistenciaMapper {
         AtencionDto dto = new AtencionDto();
         dto.setIdPerfil(modelo.getIdPerfil());
         dto.setIdClase(modelo.getClsCodigo());
-        // Integer.equals() es null-safe: null→true (activo), 0→true (activo), 1→false (eliminado)
-        dto.setEstaAtendido(!Integer.valueOf(1).equals(modelo.getEliminado()));
+        // Faltas acumuladas (etapa 2 de 5): estaAtendido ahora exige AMBAS
+        // condiciones -- ASI_ESTADO='PRESENTE' Y no eliminada. Integer.equals()
+        // es null-safe: null→true (activo), 0→true (activo), 1→false (eliminado).
+        dto.setEstaAtendido("PRESENTE".equals(modelo.getEstado()) && !Integer.valueOf(1).equals(modelo.getEliminado()));
         return dto;
     }
 

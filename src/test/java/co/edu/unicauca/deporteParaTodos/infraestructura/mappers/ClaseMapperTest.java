@@ -7,6 +7,7 @@ import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresS
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -187,5 +188,61 @@ class ClaseMapperTest {
         dto.setIterable(ITERABLE);
         dto.setJustificacion("justificacion del dto");
         assertEquals("justificacion del dto", ClaseMapper.fromDto(dto).getJustificacion());
+    }
+
+    // Faltas acumuladas (etapa 2 de 5): columnas nuevas de tbl_clase. No se
+    // exponen via ClaseDto en esta etapa (el contrato de confirmacion es un
+    // endpoint y una respuesta nuevos, fuera de este alcance) -- solo
+    // toDominio/toEntidad necesitan mapearlas por ahora.
+    @Test
+    void asistenciaConfirmada_seMapeaEntreEntidadYDominio() {
+        LocalDateTime confirmadaEn = LocalDateTime.of(2026, 10, 26, 10, 0);
+
+        ClaseEntidad entidad = entidadBase();
+        entidad.setAsistenciaConfirmadaEn(confirmadaEn);
+        entidad.setAsistenciaConfirmadaPor("coord-1");
+        Clase resultado = ClaseMapper.toDominio(entidad);
+        assertEquals(confirmadaEn, resultado.getAsistenciaConfirmadaEn());
+        assertEquals("coord-1", resultado.getAsistenciaConfirmadaPor());
+
+        Clase modelo = claseBase();
+        modelo.setAsistenciaConfirmadaEn(confirmadaEn);
+        modelo.setAsistenciaConfirmadaPor("ins-1");
+        ClaseEntidad entidadMapeada = ClaseMapper.toEntidad(modelo);
+        assertEquals(confirmadaEn, entidadMapeada.getAsistenciaConfirmadaEn());
+        assertEquals("ins-1", entidadMapeada.getAsistenciaConfirmadaPor());
+    }
+
+    @Test
+    void asistenciaConfirmada_nulaPorDefecto_claseHistoricaOPendiente() {
+        Clase resultado = ClaseMapper.toDominio(entidadBase());
+        assertNull(resultado.getAsistenciaConfirmadaEn());
+        assertNull(resultado.getAsistenciaConfirmadaPor());
+    }
+
+    // La pantalla de asistencia necesita saber si la asistencia de la clase ya fue confirmada: toDto la expone (solo
+    // lectura); fromDto la IGNORA para que un cliente no pueda marcar una clase como confirmada.
+    @Test
+    void asistenciaConfirmadaEn_toDtoLaExpone() {
+        LocalDateTime confirmadaEn = LocalDateTime.of(2026, 10, 27, 17, 5);
+        Clase modelo = claseBase();
+        modelo.setAsistenciaConfirmadaEn(confirmadaEn);
+        assertEquals(confirmadaEn, ClaseMapper.toDto(modelo).getAsistenciaConfirmadaEn());
+    }
+
+    @Test
+    void asistenciaConfirmadaEn_clasePendiente_toDtoLaDejaNula() {
+        assertNull(ClaseMapper.toDto(claseBase()).getAsistenciaConfirmadaEn());
+    }
+
+    @Test
+    void asistenciaConfirmadaEn_fromDtoLaIgnora() {
+        ClaseDto dto = new ClaseDto();
+        dto.setCategoria(CATEGORIA);
+        dto.setCurso(CURSO);
+        dto.setAnio(ANIO);
+        dto.setIterable(ITERABLE);
+        dto.setAsistenciaConfirmadaEn(LocalDateTime.of(2026, 10, 27, 17, 5));
+        assertNull(ClaseMapper.fromDto(dto).getAsistenciaConfirmadaEn());
     }
 }

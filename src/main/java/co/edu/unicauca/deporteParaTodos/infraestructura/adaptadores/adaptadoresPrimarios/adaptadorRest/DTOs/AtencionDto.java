@@ -26,7 +26,10 @@ public class AtencionDto {
         AtencionDto dto = new AtencionDto();
         dto.setIdPerfil(modelo.getIdPerfil());
         dto.setIdClase(modelo.getClsCodigo());
-        dto.setEstaAtendido(modelo.getEliminado() == null || modelo.getEliminado() != 1);
+        // Faltas acumuladas (etapa 2 de 5): estaAtendido = (ASI_ESTADO='PRESENTE'
+        // AND META_ELIMINADO != 1) -- misma formula que AsistenciaMapper.toDto().
+        dto.setEstaAtendido("PRESENTE".equals(modelo.getEstado())
+                && (modelo.getEliminado() == null || modelo.getEliminado() != 1));
         return dto;
     }
 }

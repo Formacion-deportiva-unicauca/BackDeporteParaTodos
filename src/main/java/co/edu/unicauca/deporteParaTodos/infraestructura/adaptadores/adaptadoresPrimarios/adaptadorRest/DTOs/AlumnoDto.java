@@ -30,11 +30,17 @@ public class AlumnoDto {
 
     private Integer imagen;
 
+    // Faltas acumuladas (etapa 5 de 5): solo en GET /alumnosGrupo -- nunca
+    // null, 0 si no hay datos (ver AlumnoServicio.obtenerAlumnosGrupo, que la
+    // fija aparte porque es un dato DEL GRUPO, no del alumno como tal).
+    private Integer faltas;
+
     public static AlumnoDto fabricarDeModelo(Alumno modelo) {
         AlumnoDto dto = new AlumnoDto();
         dto.setEliminadoestado(modelo.getEliminadoestado());
         dto.setCodigo(modelo.getAlm_codigo());
         dto.setTipo(modelo.getTipoAlumno());
+        dto.setFaltas(0);
         if (modelo.getPerfil() != null) {
             dto.setId(modelo.getPerfil().getId());
             dto.setNombre(modelo.getPerfil().getNombre());

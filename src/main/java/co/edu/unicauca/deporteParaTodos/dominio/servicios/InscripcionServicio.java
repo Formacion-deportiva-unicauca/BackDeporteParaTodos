@@ -131,6 +131,12 @@ public class InscripcionServicio implements IInscripcionServicio {
                         datos.getAlumnoId(), datos.getCategoria(),
                         datos.getCurso(), datos.getAnio(), datos.getIterable());
                 existente.setFechaDesvinculacion(null);
+                // fechaInscripcion = inicio de la activacion VIGENTE, no historial de
+                // activaciones pasadas (tbl_inscripcion no guarda ese historial). Antes
+                // esta rama era la UNICA de las 4 que reactivan una fila (esta, la rama
+                // EN_ESPERA de abajo, y promoverPrimeroEnEspera/promoverInscripcion en
+                // InscripcionGateway) que no la refrescaba.
+                existente.setFechaInscripcion(Timestamp.from(Instant.now()));
                 existente.setEstado("INSCRITO");
                 return gateway.guardarInscripcion(existente);
             }

@@ -1,12 +1,16 @@
 package co.edu.unicauca.deporteParaTodos.dominio.servicios;
 
+import java.time.Clock;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosEntrada.IAlumnoServicio;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IAlumnoGateway;
+import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IAsistenciaGateway;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IGrupoGateway;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IInscripcionGateway;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IPerfilGateway;
@@ -37,6 +41,12 @@ public class AlumnoServicio implements IAlumnoServicio {
     private IGrupoGateway grupoGateway;
 
     @Autowired
+    private IAsistenciaGateway asistenciaGateway;
+
+    @Autowired
+    private Clock clock;
+
+    @Autowired
     private AutorizacionGrupoServicio autorizacionGrupo;
 
     @Override
@@ -55,9 +65,14 @@ public class AlumnoServicio implements IAlumnoServicio {
         if (alumnos.isEmpty()) {
             throw new ListadoVacioExcepcion("No se encuentran alumnos registrados para el grupo consultado");
         }
+        // Faltas acumuladas (etapa 5 de 5): UNA consulta agregada para todo el
+        // grupo (sin N+1), combinada por perf_id con la lista de alumnos.
+        Map<String, Integer> faltasPorAlumno = asistenciaGateway.contarFaltasPorGrupo(
+                categoria, curso, anio, iterable, LocalDate.now(clock));
         List<AlumnoDto> listaDtos = new ArrayList<>();
         alumnos.forEach(modelo -> {
             AlumnoDto dto = AlumnoDto.fabricarDeModelo(modelo);
+            dto.setFaltas(faltasPorAlumno.getOrDefault(dto.getId(), 0));
             listaDtos.add(dto);
         });
         return listaDtos;

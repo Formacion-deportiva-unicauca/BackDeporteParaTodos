@@ -585,4 +585,149 @@ class GrupoServicioTest {
 
         verify(grupoGateway, never()).obtenerGruposInstructor(any());
     }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // actualizarGrupo: al AMPLIAR los cupos se promueve automaticamente, en orden, a quienes esperan
+    // ──────────────────────────────────────────────────────────────────────────
+
+    /** Prepara una actualizacion de cupos: la fila tenia {@code antes} y el grupo actualizado queda con {@code despues}. */
+    private void prepararCambioDeCupos(Integer antes, Integer despues, EstadoCurso estadoCurso) {
+        Grupo filaActual = grupoModelo();
+        filaActual.setCupos(antes);
+        Grupo actualizado = grupoModelo();
+        actualizado.setCupos(despues);
+        Curso curso = new Curso();
+        curso.setEstadoCurso(estadoCurso);
+        when(grupoGateway.existeGrupo(CATEGORIA, CURSO, ANIO, ITERABLE)).thenReturn(true);
+        when(grupoGateway.obtenerGrupo(CATEGORIA, CURSO, ANIO, ITERABLE)).thenReturn(filaActual);
+        when(grupoGateway.actualizarGrupo(eq(CATEGORIA), eq(CURSO), eq(ANIO), eq(ITERABLE), any())).thenReturn(actualizado);
+        lenient().when(cursoGateway.obtenerCurso(CATEGORIA, CURSO)).thenReturn(curso);
+    }
+
+    private void prepararOcupacion(long inscritos, long enEspera) {
+        lenient().when(grupoGateway.obtenerGrupoConLock(CATEGORIA, CURSO, ANIO, ITERABLE)).thenReturn(grupoModelo());
+        lenient().when(inscripcionGateway.contarInscripcionesActivasGrupo(CATEGORIA, CURSO, ANIO, ITERABLE)).thenReturn(inscritos);
+        lenient().when(inscripcionGateway.contarEnEsperaGrupo(CATEGORIA, CURSO, ANIO, ITERABLE)).thenReturn(enEspera);
+    }
+
+    @Test
+    void actualizarGrupo_ampliaCupos_promueveTantosEnEsperaComoCuposNuevosLibres() {
+        prepararCambioDeCupos(5, 8, EstadoCurso.ACTIVO);
+        prepararOcupacion(5, 2);   // 3 cupos libres, 2 esperando -> se promueven los 2
+
+        grupoServicio.actualizarGrupo(CATEGORIA, CURSO, ANIO, ITERABLE, grupoModelo());
+
+        verify(inscripcionGateway, times(2)).promoverPrimeroEnEspera(CATEGORIA, CURSO, ANIO, ITERABLE);
+    }
+
+    @Test
+    void actualizarGrupo_ampliaCupos_conMasEsperaQueCuposLibres_promueveSoloLosQueCaben() {
+        prepararCambioDeCupos(5, 7, EstadoCurso.ACTIVO);
+        prepararOcupacion(5, 4);   // 2 cupos libres, 4 esperando -> solo 2
+
+        grupoServicio.actualizarGrupo(CATEGORIA, CURSO, ANIO, ITERABLE, grupoModelo());
+
+        verify(inscripcionGateway, times(2)).promoverPrimeroEnEspera(CATEGORIA, CURSO, ANIO, ITERABLE);
+    }
+
+    @Test
+    void actualizarGrupo_ampliaCupos_sinListaDeEspera_noPromueveA_nadie() {
+        prepararCambioDeCupos(5, 8, EstadoCurso.ACTIVO);
+        prepararOcupacion(5, 0);
+
+        grupoServicio.actualizarGrupo(CATEGORIA, CURSO, ANIO, ITERABLE, grupoModelo());
+
+        verify(inscripcionGateway, never()).promoverPrimeroEnEspera(any(), any(), anyInt(), anyInt());
+    }
+
+    @Test
+    void actualizarGrupo_ampliaCupos_peroElGrupoSigueLleno_noPromueve() {
+        prepararCambioDeCupos(3, 4, EstadoCurso.ACTIVO);
+        prepararOcupacion(6, 2);   // datos inconsistentes: mas inscritos que cupos -> no hay cupo libre
+
+        grupoServicio.actualizarGrupo(CATEGORIA, CURSO, ANIO, ITERABLE, grupoModelo());
+
+        verify(inscripcionGateway, never()).promoverPrimeroEnEspera(any(), any(), anyInt(), anyInt());
+    }
+
+    @Test
+    void actualizarGrupo_cuposSinCambio_noConsultaNiPromueve() {
+        prepararCambioDeCupos(5, 5, EstadoCurso.ACTIVO);
+
+        grupoServicio.actualizarGrupo(CATEGORIA, CURSO, ANIO, ITERABLE, grupoModelo());
+
+        verifyNoInteractions(inscripcionGateway);
+        verify(grupoGateway, never()).obtenerGrupoConLock(any(), any(), any(), any());
+    }
+
+    @Test
+    void actualizarGrupo_reduceCupos_noPromueve() {
+        prepararCambioDeCupos(8, 5, EstadoCurso.ACTIVO);
+
+        grupoServicio.actualizarGrupo(CATEGORIA, CURSO, ANIO, ITERABLE, grupoModelo());
+
+        verifyNoInteractions(inscripcionGateway);
+    }
+
+    @Test
+    void actualizarGrupo_cursoNoActivo_noPromueve() {
+        prepararCambioDeCupos(5, 8, EstadoCurso.INACTIVO);   // misma regla que promoverManualmente (SCRUM-178)
+        prepararOcupacion(5, 2);
+
+        grupoServicio.actualizarGrupo(CATEGORIA, CURSO, ANIO, ITERABLE, grupoModelo());
+
+        verify(inscripcionGateway, never()).promoverPrimeroEnEspera(any(), any(), anyInt(), anyInt());
+    }
+
+    @Test
+    void actualizarGrupo_cursoInexistente_noPromueveNiFalla() {
+        prepararCambioDeCupos(5, 8, EstadoCurso.ACTIVO);
+        when(cursoGateway.obtenerCurso(CATEGORIA, CURSO)).thenReturn(null);
+
+        assertDoesNotThrow(() -> grupoServicio.actualizarGrupo(CATEGORIA, CURSO, ANIO, ITERABLE, grupoModelo()));
+        verify(inscripcionGateway, never()).promoverPrimeroEnEspera(any(), any(), anyInt(), anyInt());
+    }
+
+    @Test
+    void actualizarGrupo_cuposAnterioresNulos_noPromueve() {
+        prepararCambioDeCupos(null, 8, EstadoCurso.ACTIVO);
+        grupoServicio.actualizarGrupo(CATEGORIA, CURSO, ANIO, ITERABLE, grupoModelo());
+        verifyNoInteractions(inscripcionGateway);
+    }
+
+    @Test
+    void actualizarGrupo_cuposNuevosNulos_noPromueve() {
+        prepararCambioDeCupos(5, null, EstadoCurso.ACTIVO);
+        grupoServicio.actualizarGrupo(CATEGORIA, CURSO, ANIO, ITERABLE, grupoModelo());
+        verifyNoInteractions(inscripcionGateway);
+    }
+
+    @Test
+    void actualizarGrupo_ampliaCupos_tomaElLockDelGrupoAntesDeContarLosCupos() {
+        prepararCambioDeCupos(5, 8, EstadoCurso.ACTIVO);
+        prepararOcupacion(5, 1);
+
+        grupoServicio.actualizarGrupo(CATEGORIA, CURSO, ANIO, ITERABLE, grupoModelo());
+
+        org.mockito.InOrder orden = inOrder(grupoGateway, inscripcionGateway);
+        orden.verify(grupoGateway).actualizarGrupo(eq(CATEGORIA), eq(CURSO), eq(ANIO), eq(ITERABLE), any());
+        orden.verify(grupoGateway).obtenerGrupoConLock(CATEGORIA, CURSO, ANIO, ITERABLE);
+        orden.verify(inscripcionGateway).contarInscripcionesActivasGrupo(CATEGORIA, CURSO, ANIO, ITERABLE);
+        orden.verify(inscripcionGateway).promoverPrimeroEnEspera(CATEGORIA, CURSO, ANIO, ITERABLE);
+    }
+
+    @Test
+    void actualizarGrupo_validacionFalla_noActualizaNiPromueve() {
+        Grupo filaActual = grupoModelo();
+        filaActual.setFechaCreacion(LocalDate.of(2026, 3, 1));
+        when(grupoGateway.existeGrupo(CATEGORIA, CURSO, ANIO, ITERABLE)).thenReturn(true);
+        when(grupoGateway.obtenerGrupo(CATEGORIA, CURSO, ANIO, ITERABLE)).thenReturn(filaActual);
+        Grupo datos = new Grupo();
+        datos.setCupos(50);
+        datos.setFechaFinalizacion(LocalDate.of(2026, 1, 1));
+
+        assertThrows(FechasGrupoInvalidasExcepcion.class, () -> grupoServicio.actualizarGrupo(CATEGORIA, CURSO, ANIO, ITERABLE, datos));
+
+        verifyNoInteractions(inscripcionGateway);
+    }
 }

@@ -7,11 +7,14 @@ import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresS
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresSecundarios.persistenciaSQL.repositorios.IAsistenciaRepositorio;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -105,6 +108,20 @@ class AsistenciaGatewayTest {
         verify(repoAsistencia).save(any(AsistenciaEntidad.class));
     }
 
+    // Faltas acumuladas (etapa 2 de 5): ASI_ESTADO es NOT NULL sin DEFAULT a
+    // nivel de entidad JPA -- si no se fija explicitamente antes de save(), la
+    // insercion viola la restriccion NOT NULL.
+    @Test
+    void insertarAsistencia_fijaEstadoDelModeloEnLaEntidad() {
+        when(repoAsistencia.save(any(AsistenciaEntidad.class))).thenReturn(entidadActiva());
+
+        asistenciaGateway.InsertarAsistencia(modeloBase());
+
+        ArgumentCaptor<AsistenciaEntidad> guardada = ArgumentCaptor.forClass(AsistenciaEntidad.class);
+        verify(repoAsistencia).save(guardada.capture());
+        assertEquals("PRESENTE", guardada.getValue().getEstado());
+    }
+
     // --- eliminarAsitencia ---
 
     @Test
@@ -165,5 +182,85 @@ class AsistenciaGatewayTest {
         when(repoAsistencia.findById(any(AsistenciaId.class))).thenReturn(Optional.empty());
 
         assertThrows(NoExisteExcepcion.class, () -> asistenciaGateway.reactivarAsistencia(PERF_ID, CLASE_ID));
+    }
+
+    // --- marcarPresente / marcarAusente (Faltas acumuladas, etapa 4 de 5) ---
+
+    @Test
+    void marcarPresente_filaNoExiste_laCrea() {
+        when(repoAsistencia.findById(any(AsistenciaId.class))).thenReturn(Optional.empty());
+        when(repoAsistencia.save(any(AsistenciaEntidad.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Asistencia resultado = asistenciaGateway.marcarPresente(PERF_ID, CLASE_ID);
+
+        assertEquals("PRESENTE", resultado.getEstado());
+        assertEquals(0, resultado.getEliminado());
+        ArgumentCaptor<AsistenciaEntidad> guardada = ArgumentCaptor.forClass(AsistenciaEntidad.class);
+        verify(repoAsistencia).save(guardada.capture());
+        assertEquals(PERF_ID, guardada.getValue().getPerfilId());
+        assertEquals(CLASE_ID, guardada.getValue().getClaseCodigo());
+    }
+
+    @Test
+    void marcarPresente_filaExisteEliminada_laReactivaYLaFijaPresente() {
+        AsistenciaEntidad existente = entidadActiva();
+        existente.setEliminado(1);
+        existente.setEstado("AUSENTE");
+        when(repoAsistencia.findById(any(AsistenciaId.class))).thenReturn(Optional.of(existente));
+        when(repoAsistencia.save(any(AsistenciaEntidad.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Asistencia resultado = asistenciaGateway.marcarPresente(PERF_ID, CLASE_ID);
+
+        assertEquals("PRESENTE", resultado.getEstado());
+        assertEquals(0, resultado.getEliminado());
+    }
+
+    @Test
+    void marcarAusente_filaNoExiste_laCreaSinEliminar() {
+        when(repoAsistencia.findById(any(AsistenciaId.class))).thenReturn(Optional.empty());
+        when(repoAsistencia.save(any(AsistenciaEntidad.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Asistencia resultado = asistenciaGateway.marcarAusente(PERF_ID, CLASE_ID);
+
+        assertEquals("AUSENTE", resultado.getEstado());
+        assertEquals(0, resultado.getEliminado());
+    }
+
+    @Test
+    void marcarAusente_filaExistePresenteYEliminada_laReactivaYLaFijaAusente() {
+        AsistenciaEntidad existente = entidadActiva();
+        existente.setEliminado(1);
+        existente.setEstado("PRESENTE");
+        when(repoAsistencia.findById(any(AsistenciaId.class))).thenReturn(Optional.of(existente));
+        when(repoAsistencia.save(any(AsistenciaEntidad.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Asistencia resultado = asistenciaGateway.marcarAusente(PERF_ID, CLASE_ID);
+
+        assertEquals("AUSENTE", resultado.getEstado());
+        assertEquals(0, resultado.getEliminado());
+    }
+
+    // --- contarFaltasPorGrupo (Faltas acumuladas, etapa 5 de 5) ---
+
+    @Test
+    void contarFaltasPorGrupo_mapeaFilasAPerfIdYCantidad() {
+        LocalDate hoy = LocalDate.of(2026, 10, 26);
+        when(repoAsistencia.contarFaltasPorGrupo("cat1", "cur1", 2026, 1, hoy))
+                .thenReturn(List.of(new Object[] {"alum1", 2L}, new Object[] {"alum2", 5L}));
+
+        Map<String, Integer> resultado = asistenciaGateway.contarFaltasPorGrupo("cat1", "cur1", 2026, 1, hoy);
+
+        assertEquals(2, resultado.get("alum1"));
+        assertEquals(5, resultado.get("alum2"));
+    }
+
+    @Test
+    void contarFaltasPorGrupo_sinFilas_retornaMapaVacio() {
+        LocalDate hoy = LocalDate.of(2026, 10, 26);
+        when(repoAsistencia.contarFaltasPorGrupo("cat1", "cur1", 2026, 1, hoy)).thenReturn(List.of());
+
+        Map<String, Integer> resultado = asistenciaGateway.contarFaltasPorGrupo("cat1", "cur1", 2026, 1, hoy);
+
+        assertTrue(resultado.isEmpty());
     }
 }

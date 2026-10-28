@@ -1,9 +1,14 @@
 package co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.api;
 
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosEntrada.IAsistenciaServicio;
+import co.edu.unicauca.deporteParaTodos.dominio.excepciones.ConfirmacionSinAsistentesExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Asistencia;
+import co.edu.unicauca.deporteParaTodos.dominio.modelo.ResultadoConfirmacionAsistencia;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.AtencionDto;
+import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.ConfirmacionAsistenciaRequest;
+import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.ItemConfirmacionAsistenciaDto;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.VentanaRegistroDto;
+import co.edu.unicauca.deporteParaTodos.infraestructura.controladorExcepciones.RestExceptionHandler;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -23,6 +28,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.*;
@@ -52,6 +58,7 @@ class AtencionRestTest {
     @BeforeEach
     void setUp() {
         mockMvc = MockMvcBuilders.standaloneSetup(atencionRest)
+                .setControllerAdvice(new RestExceptionHandler())
                 .setMessageConverters(new MappingJackson2HttpMessageConverter())
                 .setCustomArgumentResolvers(new AuthenticationPrincipalArgumentResolver())
                 .build();
@@ -175,5 +182,53 @@ class AtencionRestTest {
                 .andExpect(status().isUnauthorized());
 
         verify(servicioAsistencia, never()).obtenerVentanaRegistro(any(), any());
+    }
+
+    // ── PUT /clase/{codigo}/asistencia (Faltas acumuladas, etapa 4 de 5) ─────
+
+    @Test
+    void confirmarAsistencias_retornaOkConElResumen() throws Exception {
+        ConfirmacionAsistenciaRequest request = new ConfirmacionAsistenciaRequest(
+                List.of(new ItemConfirmacionAsistenciaDto(PERF_ID, true)), false);
+        ResultadoConfirmacionAsistencia resultado = new ResultadoConfirmacionAsistencia(
+                CLASE_ID, LocalDateTime.of(2026, 10, 26, 9, 0), 1, 2);
+        when(servicioAsistencia.confirmarAsistencias(eq(CLASE_ID), anyList(), eq(false), eq("INS001"), eq("Instructor")))
+                .thenReturn(resultado);
+
+        mockMvc.perform(put("/api/v2/clase/{codigo}/asistencia", CLASE_ID)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.codigoClase").value(CLASE_ID))
+                .andExpect(jsonPath("$.presentes").value(1))
+                .andExpect(jsonPath("$.ausentes").value(2));
+    }
+
+    @Test
+    void confirmarAsistencias_sinAsistentesSinBandera_retorna422() throws Exception {
+        ConfirmacionAsistenciaRequest request = new ConfirmacionAsistenciaRequest(List.of(), false);
+        when(servicioAsistencia.confirmarAsistencias(eq(CLASE_ID), anyList(), eq(false), eq("INS001"), eq("Instructor")))
+                .thenThrow(new ConfirmacionSinAsistentesExcepcion(
+                        "Debe marcar al menos un alumno presente, o confirmar que todos estan ausentes"));
+
+        mockMvc.perform(put("/api/v2/clase/{codigo}/asistencia", CLASE_ID)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.codigoError").value("GC-0028"));
+    }
+
+    @Test
+    void confirmarAsistencias_sinJwt_retornaUnauthorized() throws Exception {
+        SecurityContextHolder.clearContext();
+        ConfirmacionAsistenciaRequest request = new ConfirmacionAsistenciaRequest(
+                List.of(new ItemConfirmacionAsistenciaDto(PERF_ID, true)), false);
+
+        mockMvc.perform(put("/api/v2/clase/{codigo}/asistencia", CLASE_ID)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isUnauthorized());
+
+        verify(servicioAsistencia, never()).confirmarAsistencias(any(), any(), anyBoolean(), any(), any());
     }
 }

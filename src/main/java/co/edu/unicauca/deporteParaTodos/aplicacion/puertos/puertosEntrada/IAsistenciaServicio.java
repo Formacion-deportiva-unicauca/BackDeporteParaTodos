@@ -2,7 +2,9 @@ package co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosEntrada;
 
 import java.util.List;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Asistencia;
+import co.edu.unicauca.deporteParaTodos.dominio.modelo.ResultadoConfirmacionAsistencia;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.AtencionDto;
+import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.ItemConfirmacionAsistenciaDto;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.VentanaRegistroDto;
 
 public interface IAsistenciaServicio {
@@ -34,4 +36,9 @@ public interface IAsistenciaServicio {
     // prorroga vigente), fechaMaxima = hoy. Coordinador/Administrador:
     // fechaMinima null (sin limite inferior), fechaMaxima = hoy.
     public VentanaRegistroDto obtenerVentanaRegistro(String perfIdLlamador, String rolLlamador);
+
+    // Faltas acumuladas (etapa 4 de 5): PUT /clase/{codigo}/asistencia.
+    public ResultadoConfirmacionAsistencia confirmarAsistencias(Integer claseId,
+            List<ItemConfirmacionAsistenciaDto> asistencias, boolean confirmaTodosAusentes,
+            String perfIdLlamador, String rolLlamador);
 }

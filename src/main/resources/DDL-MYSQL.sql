@@ -317,6 +317,13 @@ CREATE TABLE tbl_clase (
     -- el grupo no tiene franja de horario ese dia de la semana (lo valida
     -- ClaseServicio, no una restriccion de BD, porque depende de tbl_horario).
     CLS_JUSTIFICACION    VARCHAR(500),
+    -- Faltas acumuladas (etapa 2 de 5): NULL = clase pendiente de confirmar o
+    -- historica (nunca genera faltas). Cada confirmacion SOBRESCRIBE ambas
+    -- columnas -- solo se guarda la ULTIMA confirmacion, no un historial.
+    -- CLS_ASISTENCIA_CONFIRMADA_POR usa VARCHAR(50), igual que todo PERF_ID en
+    -- este esquema (ver NOV_USUARIO_CREADOR en tbl_novedad_clase).
+    CLS_ASISTENCIA_CONFIRMADA_EN  DATETIME,
+    CLS_ASISTENCIA_CONFIRMADA_POR VARCHAR(50),
     CONSTRAINT FK_CLASE_INSTRUCTOR FOREIGN KEY (PERF_ID)                                        REFERENCES tbl_instructor (PERF_ID)                                    ON DELETE SET NULL,
     CONSTRAINT FK_CLASE_GRUPO      FOREIGN KEY (CAT_TITULO, CUR_NOMBRE, GRP_ANIO, GRP_ITERABLE) REFERENCES tbl_grupo (CAT_TITULO, CUR_NOMBRE, GRP_ANIO, GRP_ITERABLE) ON DELETE RESTRICT,
     CONSTRAINT PK_TBL_CLASE        PRIMARY KEY (CLS_CODIGO)
@@ -367,10 +374,24 @@ CREATE TABLE tbl_asistencia (
     META_ELIMINADO INT         NOT NULL,
     PERF_ID        VARCHAR(50) NOT NULL,
     CLS_CODIGO     BIGINT      NOT NULL,
+    -- Faltas acumuladas (etapa 2 de 5): PRESENTE | AUSENTE. Las filas
+    -- preexistentes antes de esta columna representaban todas una presencia
+    -- (el modelo viejo no guardaba ausencias como filas) -- el DEFAULT las
+    -- deja consistentes con ese significado historico sin tocar
+    -- META_ELIMINADO. Sin CHECK: version de MySQL del entorno de pruebas no
+    -- confirmada (>=8.0.16 lo soporta) -- se valida en el servicio (etapa 4).
+    ASI_ESTADO     VARCHAR(10) NOT NULL DEFAULT 'PRESENTE',
     CONSTRAINT FK_ASISTENCIA_CLASE  FOREIGN KEY (CLS_CODIGO) REFERENCES tbl_clase (CLS_CODIGO)  ON DELETE RESTRICT,
     CONSTRAINT FK_ASISTENCIA_ALUMNO FOREIGN KEY (PERF_ID)    REFERENCES tbl_alumno (PERF_ID)    ON DELETE RESTRICT,
     CONSTRAINT PK_TBL_ASISTENCIA    PRIMARY KEY (PERF_ID, CLS_CODIGO)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Candidato propuesto en el documento de faltas acumuladas, para la consulta
+-- agregada de la etapa 5 (GROUP BY PERF_ID filtrando CLS_CODIGO IN (grupo) y
+-- ASI_ESTADO='AUSENTE'). No se valido con EXPLAIN contra el entorno real
+-- (sin acceso a MySQL desde este cambio) -- revisar con EXPLAIN antes de
+-- confiar en el en produccion con volumen real.
+CREATE INDEX IDX_ASISTENCIA_CLASE_ESTADO_PERFIL ON tbl_asistencia (CLS_CODIGO, ASI_ESTADO, PERF_ID);
 
 -- --------------------------------------------------------
 -- tbl_horario

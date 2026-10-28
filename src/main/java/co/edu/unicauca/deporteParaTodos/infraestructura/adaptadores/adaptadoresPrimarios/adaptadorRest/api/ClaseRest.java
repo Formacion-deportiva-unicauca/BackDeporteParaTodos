@@ -45,10 +45,9 @@ public class ClaseRest {
 
     @Operation(summary = "Obtiene las clases activas de un grupo especifico")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Listado de clases del grupo"),
-        @ApiResponse(responseCode = "404", description = "No existen clases para el grupo consultado")
+        @ApiResponse(responseCode = "200", description = "Listado de clases del grupo. Si el grupo no tiene clases tambien responde 200, pero con un cuerpo de error GC-0002 (listado vacio) en lugar de una lista")
     })
-    @PreAuthorize("hasAnyAuthority('Instructor','Coordinador')")
+    @PreAuthorize("hasAnyAuthority('Instructor','Coordinador','Administrador')")
     @GetMapping("/clasesGrupo")
     public ResponseEntity<List<ClaseDto>> getClasesGrupo(
             @Parameter(description = "Categoria del grupo")

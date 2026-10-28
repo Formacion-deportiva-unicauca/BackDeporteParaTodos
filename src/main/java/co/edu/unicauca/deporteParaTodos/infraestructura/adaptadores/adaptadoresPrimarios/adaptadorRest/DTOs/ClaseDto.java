@@ -1,6 +1,7 @@
 package co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -60,4 +61,8 @@ public class ClaseDto {
     // valida ClaseServicio, no una anotacion aqui, porque la obligatoriedad
     // depende de datos que el DTO no conoce). La respuesta siempre la incluye.
     private String justificacion;
+
+// Solo de SALIDA: cuando se confirmo la asistencia de la clase (null = pendiente o historica). Nunca se lee del cliente
+// (ClaseMapper.fromDto la ignora).
+private LocalDateTime asistenciaConfirmadaEn;
 }

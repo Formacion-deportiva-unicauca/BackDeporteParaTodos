@@ -49,7 +49,7 @@ public class AlumnoRest {
         @ApiResponse(responseCode = "200", description = "Listado de alumnos del grupo"),
         @ApiResponse(responseCode = "404", description = "No existen alumnos para el grupo consultado")
     })
-    @PreAuthorize("hasAnyAuthority('Instructor','Coordinador')")
+    @PreAuthorize("hasAnyAuthority('Instructor','Coordinador','Administrador')")
     @GetMapping("/alumnosGrupo")
     public ResponseEntity<List<AlumnoDto>> obtenerAlumnosGrupo(
             @Parameter(description = "Categoria del grupo")

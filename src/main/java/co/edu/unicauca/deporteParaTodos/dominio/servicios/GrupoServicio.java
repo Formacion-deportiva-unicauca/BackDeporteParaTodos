@@ -8,6 +8,8 @@ import java.util.List;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
+import org.springframework.transaction.annotation.Transactional;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosEntrada.IGrupoServicio;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.ICursoGateway;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IGrupoGateway;
@@ -16,6 +18,7 @@ import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IInscri
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IInstructorGateway;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.ConteoInscripcionGrupo;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Curso;
+import co.edu.unicauca.deporteParaTodos.dominio.modelo.EstadoCurso;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Grupo;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Horario;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.InstructorGrupoResumen;
@@ -80,6 +83,9 @@ public class GrupoServicio implements IGrupoServicio {
         return grupo;
     }
 
+    // READ_COMMITTED: igual que inscribir()/promoverManualmente() -- el lock pesimista del grupo se toma antes de contar cupos y la
+    // lectura de ocupacion no debe quedar atada a un snapshot anterior al lock.
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public Grupo actualizarGrupo(String categoria, String curso, Integer anio, Integer iterable, Grupo datosGrupo) {
         if (!grupoGateway.existeGrupo(categoria, curso, anio, iterable)) {
             throw new NoExisteExcepcion("no existe el objetivo a actualizar");
@@ -96,7 +102,30 @@ public class GrupoServicio implements IGrupoServicio {
         LocalDate fechaCierreFinal = datosGrupo.getFechaIncripcionCierre() != null
                 ? datosGrupo.getFechaIncripcionCierre() : actual.getFechaIncripcionCierre();
         validarFechasGrupo(fechaCreacionFinal, fechaFinalizacionFinal, fechaAperturaFinal, fechaCierreFinal);
-        return grupoGateway.actualizarGrupo(categoria, curso, anio, iterable, datosGrupo);
+        Grupo actualizado = grupoGateway.actualizarGrupo(categoria, curso, anio, iterable, datosGrupo);
+        promoverListaDeEsperaPorAmpliacionDeCupos(actual.getCupos(), actualizado.getCupos(), categoria, curso, anio, iterable);
+        return actualizado;
+    }
+
+    // Al AMPLIAR los cupos, los cupos nuevos se ocupan automaticamente con quienes esperan, en el orden de la lista de espera
+    // (mismo criterio que al liberarse un cupo por desvinculacion). Nunca se sobrepasa el cupo y, como en la promocion manual,
+    // no se promueve si el curso no esta ACTIVO (SCRUM-178).
+    private void promoverListaDeEsperaPorAmpliacionDeCupos(Integer cuposAntes, Integer cuposDespues,
+            String categoria, String nombreCurso, Integer anio, Integer iterable) {
+        if (cuposAntes == null || cuposDespues == null || cuposDespues <= cuposAntes) {
+            return;
+        }
+        Curso infoCurso = cursoGateway.obtenerCurso(categoria, nombreCurso);
+        if (infoCurso == null || !EstadoCurso.ACTIVO.equals(infoCurso.getEstadoCurso())) {
+            return;
+        }
+        // Lock pesimista del grupo ANTES de contar: ninguna inscripcion o promocion concurrente puede colarse entre el conteo y la promocion.
+        grupoGateway.obtenerGrupoConLock(categoria, nombreCurso, anio, iterable);
+        long libres = cuposDespues - inscripcionGateway.contarInscripcionesActivasGrupo(categoria, nombreCurso, anio, iterable);
+        long enEspera = inscripcionGateway.contarEnEsperaGrupo(categoria, nombreCurso, anio, iterable);
+        for (long i = 0; i < Math.min(libres, enEspera); i++) {
+            inscripcionGateway.promoverPrimeroEnEspera(categoria, nombreCurso, anio, iterable);
+        }
     }
 
     // R1: fechaFinalizacion no puede ser anterior a fechaCreacion.

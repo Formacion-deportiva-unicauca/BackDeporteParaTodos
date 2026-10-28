@@ -9,6 +9,7 @@ import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresS
 import jakarta.transaction.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -45,4 +46,11 @@ public interface IClaseRepositorio extends CrudRepository<ClaseEntidad,Integer>{
     @Transactional
     @Query("UPDATE ClaseEntidad c SET c.eliminado = 1 WHERE c.codigo =:codigo")
     int marcarComoEliminado(@Param("codigo") Integer codigo);
+
+    @Modifying
+    @Transactional
+    @Query("UPDATE ClaseEntidad c SET c.asistenciaConfirmadaEn = :confirmadaEn, "
+            + "c.asistenciaConfirmadaPor = :confirmadaPor WHERE c.codigo = :codigo")
+    int marcarAsistenciaConfirmada(@Param("codigo") Integer codigo,
+            @Param("confirmadaEn") LocalDateTime confirmadaEn, @Param("confirmadaPor") String confirmadaPor);
 }

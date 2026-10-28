@@ -6,7 +6,9 @@ import static org.mockito.Mockito.*;
 
 import java.time.Clock;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.sql.Timestamp;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -22,19 +24,27 @@ import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IAlumno
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IAsistenciaGateway;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IClaseGateway;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IHorarioGateway;
+import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IInscripcionGateway;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IProrrogaRegistroAsistenciaGateway;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.AccesoGrupoDenegadoExcepcion;
+import co.edu.unicauca.deporteParaTodos.dominio.excepciones.AlumnoFueraDeGrupoExcepcion;
+import co.edu.unicauca.deporteParaTodos.dominio.excepciones.ConfirmacionSinAsistentesExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.DiaFueraDeHorarioExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.FechaClaseFuturaExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.ListadoVacioExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.NoExisteExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.RegistroAsistenciaVencidoExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.YaExisteElementoExcepcion;
+import co.edu.unicauca.deporteParaTodos.dominio.modelo.Alumno;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Asistencia;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Clase;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Horario;
+import co.edu.unicauca.deporteParaTodos.dominio.modelo.Inscripcion;
+import co.edu.unicauca.deporteParaTodos.dominio.modelo.Perfil;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.ProrrogaRegistroAsistencia;
+import co.edu.unicauca.deporteParaTodos.dominio.modelo.ResultadoConfirmacionAsistencia;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.AtencionDto;
+import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.ItemConfirmacionAsistenciaDto;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.VentanaRegistroDto;
 
 @ExtendWith(MockitoExtension.class)
@@ -48,6 +58,9 @@ class AsistenciaServicioTest {
 
     @Mock
     private IClaseGateway claseGateway;
+
+    @Mock
+    private IInscripcionGateway inscripcionGateway;
 
     @Mock
     private IProrrogaRegistroAsistenciaGateway prorrogaGateway;
@@ -96,6 +109,42 @@ class AsistenciaServicioTest {
 
     private Horario franja(String dia, String inicio, String fin) {
         return new Horario(1, null, null, 0, 0, dia, inicio, fin, "Cancha", 0);
+    }
+
+    // Faltas acumuladas (etapa 4 de 5) -----------------------------------------
+
+    private Clase claseConfirmada(LocalDate fecha) {
+        Clase c = claseConFecha(fecha);
+        c.setAsistenciaConfirmadaEn(LocalDateTime.of(2026, 10, 10, 8, 0));
+        c.setAsistenciaConfirmadaPor("coord-anterior");
+        return c;
+    }
+
+    private Alumno alumnoDe(String perfId) {
+        Perfil perfil = new Perfil();
+        perfil.setId(perfId);
+        Alumno alumno = new Alumno();
+        alumno.setPerfil(perfil);
+        return alumno;
+    }
+
+    // Universo U por defecto para confirmarAsistencias(): 1 alumno, inscrito
+    // antes de la fecha de la clase (elegible para ausencia).
+    private void stubUniversoYElegibilidad(Clase clase, String alumnoId, LocalDate fechaInscripcion) {
+        when(alumnoGateway.obtenerAlumnosGrupo(clase.getCategoria(), clase.getCurso(), clase.getAnio(), clase.getIterable()))
+                .thenReturn(List.of(alumnoDe(alumnoId)));
+        stubElegibilidad(clase, alumnoId, fechaInscripcion);
+    }
+
+    // Solo la inscripcion (fecha) de un alumnoId -- para tests que ya armaron
+    // el universo (obtenerAlumnosGrupo) con varios alumnos por su cuenta.
+    private void stubElegibilidad(Clase clase, String alumnoId, LocalDate fechaInscripcion) {
+        lenient().when(inscripcionGateway.existeInscripcion(alumnoId, clase.getCategoria(), clase.getCurso(),
+                clase.getAnio(), clase.getIterable())).thenReturn(true);
+        Inscripcion inscripcion = new Inscripcion(alumnoId, clase.getCategoria(), clase.getCurso(),
+                clase.getAnio(), clase.getIterable(), Timestamp.valueOf(fechaInscripcion.atStartOfDay()), null, "INSCRITO");
+        lenient().when(inscripcionGateway.obtenerInscripcion(alumnoId, clase.getCategoria(), clase.getCurso(),
+                clase.getAnio(), clase.getIterable())).thenReturn(inscripcion);
     }
 
     // SCRUM-80 (correccion del cliente, 15 oct 2026): HOY_FIJO (2026-10-15) es
@@ -674,5 +723,355 @@ class AsistenciaServicioTest {
                 () -> servicio.eliminarAsistencia("perf1", (long) CLASE_ID, INS, "Instructor"));
 
         verify(autorizacionGrupo, never()).verificarPropietario(any(), any(), any(), any(), any(), any());
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // Faltas acumuladas (etapa 4 de 5): confirmarAsistencias()
+    // ──────────────────────────────────────────────────────────────────────────
+
+    @Test
+    void confirmarAsistencias_registroNormal_marcaPresenteYAusenteYConfirmaLaClase() {
+        Clase clase = claseConFecha(HOY_FIJO);
+        when(claseGateway.existeClase(CLASE_ID)).thenReturn(true);
+        when(claseGateway.obtenerClase(CLASE_ID)).thenReturn(clase);
+        sinProrroga();
+        when(alumnoGateway.obtenerAlumnosGrupo("Recreativo", "Natacion", 2026, 1))
+                .thenReturn(List.of(alumnoDe("alum1"), alumnoDe("alum2")));
+        stubElegibilidad(clase, "alum2", HOY_FIJO.minusDays(30));
+        lenient().when(inscripcionGateway.existeInscripcion("alum1", "Recreativo", "Natacion", 2026, 1)).thenReturn(true);
+
+        ItemConfirmacionAsistenciaDto item = new ItemConfirmacionAsistenciaDto("alum1", true);
+        ResultadoConfirmacionAsistencia resultado = servicio.confirmarAsistencias(
+                CLASE_ID, List.of(item), false, INS, "Instructor");
+
+        verify(asistenciaGateway).marcarPresente("alum1", CLASE_ID);
+        verify(asistenciaGateway).marcarAusente("alum2", CLASE_ID);
+        verify(claseGateway).confirmarAsistencia(eq(CLASE_ID), any(LocalDateTime.class), eq(INS));
+        assertEquals(1, resultado.getPresentes());
+        assertEquals(1, resultado.getAusentes());
+        assertEquals(CLASE_ID, resultado.getCodigoClase());
+    }
+
+    @Test
+    void confirmarAsistencias_todosAusentesConBandera_permite() {
+        Clase clase = claseConFecha(HOY_FIJO);
+        when(claseGateway.existeClase(CLASE_ID)).thenReturn(true);
+        when(claseGateway.obtenerClase(CLASE_ID)).thenReturn(clase);
+        sinProrroga();
+        stubUniversoYElegibilidad(clase, "alum1", HOY_FIJO.minusDays(30));
+
+        ResultadoConfirmacionAsistencia resultado = servicio.confirmarAsistencias(
+                CLASE_ID, List.of(), true, INS, "Instructor");
+
+        verify(asistenciaGateway).marcarAusente("alum1", CLASE_ID);
+        assertEquals(0, resultado.getPresentes());
+        assertEquals(1, resultado.getAusentes());
+    }
+
+    @Test
+    void confirmarAsistencias_todosAusentesSinBandera_lanzaConfirmacionSinAsistentesYNoGuardaNada() {
+        Clase clase = claseConFecha(HOY_FIJO);
+        when(claseGateway.existeClase(CLASE_ID)).thenReturn(true);
+        when(claseGateway.obtenerClase(CLASE_ID)).thenReturn(clase);
+        sinProrroga();
+
+        assertThrows(ConfirmacionSinAsistentesExcepcion.class,
+                () -> servicio.confirmarAsistencias(CLASE_ID, List.of(), false, INS, "Instructor"));
+
+        verify(alumnoGateway, never()).obtenerAlumnosGrupo(any(), any(), anyInt(), anyInt());
+        verify(asistenciaGateway, never()).marcarPresente(any(), anyInt());
+        verify(asistenciaGateway, never()).marcarAusente(any(), anyInt());
+        verify(claseGateway, never()).confirmarAsistencia(any(), any(), any());
+    }
+
+    @Test
+    void confirmarAsistencias_idempotente_mismoResultadoAlRepetir() {
+        Clase clase = claseConFecha(HOY_FIJO);
+        when(claseGateway.existeClase(CLASE_ID)).thenReturn(true);
+        when(claseGateway.obtenerClase(CLASE_ID)).thenReturn(clase);
+        sinProrroga();
+        stubUniversoYElegibilidad(clase, "alum1", HOY_FIJO.minusDays(30));
+
+        ItemConfirmacionAsistenciaDto item = new ItemConfirmacionAsistenciaDto("alum1", true);
+        ResultadoConfirmacionAsistencia primera = servicio.confirmarAsistencias(
+                CLASE_ID, List.of(item), false, INS, "Instructor");
+        ResultadoConfirmacionAsistencia segunda = servicio.confirmarAsistencias(
+                CLASE_ID, List.of(item), false, INS, "Instructor");
+
+        assertEquals(primera.getPresentes(), segunda.getPresentes());
+        assertEquals(primera.getAusentes(), segunda.getAusentes());
+        verify(asistenciaGateway, times(2)).marcarPresente("alum1", CLASE_ID);
+        // Los campos de auditoria SI se actualizan a proposito en cada corrida.
+        verify(claseGateway, times(2)).confirmarAsistencia(eq(CLASE_ID), any(LocalDateTime.class), eq(INS));
+    }
+
+    @Test
+    void confirmarAsistencias_reconfirmacionQueCorrige_segundaCorridaCambiaDePresenteAAusente() {
+        Clase clase = claseConFecha(HOY_FIJO);
+        when(claseGateway.existeClase(CLASE_ID)).thenReturn(true);
+        when(claseGateway.obtenerClase(CLASE_ID)).thenReturn(clase);
+        sinProrroga();
+        stubUniversoYElegibilidad(clase, "alum1", HOY_FIJO.minusDays(30));
+
+        servicio.confirmarAsistencias(CLASE_ID, List.of(new ItemConfirmacionAsistenciaDto("alum1", true)),
+                false, INS, "Instructor");
+        verify(asistenciaGateway).marcarPresente("alum1", CLASE_ID);
+
+        ResultadoConfirmacionAsistencia corregida = servicio.confirmarAsistencias(
+                CLASE_ID, List.of(), true, INS, "Instructor");
+
+        verify(asistenciaGateway).marcarAusente("alum1", CLASE_ID);
+        assertEquals(0, corregida.getPresentes());
+        assertEquals(1, corregida.getAusentes());
+    }
+
+    @Test
+    void confirmarAsistencias_idPerfilFueraDeU_lanzaAlumnoFueraDeGrupoYNoGuardaNada() {
+        Clase clase = claseConFecha(HOY_FIJO);
+        when(claseGateway.existeClase(CLASE_ID)).thenReturn(true);
+        when(claseGateway.obtenerClase(CLASE_ID)).thenReturn(clase);
+        sinProrroga();
+        when(alumnoGateway.obtenerAlumnosGrupo("Recreativo", "Natacion", 2026, 1))
+                .thenReturn(List.of(alumnoDe("alum1")));
+
+        List<ItemConfirmacionAsistenciaDto> items = List.of(
+                new ItemConfirmacionAsistenciaDto("alum1", true),
+                new ItemConfirmacionAsistenciaDto("ajeno", true));
+
+        assertThrows(AlumnoFueraDeGrupoExcepcion.class,
+                () -> servicio.confirmarAsistencias(CLASE_ID, items, false, INS, "Instructor"));
+
+        // Fallo parcial: NADA se guarda, ni siquiera para "alum1" que si era valido.
+        verify(asistenciaGateway, never()).marcarPresente(any(), anyInt());
+        verify(asistenciaGateway, never()).marcarAusente(any(), anyInt());
+        verify(claseGateway, never()).confirmarAsistencia(any(), any(), any());
+    }
+
+    @Test
+    void confirmarAsistencias_instructorDeOtroGrupo_lanzaAccesoGrupoDenegadoYNoLeeUniverso() {
+        Clase clase = claseConFecha(HOY_FIJO);
+        when(claseGateway.existeClase(CLASE_ID)).thenReturn(true);
+        when(claseGateway.obtenerClase(CLASE_ID)).thenReturn(clase);
+        doThrow(new AccesoGrupoDenegadoExcepcion("ajeno"))
+                .when(autorizacionGrupo).verificarPropietario("Recreativo", "Natacion", 2026, 1, INS, "Instructor");
+
+        assertThrows(AccesoGrupoDenegadoExcepcion.class, () -> servicio.confirmarAsistencias(
+                CLASE_ID, List.of(new ItemConfirmacionAsistenciaDto("alum1", true)), false, INS, "Instructor"));
+
+        verify(alumnoGateway, never()).obtenerAlumnosGrupo(any(), any(), anyInt(), anyInt());
+    }
+
+    @Test
+    void confirmarAsistencias_instructorMesAnteriorSinProrroga_lanzaRegistroAsistenciaVencido() {
+        Clase clase = claseConFecha(LocalDate.of(2026, 9, 10));
+        when(claseGateway.existeClase(CLASE_ID)).thenReturn(true);
+        when(claseGateway.obtenerClase(CLASE_ID)).thenReturn(clase);
+        sinProrroga();
+
+        assertThrows(RegistroAsistenciaVencidoExcepcion.class, () -> servicio.confirmarAsistencias(
+                CLASE_ID, List.of(new ItemConfirmacionAsistenciaDto("alum1", true)), false, INS, "Instructor"));
+
+        verify(alumnoGateway, never()).obtenerAlumnosGrupo(any(), any(), anyInt(), anyInt());
+    }
+
+    @Test
+    void confirmarAsistencias_instructorSinHorarioEseDia_lanzaDiaFueraDeHorario() {
+        Clase clase = claseConFecha(HOY_FIJO);
+        when(claseGateway.existeClase(CLASE_ID)).thenReturn(true);
+        when(claseGateway.obtenerClase(CLASE_ID)).thenReturn(clase);
+        lenient().when(prorrogaGateway.obtenerProrrogasPorMes(anyInt(), anyInt())).thenReturn(Map.of());
+        when(horarioGateway.listarHorariosPorGrupo(any(), any(), anyInt(), anyInt())).thenReturn(List.of());
+
+        assertThrows(DiaFueraDeHorarioExcepcion.class, () -> servicio.confirmarAsistencias(
+                CLASE_ID, List.of(new ItemConfirmacionAsistenciaDto("alum1", true)), false, INS, "Instructor"));
+
+        verify(alumnoGateway, never()).obtenerAlumnosGrupo(any(), any(), anyInt(), anyInt());
+    }
+
+    @Test
+    void confirmarAsistencias_coordinador_exentoDePlazoYDeHorario_permite() {
+        Clase clase = claseConFecha(LocalDate.of(2026, 1, 1));
+        when(claseGateway.existeClase(CLASE_ID)).thenReturn(true);
+        when(claseGateway.obtenerClase(CLASE_ID)).thenReturn(clase);
+        lenient().when(prorrogaGateway.obtenerProrrogasPorMes(anyInt(), anyInt())).thenReturn(Map.of());
+        stubUniversoYElegibilidad(clase, "alum1", LocalDate.of(2025, 12, 1));
+
+        ResultadoConfirmacionAsistencia resultado = servicio.confirmarAsistencias(
+                CLASE_ID, List.of(new ItemConfirmacionAsistenciaDto("alum1", true)), false, COORD, "Coordinador");
+
+        assertEquals(1, resultado.getPresentes());
+        verify(horarioGateway, never()).listarHorariosPorGrupo(any(), any(), anyInt(), anyInt());
+    }
+
+    @Test
+    void confirmarAsistencias_claseInexistente_lanzaNoExisteExcepcion() {
+        when(claseGateway.existeClase(CLASE_ID)).thenReturn(false);
+
+        assertThrows(NoExisteExcepcion.class, () -> servicio.confirmarAsistencias(
+                CLASE_ID, List.of(new ItemConfirmacionAsistenciaDto("alum1", true)), false, INS, "Instructor"));
+
+        verify(autorizacionGrupo, never()).verificarPropietario(any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void confirmarAsistencias_claseEliminada_lanzaNoExisteExcepcion() {
+        Clase clase = claseConFecha(HOY_FIJO);
+        clase.setEliminado(1);
+        when(claseGateway.existeClase(CLASE_ID)).thenReturn(true);
+        when(claseGateway.obtenerClase(CLASE_ID)).thenReturn(clase);
+        sinProrroga();
+
+        assertThrows(NoExisteExcepcion.class, () -> servicio.confirmarAsistencias(
+                CLASE_ID, List.of(new ItemConfirmacionAsistenciaDto("alum1", true)), false, INS, "Instructor"));
+
+        verify(alumnoGateway, never()).obtenerAlumnosGrupo(any(), any(), anyInt(), anyInt());
+    }
+
+    // Regla 3 del ticket: PRESENTE se registra SIEMPRE, sea o no elegible --
+    // un alumno inscrito DESPUES de la fecha de la clase puede ser marcado
+    // presente igual (el Instructor lo decide), pero si no viene marcado NO
+    // genera una fila AUSENTE (no era elegible) ni toca ninguna fila existente.
+    @Test
+    void confirmarAsistencias_alumnoInscritoDespuesDeLaClase_marcaPresenteSiElInstructorLoIndica() {
+        Clase clase = claseConFecha(HOY_FIJO);
+        when(claseGateway.existeClase(CLASE_ID)).thenReturn(true);
+        when(claseGateway.obtenerClase(CLASE_ID)).thenReturn(clase);
+        sinProrroga();
+        stubUniversoYElegibilidad(clase, "alum1", HOY_FIJO.plusDays(5));
+
+        ResultadoConfirmacionAsistencia resultado = servicio.confirmarAsistencias(CLASE_ID,
+                List.of(new ItemConfirmacionAsistenciaDto("alum1", true)), false, INS, "Instructor");
+
+        verify(asistenciaGateway).marcarPresente("alum1", CLASE_ID);
+        assertEquals(1, resultado.getPresentes());
+    }
+
+    @Test
+    void confirmarAsistencias_alumnoInscritoDespuesSinMarcaDePresente_noCreaFilaAusente() {
+        Clase clase = claseConFecha(HOY_FIJO);
+        when(claseGateway.existeClase(CLASE_ID)).thenReturn(true);
+        when(claseGateway.obtenerClase(CLASE_ID)).thenReturn(clase);
+        sinProrroga();
+        stubUniversoYElegibilidad(clase, "alum1", HOY_FIJO.plusDays(5));
+        when(asistenciaGateway.obtenerAsistencia("alum1", CLASE_ID)).thenReturn(Optional.empty());
+
+        ResultadoConfirmacionAsistencia resultado = servicio.confirmarAsistencias(
+                CLASE_ID, List.of(), true, INS, "Instructor");
+
+        verify(asistenciaGateway, never()).marcarAusente(any(), anyInt());
+        verify(asistenciaGateway, never()).eliminarAsistencia(any(), any());
+        assertEquals(0, resultado.getAusentes());
+    }
+
+    // Regla 5 del ticket: un alumno desvinculado (fuera de U) no aparece en el
+    // universo -- sus filas, si existen, nunca se tocan desde este metodo.
+    @Test
+    void confirmarAsistencias_alumnoDesvinculado_noApareceEnUniversoNiSeTocaSuFila() {
+        Clase clase = claseConFecha(HOY_FIJO);
+        when(claseGateway.existeClase(CLASE_ID)).thenReturn(true);
+        when(claseGateway.obtenerClase(CLASE_ID)).thenReturn(clase);
+        sinProrroga();
+        // El desvinculado ("alum-viejo") no aparece en obtenerAlumnosGrupo.
+        stubUniversoYElegibilidad(clase, "alum1", HOY_FIJO.minusDays(10));
+
+        servicio.confirmarAsistencias(CLASE_ID, List.of(new ItemConfirmacionAsistenciaDto("alum1", true)),
+                false, INS, "Instructor");
+
+        verify(asistenciaGateway, never()).marcarPresente(eq("alum-viejo"), anyInt());
+        verify(asistenciaGateway, never()).marcarAusente(eq("alum-viejo"), anyInt());
+        verify(asistenciaGateway, never()).eliminarAsistencia(eq("alum-viejo"), any());
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // Faltas acumuladas (etapa 4 de 5): registrarAtencionesPorClase() y
+    // eliminarAsistencia() cuando la clase YA esta confirmada (regla 8)
+    // ──────────────────────────────────────────────────────────────────────────
+
+    @Test
+    void registrarAtencionesPorClase_claseConfirmada_marcarTrue_forzaPresente() {
+        Clase clase = claseConfirmada(HOY_FIJO);
+        when(claseGateway.existeClase(CLASE_ID)).thenReturn(true);
+        when(claseGateway.obtenerClase(CLASE_ID)).thenReturn(clase);
+        sinProrroga();
+        when(alumnoGateway.existeAlumno("alum1")).thenReturn(true);
+
+        AtencionDto dto = new AtencionDto("alum1", CLASE_ID, true);
+        servicio.registrarAtencionesPorClase(List.of(dto), CLASE_ID, INS, "Instructor");
+
+        verify(asistenciaGateway).marcarPresente("alum1", CLASE_ID);
+        verify(asistenciaGateway, never()).InsertarAsistencia(any());
+        verify(asistenciaGateway, never()).reactivarAsistencia(any(), anyInt());
+    }
+
+    @Test
+    void registrarAtencionesPorClase_claseConfirmadaYAlumnoElegible_marcarFalse_marcaAusente() {
+        Clase clase = claseConfirmada(HOY_FIJO);
+        when(claseGateway.existeClase(CLASE_ID)).thenReturn(true);
+        when(claseGateway.obtenerClase(CLASE_ID)).thenReturn(clase);
+        sinProrroga();
+        when(alumnoGateway.existeAlumno("alum1")).thenReturn(true);
+        when(inscripcionGateway.existeInscripcion("alum1", "Recreativo", "Natacion", 2026, 1)).thenReturn(true);
+        Inscripcion inscripcion = new Inscripcion("alum1", "Recreativo", "Natacion", 2026, 1,
+                Timestamp.valueOf(HOY_FIJO.minusDays(30).atStartOfDay()), null, "INSCRITO");
+        when(inscripcionGateway.obtenerInscripcion("alum1", "Recreativo", "Natacion", 2026, 1)).thenReturn(inscripcion);
+
+        AtencionDto dto = new AtencionDto("alum1", CLASE_ID, false);
+        servicio.registrarAtencionesPorClase(List.of(dto), CLASE_ID, INS, "Instructor");
+
+        verify(asistenciaGateway).marcarAusente("alum1", CLASE_ID);
+        verify(asistenciaGateway, never()).eliminarAsitencia(any(), anyInt());
+    }
+
+    @Test
+    void registrarAtencionesPorClase_claseConfirmadaYAlumnoNoElegible_eliminaLogicamente() {
+        Clase clase = claseConfirmada(HOY_FIJO);
+        when(claseGateway.existeClase(CLASE_ID)).thenReturn(true);
+        when(claseGateway.obtenerClase(CLASE_ID)).thenReturn(clase);
+        sinProrroga();
+        when(alumnoGateway.existeAlumno("alum1")).thenReturn(true);
+        when(inscripcionGateway.existeInscripcion("alum1", "Recreativo", "Natacion", 2026, 1)).thenReturn(false);
+        when(asistenciaGateway.obtenerAsistencia("alum1", CLASE_ID))
+                .thenReturn(Optional.of(new Asistencia("alum1", CLASE_ID, 0)));
+
+        AtencionDto dto = new AtencionDto("alum1", CLASE_ID, false);
+        servicio.registrarAtencionesPorClase(List.of(dto), CLASE_ID, INS, "Instructor");
+
+        verify(asistenciaGateway).eliminarAsistencia("alum1", (long) CLASE_ID);
+        verify(asistenciaGateway, never()).marcarAusente(any(), anyInt());
+        verify(asistenciaGateway, never()).eliminarAsitencia(any(), anyInt());
+    }
+
+    @Test
+    void eliminarAsistencia_claseConfirmadaYElegible_marcaAusenteEnVezDeEliminarLogicamente() {
+        stubAsistenciaActiva("alum1");
+        Clase clase = claseConfirmada(HOY_FIJO);
+        when(claseGateway.obtenerClase(CLASE_ID)).thenReturn(clase);
+        sinProrroga();
+        when(inscripcionGateway.existeInscripcion("alum1", "Recreativo", "Natacion", 2026, 1)).thenReturn(true);
+        Inscripcion inscripcion = new Inscripcion("alum1", "Recreativo", "Natacion", 2026, 1,
+                Timestamp.valueOf(HOY_FIJO.minusDays(30).atStartOfDay()), null, "INSCRITO");
+        when(inscripcionGateway.obtenerInscripcion("alum1", "Recreativo", "Natacion", 2026, 1)).thenReturn(inscripcion);
+
+        servicio.eliminarAsistencia("alum1", (long) CLASE_ID, INS, "Instructor");
+
+        verify(asistenciaGateway).marcarAusente("alum1", CLASE_ID);
+        verify(asistenciaGateway, never()).eliminarAsistencia(any(), any());
+    }
+
+    @Test
+    void eliminarAsistencia_claseConfirmadaYNoElegible_eliminaLogicamente() {
+        stubAsistenciaActiva("alum1");
+        Clase clase = claseConfirmada(HOY_FIJO);
+        when(claseGateway.obtenerClase(CLASE_ID)).thenReturn(clase);
+        sinProrroga();
+        when(inscripcionGateway.existeInscripcion("alum1", "Recreativo", "Natacion", 2026, 1)).thenReturn(false);
+        Asistencia eliminada = new Asistencia("alum1", CLASE_ID, 1);
+        when(asistenciaGateway.eliminarAsistencia("alum1", (long) CLASE_ID)).thenReturn(eliminada);
+
+        Asistencia resultado = servicio.eliminarAsistencia("alum1", (long) CLASE_ID, INS, "Instructor");
+
+        assertEquals(1, resultado.getEliminado());
+        verify(asistenciaGateway).eliminarAsistencia("alum1", (long) CLASE_ID);
+        verify(asistenciaGateway, never()).marcarAusente(any(), anyInt());
     }
 }
