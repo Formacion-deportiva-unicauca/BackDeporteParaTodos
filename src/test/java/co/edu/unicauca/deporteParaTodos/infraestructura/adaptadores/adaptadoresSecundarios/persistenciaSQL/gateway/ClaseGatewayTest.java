@@ -12,6 +12,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -158,5 +159,29 @@ class ClaseGatewayTest {
         when(repoClase.findById(99)).thenReturn(Optional.empty());
 
         assertThrows(NoExisteExcepcion.class, () -> claseGateway.obtenerClase(99));
+    }
+
+    // --- confirmarAsistencia (Faltas acumuladas, etapa 4 de 5) ---
+
+    @Test
+    void confirmarAsistencia_existente_llamaUpdateYRetornaClaseConLosNuevosCampos() {
+        when(repoClase.findById(1)).thenReturn(Optional.of(entidadBase()));
+        LocalDateTime confirmadaEn = LocalDateTime.of(2026, 10, 26, 9, 30);
+
+        Clase resultado = claseGateway.confirmarAsistencia(1, confirmadaEn, "coord-1");
+
+        verify(repoClase).marcarAsistenciaConfirmada(1, confirmadaEn, "coord-1");
+        assertEquals(confirmadaEn, resultado.getAsistenciaConfirmadaEn());
+        assertEquals("coord-1", resultado.getAsistenciaConfirmadaPor());
+    }
+
+    @Test
+    void confirmarAsistencia_noExiste_lanzaNoExisteExcepcionSinActualizar() {
+        when(repoClase.findById(99)).thenReturn(Optional.empty());
+
+        assertThrows(NoExisteExcepcion.class,
+                () -> claseGateway.confirmarAsistencia(99, LocalDateTime.now(), "coord-1"));
+
+        verify(repoClase, never()).marcarAsistenciaConfirmada(any(), any(), any());
     }
 }

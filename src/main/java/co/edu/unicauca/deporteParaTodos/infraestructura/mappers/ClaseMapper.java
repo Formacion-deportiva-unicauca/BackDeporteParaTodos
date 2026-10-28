@@ -24,6 +24,8 @@ public class ClaseMapper {
             modelo.setObservacion(entidad.getObservacion());
             modelo.setEliminado(entidad.getEliminado());
             modelo.setJustificacion(entidad.getJustificacion());
+            modelo.setAsistenciaConfirmadaEn(entidad.getAsistenciaConfirmadaEn());
+            modelo.setAsistenciaConfirmadaPor(entidad.getAsistenciaConfirmadaPor());
             return modelo;
         } catch (Exception e) {
             throw new NoProcesableEntidadException("No fue posible convertir ClaseEntidad a dominio: " + e.getMessage());
@@ -45,6 +47,8 @@ public class ClaseMapper {
             entidad.setObservacion(clase.getObservacion());
             entidad.setEliminado(clase.getEliminado());
             entidad.setJustificacion(clase.getJustificacion());
+            entidad.setAsistenciaConfirmadaEn(clase.getAsistenciaConfirmadaEn());
+            entidad.setAsistenciaConfirmadaPor(clase.getAsistenciaConfirmadaPor());
             return entidad;
         } catch (Exception e) {
             throw new NoProcesableEntidadException("No fue posible convertir Clase a entidad: " + e.getMessage());
@@ -66,6 +70,7 @@ public class ClaseMapper {
             dto.setObservacion(clase.getObservacion());
             dto.setEliminado(clase.getEliminado());
             dto.setJustificacion(clase.getJustificacion());
+            dto.setAsistenciaConfirmadaEn(clase.getAsistenciaConfirmadaEn());
             return dto;
         } catch (Exception e) {
             throw new NoProcesableEntidadException("No fue posible convertir Clase a DTO: " + e.getMessage());

@@ -1,6 +1,7 @@
 package co.edu.unicauca.deporteParaTodos.dominio.servicios;
 
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IAlumnoGateway;
+import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IAsistenciaGateway;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IGrupoGateway;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IInscripcionGateway;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IPerfilGateway;
@@ -13,6 +14,7 @@ import co.edu.unicauca.deporteParaTodos.dominio.modelo.Perfil;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.AlumnoDto;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.ListadoVacioExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.NoExisteExcepcion;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -20,7 +22,10 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.sql.Timestamp;
+import java.time.Clock;
+import java.time.ZoneId;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -34,6 +39,8 @@ class AlumnoServicioTest {
     @Mock private IPerfilGateway perfilGateway;
     @Mock private IInscripcionGateway inscripcionGateway;
     @Mock private IGrupoGateway grupoGateway;
+    @Mock private IAsistenciaGateway asistenciaGateway;
+    @Mock private Clock clock;
     @Mock private AutorizacionGrupoServicio autorizacionGrupo;
     @InjectMocks private AlumnoServicio alumnoServicio;
 
@@ -44,6 +51,16 @@ class AlumnoServicioTest {
     private static final Integer ITERABLE = 1;
     private static final String  INS      = "INS001";
     private static final String  COORD    = "coord-1";
+
+    // Faltas acumuladas (etapa 5 de 5): obtenerAlumnosGrupo() ahora necesita
+    // "hoy" para la consulta de faltas -- lenient() porque la mayoria de los
+    // tests de esta clase no pasan por obtenerAlumnosGrupo().
+    @BeforeEach
+    void configurarClockPorDefecto() {
+        lenient().when(clock.instant()).thenReturn(
+                java.time.LocalDate.of(2026, 10, 15).atStartOfDay(ZoneId.of("America/Bogota")).toInstant());
+        lenient().when(clock.getZone()).thenReturn(ZoneId.of("America/Bogota"));
+    }
 
     private Alumno alumnoModelo() {
         Perfil perfil = new Perfil();
@@ -90,11 +107,40 @@ class AlumnoServicioTest {
         // Con modelos validos el mapeo funciona correctamente.
         when(alumnoGateway.obtenerAlumnosGrupo(CATEGORIA, CURSO, ANIO, ITERABLE))
                 .thenReturn(List.of(alumnoModelo()));
+        when(asistenciaGateway.contarFaltasPorGrupo(eq(CATEGORIA), eq(CURSO), eq(ANIO), eq(ITERABLE), any()))
+                .thenReturn(Map.of());
 
         List<AlumnoDto> resultado = alumnoServicio.obtenerAlumnosGrupo(CATEGORIA, CURSO, ANIO, ITERABLE);
 
         assertEquals(1, resultado.size());
         verify(alumnoGateway).obtenerAlumnosGrupo(CATEGORIA, CURSO, ANIO, ITERABLE);
+    }
+
+    // Faltas acumuladas (etapa 5 de 5): nunca null, 0 si no hay datos para
+    // ese alumno en el mapa agregado -- y el valor real cuando si los hay.
+    @Test
+    void obtenerAlumnosGrupo_sinFaltasParaElAlumno_quedaEnCero() {
+        when(alumnoGateway.obtenerAlumnosGrupo(CATEGORIA, CURSO, ANIO, ITERABLE))
+                .thenReturn(List.of(alumnoModelo()));
+        when(asistenciaGateway.contarFaltasPorGrupo(eq(CATEGORIA), eq(CURSO), eq(ANIO), eq(ITERABLE), any()))
+                .thenReturn(Map.of());
+
+        List<AlumnoDto> resultado = alumnoServicio.obtenerAlumnosGrupo(CATEGORIA, CURSO, ANIO, ITERABLE);
+
+        assertNotNull(resultado.get(0).getFaltas());
+        assertEquals(0, resultado.get(0).getFaltas());
+    }
+
+    @Test
+    void obtenerAlumnosGrupo_conFaltasParaElAlumno_combinaPorPerfId() {
+        when(alumnoGateway.obtenerAlumnosGrupo(CATEGORIA, CURSO, ANIO, ITERABLE))
+                .thenReturn(List.of(alumnoModelo()));
+        when(asistenciaGateway.contarFaltasPorGrupo(eq(CATEGORIA), eq(CURSO), eq(ANIO), eq(ITERABLE), any()))
+                .thenReturn(Map.of(ID, 3));
+
+        List<AlumnoDto> resultado = alumnoServicio.obtenerAlumnosGrupo(CATEGORIA, CURSO, ANIO, ITERABLE);
+
+        assertEquals(3, resultado.get(0).getFaltas());
     }
 
     @Test

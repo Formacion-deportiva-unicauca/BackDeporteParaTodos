@@ -32,4 +32,7 @@ public class AsistenciaEntidad {
 
     @Column(name = "META_ELIMINADO")
     private Integer eliminado;
+
+    @Column(name = "ASI_ESTADO")
+    private String estado;
 }

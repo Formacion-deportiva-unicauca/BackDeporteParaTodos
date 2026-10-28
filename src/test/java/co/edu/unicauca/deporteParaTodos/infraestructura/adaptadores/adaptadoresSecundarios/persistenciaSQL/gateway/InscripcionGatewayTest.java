@@ -12,7 +12,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.sql.Timestamp;
+import java.time.Clock;
 import java.time.Instant;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
 
@@ -25,6 +27,9 @@ class InscripcionGatewayTest {
 
     @Mock
     private IInscripcionRepositorio repoInscrp;
+
+    @Mock
+    private Clock clock;
 
     @InjectMocks
     private InscripcionGateway gateway;
@@ -209,6 +214,8 @@ class InscripcionGatewayTest {
         when(repoInscrp.findEnEsperaOrdenados(CATEGORIA, CURSO, ANIO, ITERABLE))
                 .thenReturn(List.of(enEspera));
         when(repoInscrp.save(any(InscripcionEntidad.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(clock.instant()).thenReturn(Instant.now());
+        when(clock.getZone()).thenReturn(ZoneId.systemDefault());
 
         gateway.promoverPrimeroEnEspera(CATEGORIA, CURSO, ANIO, ITERABLE);
 
@@ -234,6 +241,8 @@ class InscripcionGatewayTest {
         InscripcionEntidad enEspera = entidadEnEspera();
         when(repoInscrp.findById(any())).thenReturn(Optional.of(enEspera));
         when(repoInscrp.save(any(InscripcionEntidad.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(clock.instant()).thenReturn(Instant.now());
+        when(clock.getZone()).thenReturn(ZoneId.systemDefault());
 
         Inscripcion resultado = gateway.promoverInscripcion(ALUMNO_ID, CATEGORIA, CURSO, ANIO, ITERABLE);
 

@@ -17,6 +17,46 @@ public interface IAsistenciaRepositorio extends CrudRepository<AsistenciaEntidad
     Boolean existsByClaseCodigoAndPerfilId(Integer claseCodigo, String perfilId);
 
     /**
+     * Faltas acumuladas (etapa 5 de 5): UNA consulta agregada (GROUP BY
+     * perf_id) para todo el grupo -- sin N+1. No filtra por inscripcion
+     * actual: un alumno desvinculado conserva sus faltas aqui (solo deja de
+     * aparecer en la lista de alumnosGrupo, que las combina por fuera).
+     * Cuenta AUSENTE activa, de una clase activa y YA CONFIRMADA, no futura,
+     * y sin una novedad activa ese mismo grupo+fecha (la novedad excluye la
+     * falta, no bloquea la confirmacion -- ver AsistenciaServicio).
+     */
+    @Query(value = """
+        SELECT asis.perf_id, COUNT(*) AS faltas
+        FROM tbl_asistencia asis
+        INNER JOIN tbl_clase cl ON asis.cls_codigo = cl.cls_codigo
+        WHERE cl.cat_titulo = :categoria
+          AND cl.cur_nombre = :curso
+          AND cl.grp_anio = :anio
+          AND cl.grp_iterable = :iterable
+          AND cl.meta_eliminado = 0
+          AND asis.meta_eliminado = 0
+          AND asis.asi_estado = 'AUSENTE'
+          AND cl.cls_asistencia_confirmada_en IS NOT NULL
+          AND cl.cls_fecha <= :hoy
+          AND NOT EXISTS (
+              SELECT 1 FROM tbl_novedad_clase nov
+              WHERE nov.cat_titulo = cl.cat_titulo
+                AND nov.cur_nombre = cl.cur_nombre
+                AND nov.grp_anio = cl.grp_anio
+                AND nov.grp_iterable = cl.grp_iterable
+                AND nov.nov_fecha = cl.cls_fecha
+                AND nov.meta_eliminado = 0
+          )
+        GROUP BY asis.perf_id
+        """, nativeQuery = true)
+    List<Object[]> contarFaltasPorGrupo(
+            @Param("categoria") String categoria,
+            @Param("curso") String curso,
+            @Param("anio") Integer anio,
+            @Param("iterable") Integer iterable,
+            @Param("hoy") LocalDate hoy);
+
+    /**
      * Retorna las estadisticas entre dos fechas para las categorias existentes que posean cursos
      * @param fechaInicio
      * @param fechaFin
@@ -37,6 +77,7 @@ public interface IAsistenciaRepositorio extends CrudRepository<AsistenciaEntidad
                                         and g.grp_anio = cl.grp_anio
                                         and g.grp_iterable = cl.grp_iterable
                                         and cl.cls_fecha between :fechaInicio and :fechaFin
+                                        and cl.meta_eliminado = 0
             where (:categoria is null or c.cat_titulo = :categoria)
             group by cc.cat_titulo
             """,nativeQuery = true)
@@ -66,6 +107,7 @@ public interface IAsistenciaRepositorio extends CrudRepository<AsistenciaEntidad
                                         and g.grp_anio = cl.grp_anio
                                         and g.grp_iterable = cl.grp_iterable
                                         and cl.cls_fecha between :fechaInicio and :fechaFin
+                                        and cl.meta_eliminado = 0
             where
                 (:categoria is null or c.cat_titulo = :categoria) and
                 (:curso is null or c.cur_nombre = :curso)
@@ -104,7 +146,8 @@ public interface IAsistenciaRepositorio extends CrudRepository<AsistenciaEntidad
                                         and g.grp_anio = cl.grp_anio
                                         and g.grp_iterable = cl.grp_iterable
                                         and cl.cls_fecha between :fechaInicio and :fechaFin
-            where 
+                                        and cl.meta_eliminado = 0
+            where
                 (:categoria is null or g.cat_titulo = :categoria) and 
                 (:curso is null or g.cur_nombre = :curso) and 
                 (:anio is null or g.grp_anio = :anio) and 
@@ -141,10 +184,13 @@ public interface IAsistenciaRepositorio extends CrudRepository<AsistenciaEntidad
             tbl_asistencia asis
             INNER JOIN tbl_clase cl ON asis.cls_codigo = cl.cls_codigo
             INNER JOIN tbl_perfil p ON asis.perf_id = p.perf_id
-        WHERE  
-            (asis.perf_id = :alumno OR :alumno IS NULL) 
+        WHERE
+            (asis.perf_id = :alumno OR :alumno IS NULL)
             AND cl.cls_fecha BETWEEN :fechaInicio AND :fechaFin
-        GROUP BY  
+            AND asis.meta_eliminado = 0
+            AND cl.meta_eliminado = 0
+            AND asis.asi_estado = 'PRESENTE'
+        GROUP BY
             asis.perf_id, p.perf_nombre""", 
         nativeQuery = true)
     List<Object[]> estadisticasAlumno(@Param("fechaInicio") LocalDate fechaInicio, @Param("fechaFin") LocalDate fechaFin, @Param("alumno") String alumno);
@@ -167,10 +213,11 @@ public interface IAsistenciaRepositorio extends CrudRepository<AsistenciaEntidad
                 +coalesce(sum(cl.cls_duracion_minutos),0) as duracion_total_minutos
         from 
             tbl_clase cl inner join tbl_perfil p on cl.perf_id = p.perf_id
-        where 
+        where
             (cl.perf_id = :instructor or :instructor is null) and
-            cl.cls_fecha BETWEEN :fechaInicio 
-                            AND :fechaFin
+            cl.cls_fecha BETWEEN :fechaInicio
+                            AND :fechaFin and
+            cl.meta_eliminado = 0
         group by p.perf_nombre, cl.perf_id
             """, nativeQuery = true)
             List<Object[]> estadisticasInstructor(@Param("fechaInicio") LocalDate fechaInicio, @Param("fechaFin") LocalDate fechaFin, @Param("instructor") String instructor);

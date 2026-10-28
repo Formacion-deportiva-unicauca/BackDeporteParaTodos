@@ -1,6 +1,7 @@
 package co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresSecundarios.persistenciaSQL.entidades;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -64,5 +65,11 @@ public class ClaseEntidad {
 
     @Column(name = "CLS_JUSTIFICACION")
     private String justificacion;
+
+    @Column(name = "CLS_ASISTENCIA_CONFIRMADA_EN")
+    private LocalDateTime asistenciaConfirmadaEn;
+
+    @Column(name = "CLS_ASISTENCIA_CONFIRMADA_POR")
+    private String asistenciaConfirmadaPor;
 
 }

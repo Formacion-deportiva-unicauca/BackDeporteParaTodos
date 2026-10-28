@@ -222,6 +222,34 @@ class InscripcionServicioTest {
         assertNull(resultado.getFechaDesvinculacion());
     }
 
+    // Correccion de fechaInscripcion (auditoria previa a "faltas acumuladas"):
+    // de los 4 caminos que reactivan una fila de inscripcion (este, la rama
+    // EN_ESPERA de abajo, y promoverPrimeroEnEspera/promoverInscripcion en
+    // InscripcionGateway), este era el UNICO que no refrescaba fechaInscripcion
+    // -- quedaba congelada en el valor de la inscripcion original, aunque hayan
+    // pasado anios y un ciclo de desvinculacion/reinscripcion de por medio.
+    @Test
+    void inscribir_existente_conCupos_actualizaFechaInscripcionALaReactivacion() {
+        Timestamp fechaOriginalMuyVieja = Timestamp.valueOf("2020-01-01 00:00:00");
+        Inscripcion existente = new Inscripcion("alum1", "cat1", "cur1", 2026, 1,
+                fechaOriginalMuyVieja, Timestamp.valueOf("2020-02-01 00:00:00"), "INSCRITO");
+        when(cursoGateway.obtenerCurso("cat1", "cur1")).thenReturn(cursoAbierto);
+        when(grupoGateway.obtenerGrupoConLock("cat1", "cur1", 2026, 1)).thenReturn(grupoCon5Cupos);
+        when(gateway.contarInscripcionesActivasGrupo("cat1", "cur1", 2026, 1)).thenReturn(2L);
+        when(gateway.contarCursosActivosAlumno("alum1")).thenReturn(1L);
+        when(gateway.existeInscripcion("alum1", "cat1", "cur1", 2026, 1)).thenReturn(true);
+        when(gateway.obtenerInscripcion("alum1", "cat1", "cur1", 2026, 1)).thenReturn(existente);
+        when(gateway.guardarInscripcion(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        servicio.inscribir(datos, COORD, "Coordinador");
+
+        ArgumentCaptor<Inscripcion> guardada = ArgumentCaptor.forClass(Inscripcion.class);
+        verify(gateway).guardarInscripcion(guardada.capture());
+        assertNotEquals(fechaOriginalMuyVieja, guardada.getValue().getFechaInscripcion(),
+                "la reactivacion con cupos debe refrescar fechaInscripcion, no conservar la original de hace anios");
+        assertTrue(guardada.getValue().getFechaInscripcion().after(fechaOriginalMuyVieja));
+    }
+
     @Test
     void inscribir_sinCuposConInscripcionPreviaDesvinculada_reactivaComoEnEspera() {
         // Mismo patron que inscribir_existente_reactiva_fecha_desvinculacion_nula,

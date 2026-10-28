@@ -1,7 +1,9 @@
 package co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresSecundarios.persistenciaSQL.gateway;
 
 import java.sql.Timestamp;
+import java.time.Clock;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -22,9 +24,11 @@ import co.edu.unicauca.deporteParaTodos.infraestructura.mappers.InscripcionMappe
 public class InscripcionGateway implements IInscripcionGateway {
 
     private final IInscripcionRepositorio repoInscrp;
+    private final Clock clock;
 
-    public InscripcionGateway(IInscripcionRepositorio repoInscrp) {
+    public InscripcionGateway(IInscripcionRepositorio repoInscrp, Clock clock) {
         this.repoInscrp = repoInscrp;
+        this.clock = clock;
     }
 
     @Override
@@ -105,7 +109,10 @@ public class InscripcionGateway implements IInscripcionGateway {
         if (!enEspera.isEmpty()) {
             InscripcionEntidad primero = enEspera.get(0);
             primero.setEstado("INSCRITO");
-            primero.setFechaInscripcion(Timestamp.from(Instant.now()));
+            // Clock inyectado (America/Bogota), no Instant.now(): ver comentario en
+            // InscripcionServicio.inscribir() sobre por que esElegibleParaAusencia()
+            // necesita que esta fecha se escriba con la misma zona que fechaClase.
+            primero.setFechaInscripcion(Timestamp.valueOf(LocalDateTime.now(clock)));
             repoInscrp.save(primero);
         }
     }
@@ -116,7 +123,7 @@ public class InscripcionGateway implements IInscripcionGateway {
         InscripcionEntidad entidad = repoInscrp.findById(id)
                 .orElseThrow(() -> new NoExisteExcepcion("La inscripcion no existe"));
         entidad.setEstado("INSCRITO");
-        entidad.setFechaInscripcion(Timestamp.from(Instant.now()));
+        entidad.setFechaInscripcion(Timestamp.valueOf(LocalDateTime.now(clock)));
         InscripcionEntidad guardada = repoInscrp.save(entidad);
         return InscripcionMapper.toDominio(guardada);
     }

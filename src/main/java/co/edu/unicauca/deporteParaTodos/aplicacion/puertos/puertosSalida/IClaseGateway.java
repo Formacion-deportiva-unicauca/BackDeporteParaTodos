@@ -1,6 +1,7 @@
 package co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Clase;
 
@@ -21,4 +22,8 @@ public interface IClaseGateway {
     public Clase insertarClase(Clase datoClase);
 
     public Clase eliminarClase(int id);
+
+    // Faltas acumuladas (etapa 4 de 5): registra la confirmacion de asistencia
+    // de la clase (sobrescribe ambos campos -- no guarda un historial).
+    public Clase confirmarAsistencia(Integer claseId, LocalDateTime confirmadaEn, String confirmadaPor);
 }

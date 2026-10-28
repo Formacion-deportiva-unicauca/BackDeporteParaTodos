@@ -1,6 +1,7 @@
 package co.edu.unicauca.deporteParaTodos.dominio.modelo;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -39,4 +40,10 @@ public class Clase {
     // franja de horario ese dia (CalculadoraDuracionClase.Resultado sin
     // franjas validas) -- ver ClaseServicio.insertarClase().
     private String justificacion;
+
+    // Faltas acumuladas (etapa 2 de 5): NULL = pendiente de confirmar o
+    // historica (nunca genera faltas, ver etapa 5). Cada confirmacion
+    // sobrescribe ambos campos -- no se guarda un historial de confirmaciones.
+    private LocalDateTime asistenciaConfirmadaEn;
+    private String asistenciaConfirmadaPor;
 }

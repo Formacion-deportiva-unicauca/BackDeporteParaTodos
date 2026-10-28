@@ -1,6 +1,7 @@
 package co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresSecundarios.persistenciaSQL.gateway;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -72,6 +73,16 @@ public class ClaseGateway implements IClaseGateway {
         ClaseEntidad entidad = repoClase.findById(id).orElseThrow(NoExisteExcepcion::new);
         repoClase.marcarComoEliminado(id);
         entidad.setEliminado(1);
+        return ClaseMapper.toDominio(entidad);
+    }
+
+    @Override
+    public Clase confirmarAsistencia(Integer claseId, LocalDateTime confirmadaEn, String confirmadaPor) {
+        ClaseEntidad entidad = repoClase.findById(claseId)
+                .orElseThrow(() -> new NoExisteExcepcion("No existe la clase con codigo " + claseId));
+        repoClase.marcarAsistenciaConfirmada(claseId, confirmadaEn, confirmadaPor);
+        entidad.setAsistenciaConfirmadaEn(confirmadaEn);
+        entidad.setAsistenciaConfirmadaPor(confirmadaPor);
         return ClaseMapper.toDominio(entidad);
     }
 }

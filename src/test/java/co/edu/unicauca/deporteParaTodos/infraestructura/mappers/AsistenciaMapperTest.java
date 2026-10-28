@@ -18,6 +18,7 @@ class AsistenciaMapperTest {
         e.setPerfilId(PERF_ID);
         e.setClaseCodigo(CLASE_ID);
         e.setEliminado(0);
+        e.setEstado("PRESENTE");
         return e;
     }
 
@@ -35,6 +36,7 @@ class AsistenciaMapperTest {
         assertEquals(PERF_ID, resultado.getIdPerfil());
         assertEquals(CLASE_ID, resultado.getClsCodigo());
         assertEquals(0, resultado.getEliminado());
+        assertEquals("PRESENTE", resultado.getEstado());
     }
 
     @Test
@@ -52,6 +54,7 @@ class AsistenciaMapperTest {
         assertEquals(PERF_ID, resultado.getPerfilId());
         assertEquals(CLASE_ID, resultado.getClaseCodigo());
         assertEquals(0, resultado.getEliminado());
+        assertEquals("PRESENTE", resultado.getEstado());
     }
 
     @Test
@@ -82,6 +85,15 @@ class AsistenciaMapperTest {
     void toDto_eliminadoNulo_estaAtendidoTrue() {
         Asistencia modelo = new Asistencia(PERF_ID, CLASE_ID, null);
         assertTrue(AsistenciaMapper.toDto(modelo).getEstaAtendido());
+    }
+
+    // Faltas acumuladas (etapa 2 de 5): una fila AUSENTE no eliminada NO cuenta
+    // como atendida -- antes de esta etapa esto no era posible (toda fila no
+    // eliminada era implicitamente una presencia).
+    @Test
+    void toDto_estadoAusenteSinEliminar_estaAtendidoFalse() {
+        Asistencia modelo = new Asistencia(PERF_ID, CLASE_ID, 0, "AUSENTE");
+        assertFalse(AsistenciaMapper.toDto(modelo).getEstaAtendido());
     }
 
     @Test

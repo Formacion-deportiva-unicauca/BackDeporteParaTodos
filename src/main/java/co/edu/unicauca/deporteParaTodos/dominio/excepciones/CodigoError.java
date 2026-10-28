@@ -33,6 +33,8 @@ public enum CodigoError {
         DIA_FUERA_DE_HORARIO("GC-0024", "La fecha no corresponde a un dia con horario asignado"),
         ACCESO_GRUPO_DENEGADO("GC-0025", "El Instructor no tiene a cargo el grupo indicado"),
         CORREO_NO_MODIFICABLE_INSTRUCTOR("GC-0026", "El Instructor no puede modificar el correo del alumno"),
+        ALUMNO_FUERA_DE_GRUPO("GC-0027", "El alumno no tiene una inscripcion activa en el grupo de esta clase"),
+        CONFIRMACION_SIN_ASISTENTES("GC-0028", "Debe marcar al menos un alumno presente, o confirmar que todos estan ausentes"),
         ;
 
         private final String codigo;

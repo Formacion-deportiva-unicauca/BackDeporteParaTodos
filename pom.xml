@@ -210,6 +210,9 @@
 								<exclude>**/ClaseVentanaRegistroIT.java</exclude>
 								<exclude>**/EstadoRegistroInstructorIT.java</exclude>
 								<exclude>**/AutorizacionGrupoIT.java</exclude>
+								<exclude>**/EstadisticasMetaEliminadoIT.java</exclude>
+								<exclude>**/ConfirmacionAsistenciaIT.java</exclude>
+								<exclude>**/FaltasAlumnosGrupoIT.java</exclude>
 							</excludes>
 						</configuration>
 					</plugin>

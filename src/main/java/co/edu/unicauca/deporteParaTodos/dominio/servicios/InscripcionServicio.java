@@ -2,8 +2,8 @@ package co.edu.unicauca.deporteParaTodos.dominio.servicios;
 
 import java.sql.Timestamp;
 import java.time.Clock;
-import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -131,10 +131,20 @@ public class InscripcionServicio implements IInscripcionServicio {
                         datos.getAlumnoId(), datos.getCategoria(),
                         datos.getCurso(), datos.getAnio(), datos.getIterable());
                 existente.setFechaDesvinculacion(null);
+                // fechaInscripcion = inicio de la activacion VIGENTE, no historial de
+                // activaciones pasadas (tbl_inscripcion no guarda ese historial). Antes
+                // esta rama era la UNICA de las 4 que reactivan una fila (esta, la rama
+                // EN_ESPERA de abajo, y promoverPrimeroEnEspera/promoverInscripcion en
+                // InscripcionGateway) que no la refrescaba.
+                // Usa el Clock inyectado (America/Bogota), no Instant.now(): esElegibleParaAusencia()
+                // en AsistenciaServicio reconvierte este Timestamp con toLocalDateTime(), que usa la
+                // zona POR DEFECTO DE LA JVM (UTC en CI) -- con Instant.now() esa conversion puede caer
+                // un dia distinto al "hoy" en Bogota usado para fechaClase, cerca de medianoche UTC.
+                existente.setFechaInscripcion(Timestamp.valueOf(LocalDateTime.now(clock)));
                 existente.setEstado("INSCRITO");
                 return gateway.guardarInscripcion(existente);
             }
-            datos.setFechaInscripcion(Timestamp.from(Instant.now()));
+            datos.setFechaInscripcion(Timestamp.valueOf(LocalDateTime.now(clock)));
             datos.setFechaDesvinculacion(null); // viene del body sin validar; una fila nueva nunca nace desvinculada
             datos.setEstado("INSCRITO");
             return gateway.guardarInscripcion(datos);
@@ -151,11 +161,11 @@ public class InscripcionServicio implements IInscripcionServicio {
                         datos.getAlumnoId(), datos.getCategoria(),
                         datos.getCurso(), datos.getAnio(), datos.getIterable());
                 existente.setFechaDesvinculacion(null);
-                existente.setFechaInscripcion(Timestamp.from(Instant.now()));
+                existente.setFechaInscripcion(Timestamp.valueOf(LocalDateTime.now(clock)));
                 existente.setEstado("EN_ESPERA");
                 return gateway.guardarInscripcion(existente);
             }
-            datos.setFechaInscripcion(Timestamp.from(Instant.now()));
+            datos.setFechaInscripcion(Timestamp.valueOf(LocalDateTime.now(clock)));
             datos.setFechaDesvinculacion(null); // idem: ignorar lo que envie el cliente
             datos.setEstado("EN_ESPERA");
             return gateway.guardarInscripcion(datos);

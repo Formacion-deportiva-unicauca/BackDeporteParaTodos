@@ -9,7 +9,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -17,8 +19,11 @@ import org.springframework.web.bind.annotation.RestController;
 
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosEntrada.IAsistenciaServicio;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Asistencia;
+import co.edu.unicauca.deporteParaTodos.dominio.modelo.ResultadoConfirmacionAsistencia;
 import co.edu.unicauca.deporteParaTodos.infraestructura.mappers.AsistenciaMapper;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.AtencionDto;
+import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.ConfirmacionAsistenciaDto;
+import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.ConfirmacionAsistenciaRequest;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.VentanaRegistroDto;
 import co.edu.unicauca.deporteParaTodos.dominio.utils.LogSanitizer;
 import co.edu.unicauca.deporteParaTodos.infraestructura.logs.PeticionLogger;
@@ -45,12 +50,11 @@ public class AtencionRest {
         this.servicioAsistencia = servicioAsistencia;
     }
 
-    @Operation(summary = "Obtiene las atenciones registradas para una clase especifica, retonan encapsulado en un Dto con el id de la clase, el id perfil del estudiante, todos son true pues solo retorna las asistencias no las no asistencias, en front para una clase comparan con la lista de alumnos del grupo, los que estan en esta lista son los que asistieron de ese grupo")
+    @Operation(summary = "Obtiene las atenciones registradas para una clase especifica: una fila por alumno con el id de la clase, el id del perfil y estaAtendido (true = presente; false = ausente o asistencia eliminada)")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Listado de atenciones por clase"),
-        @ApiResponse(responseCode = "404", description = "No existen atenciones para la clase consultada")
+        @ApiResponse(responseCode = "200", description = "Listado de atenciones por clase. Si la clase no tiene ninguna fila tambien responde 200, pero con un cuerpo de error GC-0002 (listado vacio) en lugar de una lista")
     })
-    @PreAuthorize("hasAnyAuthority('Instructor','Coordinador')")
+    @PreAuthorize("hasAnyAuthority('Instructor','Coordinador','Administrador')")
     @GetMapping("/atencionesporclase")
     public ResponseEntity<List<AtencionDto>> obtenerAtencionesPorClase(
             @Parameter(description = "Codigo de la clase a consultar")
@@ -111,6 +115,38 @@ public class AtencionRest {
                 "prmPerfId=" + prmPerfId + ", prmClsCodigo=" + prmClsCodigo);
         Asistencia resultado = servicioAsistencia.eliminarAsistencia(prmPerfId, prmClsCodigo, perfIdLlamador, rolLlamador);
         return new ResponseEntity<>(AsistenciaMapper.toDto(resultado), HttpStatus.OK);
+    }
+
+    // ── Faltas acumuladas (etapa 4 de 5) ────────────────────────────────────
+
+    @Operation(summary = "Confirma la asistencia de una clase: marca PRESENTE a los alumnos indicados con "
+            + "estaAtendido=true y AUSENTE (sujeto a elegibilidad por fecha de inscripcion) al resto del grupo. "
+            + "Idempotente: repetir la misma confirmacion deja las mismas filas, solo actualiza quien/cuando confirmo.")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Asistencia confirmada"),
+        @ApiResponse(responseCode = "403", description = "El Instructor no tiene a cargo el grupo de esta clase"),
+        @ApiResponse(responseCode = "404", description = "La clase no existe o esta eliminada"),
+        @ApiResponse(responseCode = "422", description = "Fecha futura, fuera de ventana/plazo, dia sin horario, "
+                + "alumno fuera del grupo, o ningun alumno presente sin confirmaTodosAusentes")
+    })
+    @PreAuthorize("hasAnyAuthority('Instructor','Coordinador','Administrador')")
+    @PutMapping("/clase/{codigo}/asistencia")
+    public ResponseEntity<ConfirmacionAsistenciaDto> confirmarAsistencias(
+            @Parameter(description = "Codigo de la clase a confirmar")
+            @PathVariable Integer codigo,
+            @RequestBody @Valid ConfirmacionAsistenciaRequest request,
+            @AuthenticationPrincipal Jwt jwt) {
+        String perfIdLlamador = jwt != null ? jwt.getClaimAsString("perf_id") : null;
+        if (perfIdLlamador == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        String rolLlamador = jwt.getClaimAsString("rol");
+        PeticionLogger.log(LOGGER, "PUT", "/api/v2/clase/" + codigo + "/asistencia",
+                "codigo=" + codigo + ", perfId: " + LogSanitizer.sanitizar(perfIdLlamador));
+        boolean confirmaTodosAusentes = Boolean.TRUE.equals(request.getConfirmaTodosAusentes());
+        ResultadoConfirmacionAsistencia resultado = servicioAsistencia.confirmarAsistencias(
+                codigo, request.getAsistencias(), confirmaTodosAusentes, perfIdLlamador, rolLlamador);
+        return new ResponseEntity<>(ConfirmacionAsistenciaDto.fabricarDeModelo(resultado), HttpStatus.OK);
     }
 
     // ── SCRUM-80 (rediseno, bloque 3 de 4): ventana de registro de asistencia ──
