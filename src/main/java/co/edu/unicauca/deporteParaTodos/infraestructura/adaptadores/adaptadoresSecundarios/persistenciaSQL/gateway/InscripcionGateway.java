@@ -104,6 +104,19 @@ public class InscripcionGateway implements IInscripcionGateway {
     }
 
     @Override
+    public int desvincularInscripcionesActivasGrupo(String categoria, String curso, int anio, int iterable) {
+        List<InscripcionEntidad> activas = repoInscrp.findActivasDeGrupo(categoria, curso, anio, iterable);
+        if (activas.isEmpty()) {
+            return 0;
+        }
+        // Igual que desvincularInscripcion(): 'estado' queda como registro historico.
+        Timestamp ahora = Timestamp.from(Instant.now());
+        activas.forEach(entidad -> entidad.setFechaDesvinculacion(ahora));
+        repoInscrp.saveAll(activas);
+        return activas.size();
+    }
+
+    @Override
     public void promoverPrimeroEnEspera(String categoria, String curso, int anio, int iterable) {
         List<InscripcionEntidad> enEspera = repoInscrp.findEnEsperaOrdenados(categoria, curso, anio, iterable);
         if (!enEspera.isEmpty()) {

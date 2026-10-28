@@ -162,6 +162,23 @@ ORDER BY CASE WHEN i.estado = 'INSCRITO' THEN 0 ELSE 1 END, i.anio DESC, i.itera
 """)
     List<InscripcionEntidad> findMisCursos(@Param("alumnoId") String alumnoId);
 
+    // Inscripciones activas (INSCRITO y EN_ESPERA, sin desvincular) de un grupo. Se usa al
+    // eliminar el grupo para cancelarlas todas.
+    @Query("""
+SELECT i FROM InscripcionEntidad i
+WHERE i.categoria = :categoria
+  AND i.curso = :curso
+  AND i.anio = :anio
+  AND i.iterable = :iterable
+  AND i.eliminado = 0
+  AND i.fechaDesvinculacion IS NULL
+""")
+    List<InscripcionEntidad> findActivasDeGrupo(
+            @Param("categoria") String categoria,
+            @Param("curso") String curso,
+            @Param("anio") int anio,
+            @Param("iterable") int iterable);
+
     // "Mis grupos" (Instructor): conteos de inscritos/en-espera de TODOS los grupos
     // del instructor en UNA sola consulta agrupada (no una consulta por grupo).
     // Mismo criterio de "activa" que contarInscripcionesActivasGrupo/contarEnEsperaGrupo:

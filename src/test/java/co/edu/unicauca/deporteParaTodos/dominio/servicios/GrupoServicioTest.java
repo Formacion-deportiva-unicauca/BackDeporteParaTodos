@@ -99,6 +99,64 @@ class GrupoServicioTest {
         verify(grupoGateway).obtenerTodosGrupos();
     }
 
+    // Al eliminar un grupo se cancelan (desvinculan) todas sus inscripciones activas, para que el
+    // alumno recupere su cupo de curso y no quede "inscrito" en un grupo inexistente.
+    @Test
+    void eliminarGrupo_exitoso_desvinculaInscripcionesActivasDelGrupo() {
+        when(grupoGateway.existeGrupo(CATEGORIA, CURSO, ANIO, ITERABLE)).thenReturn(true);
+        when(grupoGateway.existeGrupoEliminado(CATEGORIA, CURSO, ANIO, ITERABLE)).thenReturn(false);
+        when(grupoGateway.eliminarGrupo(CATEGORIA, CURSO, ANIO, ITERABLE)).thenReturn(grupoModelo());
+
+        grupoServicio.eliminarGrupo(CATEGORIA, CURSO, ANIO, ITERABLE);
+
+        verify(inscripcionGateway).desvincularInscripcionesActivasGrupo(CATEGORIA, CURSO, ANIO, ITERABLE);
+    }
+
+    @Test
+    void eliminarGrupo_exitoso_noPromueveListaDeEspera() {
+        when(grupoGateway.existeGrupo(CATEGORIA, CURSO, ANIO, ITERABLE)).thenReturn(true);
+        when(grupoGateway.existeGrupoEliminado(CATEGORIA, CURSO, ANIO, ITERABLE)).thenReturn(false);
+        when(grupoGateway.eliminarGrupo(CATEGORIA, CURSO, ANIO, ITERABLE)).thenReturn(grupoModelo());
+
+        grupoServicio.eliminarGrupo(CATEGORIA, CURSO, ANIO, ITERABLE);
+
+        verify(inscripcionGateway, never()).promoverPrimeroEnEspera(any(), any(), anyInt(), anyInt());
+    }
+
+    @Test
+    void eliminarGrupo_noExiste_noDesvinculaInscripciones() {
+        when(grupoGateway.existeGrupo(CATEGORIA, CURSO, ANIO, ITERABLE)).thenReturn(false);
+
+        assertThrows(NoExisteExcepcion.class,
+                () -> grupoServicio.eliminarGrupo(CATEGORIA, CURSO, ANIO, ITERABLE));
+
+        verify(inscripcionGateway, never()).desvincularInscripcionesActivasGrupo(any(), any(), anyInt(), anyInt());
+    }
+
+    @Test
+    void eliminarGrupo_yaEstabaEliminado_noDesvinculaInscripciones() {
+        when(grupoGateway.existeGrupo(CATEGORIA, CURSO, ANIO, ITERABLE)).thenReturn(true);
+        when(grupoGateway.existeGrupoEliminado(CATEGORIA, CURSO, ANIO, ITERABLE)).thenReturn(true);
+
+        assertThrows(YaExisteElementoExcepcion.class,
+                () -> grupoServicio.eliminarGrupo(CATEGORIA, CURSO, ANIO, ITERABLE));
+
+        verify(inscripcionGateway, never()).desvincularInscripcionesActivasGrupo(any(), any(), anyInt(), anyInt());
+    }
+
+    @Test
+    void eliminarGrupo_desvincularInscripciones_ocurreDespuesDeMarcarEliminado() {
+        when(grupoGateway.existeGrupo(CATEGORIA, CURSO, ANIO, ITERABLE)).thenReturn(true);
+        when(grupoGateway.existeGrupoEliminado(CATEGORIA, CURSO, ANIO, ITERABLE)).thenReturn(false);
+        when(grupoGateway.eliminarGrupo(CATEGORIA, CURSO, ANIO, ITERABLE)).thenReturn(grupoModelo());
+
+        grupoServicio.eliminarGrupo(CATEGORIA, CURSO, ANIO, ITERABLE);
+
+        org.mockito.InOrder orden = org.mockito.Mockito.inOrder(grupoGateway, inscripcionGateway);
+        orden.verify(grupoGateway).eliminarGrupo(CATEGORIA, CURSO, ANIO, ITERABLE);
+        orden.verify(inscripcionGateway).desvincularInscripcionesActivasGrupo(CATEGORIA, CURSO, ANIO, ITERABLE);
+    }
+
     // ──────────────────────────────────────────────────────────────────────────
     // obtenerGruposDisponibles
     // ──────────────────────────────────────────────────────────────────────────

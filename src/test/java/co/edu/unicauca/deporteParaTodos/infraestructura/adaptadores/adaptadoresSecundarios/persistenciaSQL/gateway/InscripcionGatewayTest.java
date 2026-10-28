@@ -147,6 +147,46 @@ class InscripcionGatewayTest {
         verify(repoInscrp).save(any(InscripcionEntidad.class));
     }
 
+    // ── desvincularInscripcionesActivasGrupo ──────────────────────────────────
+
+    @Test
+    void desvincularInscripcionesActivasGrupo_desvinculaInscritosYEnEspera() {
+        InscripcionEntidad inscrito = entidadBase();
+        InscripcionEntidad enEspera = entidadEnEspera();
+        when(repoInscrp.findActivasDeGrupo(CATEGORIA, CURSO, ANIO, ITERABLE))
+                .thenReturn(List.of(inscrito, enEspera));
+
+        int cantidad = gateway.desvincularInscripcionesActivasGrupo(CATEGORIA, CURSO, ANIO, ITERABLE);
+
+        assertEquals(2, cantidad);
+        assertNotNull(inscrito.getFechaDesvinculacion());
+        assertNotNull(enEspera.getFechaDesvinculacion());
+        verify(repoInscrp).saveAll(List.of(inscrito, enEspera));
+    }
+
+    @Test
+    void desvincularInscripcionesActivasGrupo_noCambiaElEstadoHistorico() {
+        InscripcionEntidad inscrito = entidadBase();
+        InscripcionEntidad enEspera = entidadEnEspera();
+        when(repoInscrp.findActivasDeGrupo(CATEGORIA, CURSO, ANIO, ITERABLE))
+                .thenReturn(List.of(inscrito, enEspera));
+
+        gateway.desvincularInscripcionesActivasGrupo(CATEGORIA, CURSO, ANIO, ITERABLE);
+
+        assertEquals("INSCRITO", inscrito.getEstado());
+        assertEquals("EN_ESPERA", enEspera.getEstado());
+    }
+
+    @Test
+    void desvincularInscripcionesActivasGrupo_sinInscripciones_retornaCeroYNoGuarda() {
+        when(repoInscrp.findActivasDeGrupo(CATEGORIA, CURSO, ANIO, ITERABLE)).thenReturn(List.of());
+
+        int cantidad = gateway.desvincularInscripcionesActivasGrupo(CATEGORIA, CURSO, ANIO, ITERABLE);
+
+        assertEquals(0, cantidad);
+        verify(repoInscrp, never()).saveAll(any());
+    }
+
     // ── desvincularInscripcion ────────────────────────────────────────────────
 
     @Test

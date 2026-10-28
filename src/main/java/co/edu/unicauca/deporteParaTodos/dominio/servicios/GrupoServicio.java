@@ -147,6 +147,10 @@ public class GrupoServicio implements IGrupoServicio {
         }
     }
 
+    // Borrar el grupo cancela sus inscripciones activas (INSCRITO y EN_ESPERA) en la misma
+    // transaccion: el alumno recupera su cupo de curso y no queda inscrito en un grupo inexistente.
+    // No se promueve la lista de espera: el grupo ya no existe.
+    @Transactional
     public Grupo eliminarGrupo(String categoria, String curso, Integer anio, Integer iterable) {
         if (!grupoGateway.existeGrupo(categoria, curso, anio, iterable)) {
             throw new NoExisteExcepcion("el objetivo a eliminar no existe");
@@ -154,7 +158,9 @@ public class GrupoServicio implements IGrupoServicio {
         if (grupoGateway.existeGrupoEliminado(categoria, curso, anio, iterable)) {
             throw new YaExisteElementoExcepcion("El grupo ya se encuentra eliminado");
         }
-        return grupoGateway.eliminarGrupo(categoria, curso, anio, iterable);
+        Grupo eliminado = grupoGateway.eliminarGrupo(categoria, curso, anio, iterable);
+        inscripcionGateway.desvincularInscripcionesActivasGrupo(categoria, curso, anio, iterable);
+        return eliminado;
     }
 
     @Override

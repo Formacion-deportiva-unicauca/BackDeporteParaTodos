@@ -22,6 +22,9 @@ public interface IInscripcionGateway {
 
     Inscripcion desvincularInscripcion(String alumnoId, String categoria, String curso, int anio, int iterable);
 
+    /** Desvincula todas las inscripciones activas (INSCRITO y EN_ESPERA) del grupo; retorna cuantas. */
+    int desvincularInscripcionesActivasGrupo(String categoria, String curso, int anio, int iterable);
+
     long contarInscripcionesActivasGrupo(String categoria, String curso, int anio, int iterable);
 
     long contarCursosActivosAlumno(String alumnoId);
