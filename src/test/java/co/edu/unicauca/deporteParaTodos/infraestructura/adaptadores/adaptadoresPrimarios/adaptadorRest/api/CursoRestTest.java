@@ -4,6 +4,11 @@ import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosEntrada.ICurso
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Curso;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.EstadoCurso;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.EstadoInscripciones;
+import co.edu.unicauca.deporteParaTodos.dominio.modelo.PublicoCurso;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
+import java.time.Instant;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.CursoDto;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -116,5 +121,70 @@ class CursoRestTest {
                 .param("prmEstado", "INACTIVO"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.estadoCurso").value("INACTIVO"));
+    }
+
+    // ── El Alumno solo ve los cursos que le corresponden; los demas roles ven todo ─────────────────
+
+    private JwtAuthenticationToken token(String rol, String perfId) {
+        Jwt.Builder b = Jwt.withTokenValue("t").header("alg", "HS256")
+                .issuedAt(Instant.now()).expiresAt(Instant.now().plusSeconds(60)).claim("rol", rol);
+        if (perfId != null) b.claim("perf_id", perfId);
+        return new JwtAuthenticationToken(b.build(), List.of(new SimpleGrantedAuthority(rol)));
+    }
+
+    @Test
+    void obtenerCursos_conAlumno_usaElListadoParaAlumno() throws Exception {
+        when(servicio.recuperarCursosParaAlumno("alum1")).thenReturn(List.of(cursoBase()));
+
+        mockMvc.perform(get("/api/v2/cursos").principal(token("Alumno", "alum1")))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$[0].nombre").value("Natacion"));
+
+        org.mockito.Mockito.verify(servicio, org.mockito.Mockito.never()).recuperarCursos();
+    }
+
+    @Test
+    void obtenerCursosPorCategoria_conAlumno_usaElListadoParaAlumno() throws Exception {
+        when(servicio.cursosDeCategoriaParaAlumno("Acuatico", "alum1")).thenReturn(List.of(cursoBase()));
+
+        mockMvc.perform(get("/api/v2/cursosbycategoria").param("prmCategoria", "Acuatico")
+                        .principal(token("Alumno", "alum1")))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$[0].nombre").value("Natacion"));
+
+        org.mockito.Mockito.verify(servicio, org.mockito.Mockito.never()).cursosDeCategoria(any());
+    }
+
+    @Test
+    void obtenerCursosPorCategoria_conCoordinadorInstructorOAdministrador_veTodo() throws Exception {
+        when(servicio.cursosDeCategoria("Acuatico")).thenReturn(List.of(cursoBase()));
+
+        for (String rol : List.of("Coordinador", "Instructor", "Administrador")) {
+            mockMvc.perform(get("/api/v2/cursosbycategoria").param("prmCategoria", "Acuatico")
+                            .principal(token(rol, "u1")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].nombre").value("Natacion"));
+        }
+        org.mockito.Mockito.verify(servicio, org.mockito.Mockito.never()).cursosDeCategoriaParaAlumno(any(), any());
+    }
+
+    @Test
+    void obtenerCursos_conAlumnoSinPerfId_loTrataComoAlumnoSinTipo() throws Exception {
+        when(servicio.recuperarCursosParaAlumno(null)).thenReturn(List.of());
+
+        mockMvc.perform(get("/api/v2/cursos").principal(token("Alumno", null)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$").isEmpty());
+    }
+
+    @Test
+    void obtenerCursos_incluyeElPublicoEnElDto() throws Exception {
+        Curso curso = cursoBase();
+        curso.setPublico(PublicoCurso.FUNCIONARIO);
+        when(servicio.recuperarCursos()).thenReturn(List.of(curso));
+
+        mockMvc.perform(get("/api/v2/cursos"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$[0].publico").value("FUNCIONARIO"));
     }
 }

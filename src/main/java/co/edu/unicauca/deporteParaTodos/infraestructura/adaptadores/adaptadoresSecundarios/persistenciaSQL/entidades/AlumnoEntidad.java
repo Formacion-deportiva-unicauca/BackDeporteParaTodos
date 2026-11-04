@@ -38,6 +38,9 @@ public class AlumnoEntidad {
     @Column(name = "ALM_TIPO")
     private String tipoAlumno;
 
+    @Column(name = "ALM_DEPENDENCIA", length = 150, nullable = true)
+    private String dependencia;
+
     @Column(name= "META_ELIMINADO")
     private Integer eliminado;
 

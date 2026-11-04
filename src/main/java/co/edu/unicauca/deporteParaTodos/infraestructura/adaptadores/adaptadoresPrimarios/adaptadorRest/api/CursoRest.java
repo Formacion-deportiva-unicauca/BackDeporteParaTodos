@@ -1,5 +1,6 @@
 package co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.api;
 
+import java.security.Principal;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -29,6 +30,8 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -47,14 +50,30 @@ public class CursoRest {
     @Autowired
     private ICursoServicio servicio;
 
-    @Operation(summary = "Obtiene todos los cursos del sistema sin restricciones")
+    // El Alumno solo ve los cursos que le corresponden (activos, para su tipo de vinculo y con algun grupo abierto);
+    // Coordinador, Instructor y Administrador ven todo.
+    private static Jwt jwtDe(Principal principal) {
+        return principal instanceof JwtAuthenticationToken token ? token.getToken() : null;
+    }
+
+    private static boolean esAlumno(Jwt jwt) {
+        return jwt != null && "Alumno".equals(jwt.getClaimAsString("rol"));
+    }
+
+    private static String perfIdDe(Jwt jwt) {
+        return jwt.getClaimAsString("perf_id");
+    }
+
+    @Operation(summary = "Obtiene todos los cursos del sistema sin restricciones (el Alumno solo los que le corresponden)")
     @ApiResponses(value ={
         @ApiResponse(responseCode = "200", description = "listado de cursos en formato dto"),
     })
     @GetMapping("/cursos")
-    public ResponseEntity<List<CursoDto>> obtenerCursos(){
+    public ResponseEntity<List<CursoDto>> obtenerCursos(Principal principal){
         PeticionLogger.log(LOGGER, "GET", "/api/v2/cursos", "sin datos");
-        List<CursoDto> respuesta = servicio.recuperarCursos().stream()
+        Jwt jwt = jwtDe(principal);
+        List<Curso> cursos = esAlumno(jwt) ? servicio.recuperarCursosParaAlumno(perfIdDe(jwt)) : servicio.recuperarCursos();
+        List<CursoDto> respuesta = cursos.stream()
             .map(CursoMapper::toDto)
             .collect(Collectors.toList());
         return new ResponseEntity<>(respuesta, HttpStatus.OK);
@@ -67,10 +86,15 @@ public class CursoRest {
     @GetMapping("/cursosbycategoria")
     public ResponseEntity<List<CursoDto>> obtenerCursosPorCategoria(
         @Parameter(description = "Identificador de una categoria del sistema")
-        @RequestParam String prmCategoria
+        @RequestParam String prmCategoria,
+        Principal principal
         ){
         PeticionLogger.log(LOGGER, "GET", "/api/v2/cursosbycategoria", "prmCategoria=" + prmCategoria);
-        List<CursoDto> respuesta = servicio.cursosDeCategoria(prmCategoria).stream()
+        Jwt jwt = jwtDe(principal);
+        List<Curso> cursos = esAlumno(jwt)
+            ? servicio.cursosDeCategoriaParaAlumno(prmCategoria, perfIdDe(jwt))
+            : servicio.cursosDeCategoria(prmCategoria);
+        List<CursoDto> respuesta = cursos.stream()
             .map(CursoMapper::toDto)
             .collect(Collectors.toList());
         return new ResponseEntity<>(respuesta, HttpStatus.OK);
@@ -171,26 +195,6 @@ public class CursoRest {
         PeticionLogger.log(LOGGER, "PATCH", "/api/v2/curso/estado",
             "prmCategoria=" + prmCategoria + ", prmCurso=" + prmCurso + ", prmEstado=" + prmEstado);
         Curso actualizado = servicio.cambiarEstadoCurso(prmCategoria, prmCurso, prmEstado);
-        return new ResponseEntity<>(CursoMapper.toDto(actualizado), HttpStatus.OK);
-    }
-
-    @Operation(summary = "Cambia el estado de inscripciones de un curso (ABIERTO/CERRADO)")
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "estado de inscripciones actualizado"),
-        @ApiResponse(responseCode = "404", description = "curso no encontrado"),
-    })
-    @PreAuthorize("hasAuthority('Coordinador')")
-    @PatchMapping("/curso/inscripciones")
-    public ResponseEntity<CursoDto> cambiarEstadoInscripciones(
-        @Parameter(description = "Identificador de la categoria del curso")
-        @RequestParam @NotBlank String prmCategoria,
-        @Parameter(description = "Identificador del curso")
-        @RequestParam @NotBlank String prmCurso,
-        @Parameter(description = "Nuevo estado de inscripciones: ABIERTO o CERRADO")
-        @RequestParam EstadoInscripciones prmEstado) {
-        PeticionLogger.log(LOGGER, "PATCH", "/api/v2/curso/inscripciones",
-            "prmCategoria=" + prmCategoria + ", prmCurso=" + prmCurso + ", prmEstado=" + prmEstado);
-        Curso actualizado = servicio.cambiarEstadoInscripciones(prmCategoria, prmCurso, prmEstado);
         return new ResponseEntity<>(CursoMapper.toDto(actualizado), HttpStatus.OK);
     }
 }

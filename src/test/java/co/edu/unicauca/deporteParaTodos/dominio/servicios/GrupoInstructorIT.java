@@ -170,6 +170,7 @@ class GrupoInstructorIT {
         nuevoA1.setIdInstructor(instructorAId);
         nuevoA1.setCupos(1);
         nuevoA1.setFechaCreacion(LocalDate.now(clock));
+        nuevoA1.setFechaIncripcionCierre(java.time.LocalDate.now().plusYears(1)); // Fase 3: el cierre es obligatorio
         nuevoA1.setFechaInscripcionApertura(LocalDate.now(clock));
         nuevoA1.setPeriodo(1);
         grupoA1 = grupoServicio.insertarGrupo(nuevoA1);
@@ -195,6 +196,7 @@ class GrupoInstructorIT {
         nuevoA2.setIdInstructor(instructorAId);
         nuevoA2.setCupos(5);
         nuevoA2.setFechaCreacion(LocalDate.now(clock));
+        nuevoA2.setFechaIncripcionCierre(java.time.LocalDate.now().plusYears(1)); // Fase 3: el cierre es obligatorio
         nuevoA2.setFechaInscripcionApertura(LocalDate.now(clock));
         nuevoA2.setPeriodo(1);
         Grupo grupoA2 = grupoServicio.insertarGrupo(nuevoA2);
@@ -208,6 +210,7 @@ class GrupoInstructorIT {
         nuevoB1.setIdInstructor(instructorBId);
         nuevoB1.setCupos(5);
         nuevoB1.setFechaCreacion(LocalDate.now(clock));
+        nuevoB1.setFechaIncripcionCierre(java.time.LocalDate.now().plusYears(1)); // Fase 3: el cierre es obligatorio
         nuevoB1.setFechaInscripcionApertura(LocalDate.now(clock));
         nuevoB1.setPeriodo(1);
         grupoServicio.insertarGrupo(nuevoB1);

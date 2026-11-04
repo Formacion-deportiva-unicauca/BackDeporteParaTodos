@@ -3,6 +3,7 @@ package co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadores
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Curso;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.EstadoCurso;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.EstadoInscripciones;
+import co.edu.unicauca.deporteParaTodos.dominio.modelo.PublicoCurso;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresSecundarios.persistenciaSQL.entidades.CursoEntidad;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresSecundarios.persistenciaSQL.entidades.ids.CursoId;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresSecundarios.persistenciaSQL.repositorios.ICategoriaCursoRepositorio;
@@ -363,32 +364,44 @@ class CursoGatewayTest {
         verify(repoCurso, never()).save(any());
     }
 
-    // ──────────────────────────────────────────────────────────────────────────
-    // cambiarEstadoInscripciones
-    // ──────────────────────────────────────────────────────────────────────────
+    // ── actualizarCurso: el publico se actualiza ──────────────────────────────
 
     @Test
-    void cambiarEstadoInscripciones_exitoso_persisteEstadoComoString() {
-        when(repoCurso.findById(new CursoId(CATEGORIA, NOMBRE))).thenReturn(Optional.of(entidadActiva()));
-        CursoEntidad guardada = entidadActiva();
-        guardada.setEstadoInscripciones("CERRADO");
-        when(repoCurso.save(any())).thenReturn(guardada);
+    void actualizarCurso_cambiaElPublicoDelCurso() {
+        CursoEntidad existente = entidadActiva();
+        existente.setPublico("MIXTO");
+        when(repoCategoria.existsById(any())).thenReturn(true);
+        when(repoImagen.existsById(any())).thenReturn(true);
+        when(repoDeporte.existsById(any())).thenReturn(true);
+        when(repoCurso.findById(new CursoId(CATEGORIA, NOMBRE))).thenReturn(Optional.of(existente));
+        when(repoCurso.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        Curso cambio = cursoModelo();
+        cambio.setPublico(PublicoCurso.FUNCIONARIO);
+
+        Curso resultado = cursoGateway.actualizarCurso(CATEGORIA, NOMBRE, cambio);
 
         ArgumentCaptor<CursoEntidad> captor = ArgumentCaptor.forClass(CursoEntidad.class);
-        Curso resultado = cursoGateway.cambiarEstadoInscripciones(CATEGORIA, NOMBRE, EstadoInscripciones.CERRADO);
-
         verify(repoCurso).save(captor.capture());
-        assertEquals("CERRADO", captor.getValue().getEstadoInscripciones());
-        assertEquals(EstadoInscripciones.CERRADO, resultado.getEstadoInscripciones());
+        assertEquals("FUNCIONARIO", captor.getValue().getPublico());
+        assertEquals(PublicoCurso.FUNCIONARIO, resultado.getPublico());
     }
 
     @Test
-    void cambiarEstadoInscripciones_noExiste_lanzaNoExisteExcepcion() {
-        when(repoCurso.findById(new CursoId(CATEGORIA, NOMBRE))).thenReturn(Optional.empty());
+    void actualizarCurso_sinPublicoEnLaPeticion_loDejaComoMixto() {
+        CursoEntidad existente = entidadActiva();
+        existente.setPublico("ESTUDIANTE");
+        when(repoCategoria.existsById(any())).thenReturn(true);
+        when(repoImagen.existsById(any())).thenReturn(true);
+        when(repoDeporte.existsById(any())).thenReturn(true);
+        when(repoCurso.findById(new CursoId(CATEGORIA, NOMBRE))).thenReturn(Optional.of(existente));
+        when(repoCurso.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        Curso cambio = cursoModelo();
+        cambio.setPublico(null);
 
-        assertThrows(NoExisteExcepcion.class,
-                () -> cursoGateway.cambiarEstadoInscripciones(CATEGORIA, NOMBRE, EstadoInscripciones.CERRADO));
+        cursoGateway.actualizarCurso(CATEGORIA, NOMBRE, cambio);
 
-        verify(repoCurso, never()).save(any());
+        ArgumentCaptor<CursoEntidad> captor = ArgumentCaptor.forClass(CursoEntidad.class);
+        verify(repoCurso).save(captor.capture());
+        assertEquals("MIXTO", captor.getValue().getPublico());
     }
 }

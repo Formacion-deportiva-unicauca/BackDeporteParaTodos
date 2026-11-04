@@ -66,7 +66,8 @@ public class SecurityConfig {
     }
 
     // Chain 2 (Orden 2): todos los demas endpoints — valida dpt_token (HS256/JWT_SECRET).
-    // SCRUM-156 Fase 1c: solo POST /api/v2/RegistroPerfilAlumno es publico (SCRUM-160).
+    // SCRUM-156 Fase 1c: POST /api/v2/RegistroPerfilAlumno es publico (SCRUM-160), igual que el catalogo
+    // de solo lectura GET /api/v2/facultades y /api/v2/programas que alimenta ese formulario.
     // Todo lo demas exige autenticacion con dpt_token valido.
     @Bean
     @Order(2)
@@ -82,6 +83,8 @@ public class SecurityConfig {
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.POST, "/api/v2/RegistroPerfilAlumno").permitAll()
+                // Catalogo de facultades y programas: lo necesita el formulario de registro, antes del dpt_token.
+                .requestMatchers(HttpMethod.GET, "/api/v2/facultades", "/api/v2/programas").permitAll()
                 .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
                 .anyRequest().authenticated())
             .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> jwt

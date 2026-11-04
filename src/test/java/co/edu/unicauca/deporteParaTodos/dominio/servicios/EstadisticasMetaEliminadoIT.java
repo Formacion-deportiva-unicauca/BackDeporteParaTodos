@@ -149,6 +149,7 @@ class EstadisticasMetaEliminadoIT {
         nuevo.setIdInstructor(instructorA);
         nuevo.setCupos(50);
         nuevo.setFechaCreacion(hoy);
+        nuevo.setFechaIncripcionCierre(java.time.LocalDate.now().plusYears(1)); // Fase 3: el cierre es obligatorio
         nuevo.setFechaInscripcionApertura(hoy);
         nuevo.setPeriodo(0);
         grupo = grupoServicio.insertarGrupo(nuevo);
@@ -168,7 +169,7 @@ class EstadisticasMetaEliminadoIT {
         marcarPresente(clase2);
         mockMvc.perform(delete("/api/v2/clase")
                         .param("id", String.valueOf(clase2))
-                        .header("Authorization", "Bearer " + buildJwt("Instructor", instructorA)))
+                        .header("Authorization", "Bearer " + buildJwt("Coordinador", COORD)))
                 .andExpect(status().isOk());
 
         // Clase 3: queda ACTIVA, pero su fila de asistencia se elimina logicamente
@@ -179,7 +180,7 @@ class EstadisticasMetaEliminadoIT {
         mockMvc.perform(delete("/api/v2/asistencia")
                         .param("prmPerfId", alumno)
                         .param("prmClsCodigo", String.valueOf(clase3))
-                        .header("Authorization", "Bearer " + buildJwt("Instructor", instructorA)))
+                        .header("Authorization", "Bearer " + buildJwt("Coordinador", COORD)))
                 .andExpect(status().isOk());
 
         // Clase 4 (etapa 3): activa, con una fila de asistencia ACTIVA (no
@@ -259,11 +260,14 @@ class EstadisticasMetaEliminadoIT {
                 .getTokenValue();
     }
 
+    // Las clases de estas pruebas llevan fecha pasada (hoy.minusDays(N)). El Instructor solo puede registrar dentro del mes
+    // calendario de la clase (VentanaRegistroAsistencia): a comienzos de mes esas fechas caen en el mes anterior y el backend
+    // responde 422 GC-0019. Para armar el escenario se usa el Coordinador, que no tiene limite de plazo (solo "no fecha futura").
     private int crearClase() throws Exception {
         MvcResult creada = mockMvc.perform(post("/api/v2/claseGrupo")
                         .contentType("application/json")
                         .content(construirPayloadClaseUnica())
-                        .header("Authorization", "Bearer " + buildJwt("Instructor", instructorA)))
+                        .header("Authorization", "Bearer " + buildJwt("Coordinador", COORD)))
                 .andExpect(status().isCreated())
                 .andReturn();
         return JsonPath.read(creada.getResponse().getContentAsString(), "$.codigo");
@@ -289,7 +293,7 @@ class EstadisticasMetaEliminadoIT {
                         .param("idClase", String.valueOf(claseId))
                         .contentType("application/json")
                         .content(cuerpo)
-                        .header("Authorization", "Bearer " + buildJwt("Instructor", instructorA)))
+                        .header("Authorization", "Bearer " + buildJwt("Coordinador", COORD)))
                 .andExpect(status().isOk());
     }
 

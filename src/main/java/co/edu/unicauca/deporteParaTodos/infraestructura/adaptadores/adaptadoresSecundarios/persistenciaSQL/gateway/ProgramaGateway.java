@@ -3,6 +3,7 @@ package co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadores
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 
@@ -32,6 +33,13 @@ public class ProgramaGateway implements IProgramaGateway {
         List<Programa> programas = new ArrayList<>();
         repoPrograma.findAll().forEach(e -> programas.add(ProgramaMapper.toDominio(e)));
         return programas;
+    }
+
+    @Override
+    public List<Programa> obtenerProgramasPorFacultad(String nombreFacultad) {
+        return repoPrograma.findPorFacultad(nombreFacultad).stream()
+                .map(ProgramaMapper::toDominio)
+                .collect(Collectors.toList());
     }
 
     @Override

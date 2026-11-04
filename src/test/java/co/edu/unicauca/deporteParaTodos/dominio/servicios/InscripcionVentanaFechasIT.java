@@ -200,7 +200,8 @@ class InscripcionVentanaFechasIT {
         grupo.setCupos(5);
         grupo.setFechaCreacion(LocalDate.now(clock));
         grupo.setFechaInscripcionApertura(apertura);
-        grupo.setFechaIncripcionCierre(cierre);
+        // Fase 3: el cierre es obligatorio; "sin cierre" se prueba ahora con un cierre lejano.
+        grupo.setFechaIncripcionCierre(cierre != null ? cierre : LocalDate.now(clock).plusYears(1));
         grupo.setPeriodo(1);
         return grupoServicio.insertarGrupo(grupo);
     }

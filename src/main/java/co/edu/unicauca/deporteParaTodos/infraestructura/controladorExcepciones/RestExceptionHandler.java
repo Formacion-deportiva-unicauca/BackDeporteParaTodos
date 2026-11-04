@@ -29,6 +29,8 @@ import co.edu.unicauca.deporteParaTodos.dominio.excepciones.FechaClaseFuturaExce
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.RegistroAsistenciaVencidoExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.ProrrogaMesFuturoExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.JustificacionInvalidaExcepcion;
+import co.edu.unicauca.deporteParaTodos.dominio.excepciones.DatosInvalidosExcepcion;
+import co.edu.unicauca.deporteParaTodos.dominio.excepciones.PublicoCursoNoCoincideExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.DuracionManualInvalidaExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.MesFuturoExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.DiaFueraDeHorarioExcepcion;
@@ -390,6 +392,26 @@ public class RestExceptionHandler {
         @ExceptionHandler(ProrrogaMesFuturoExcepcion.class)
         public ResponseEntity<Error> GenericException(final HttpServletRequest req, final ProrrogaMesFuturoExcepcion ex) {
                 logExcepcion("ProrrogaMesFuturoExcepcion", req, ex);
+                return buildDomainErrorResponse(req,
+                                ex != null ? ex.getCodigo()       : "",
+                                ex != null ? ex.getLlaveMensaje() : "",
+                                ex != null ? ex.getMessage()      : "",
+                                HttpStatus.UNPROCESSABLE_ENTITY);
+        }
+
+        @ExceptionHandler(PublicoCursoNoCoincideExcepcion.class)
+        public ResponseEntity<Error> GenericException(final HttpServletRequest req, final PublicoCursoNoCoincideExcepcion ex) {
+                logExcepcion("PublicoCursoNoCoincideExcepcion", req, ex);
+                return buildDomainErrorResponse(req,
+                                ex != null ? ex.getCodigo()       : "",
+                                ex != null ? ex.getLlaveMensaje() : "",
+                                ex != null ? ex.getMessage()      : "",
+                                HttpStatus.UNPROCESSABLE_ENTITY);
+        }
+
+        @ExceptionHandler(DatosInvalidosExcepcion.class)
+        public ResponseEntity<Error> GenericException(final HttpServletRequest req, final DatosInvalidosExcepcion ex) {
+                logExcepcion("DatosInvalidosExcepcion", req, ex);
                 return buildDomainErrorResponse(req,
                                 ex != null ? ex.getCodigo()       : "",
                                 ex != null ? ex.getLlaveMensaje() : "",

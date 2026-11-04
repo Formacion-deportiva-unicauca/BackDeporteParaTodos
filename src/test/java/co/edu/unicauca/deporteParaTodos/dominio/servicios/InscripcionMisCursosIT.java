@@ -158,6 +158,7 @@ class InscripcionMisCursosIT {
         grupoInscrito.setIdInstructor(instructorId);
         grupoInscrito.setCupos(5);
         grupoInscrito.setFechaCreacion(LocalDate.now(clock));
+        grupoInscrito.setFechaIncripcionCierre(java.time.LocalDate.now().plusYears(1)); // Fase 3: el cierre es obligatorio
         grupoInscrito.setFechaInscripcionApertura(LocalDate.now(clock));
         grupoInscrito.setPeriodo(1);
         iterableInscrito = grupoServicio.insertarGrupo(grupoInscrito).getIterable();
@@ -175,6 +176,7 @@ class InscripcionMisCursosIT {
         grupoEspera.setImagenGrupo(imagenId);
         grupoEspera.setCupos(1);
         grupoEspera.setFechaCreacion(LocalDate.now(clock));
+        grupoEspera.setFechaIncripcionCierre(java.time.LocalDate.now().plusYears(1)); // Fase 3: el cierre es obligatorio
         grupoEspera.setFechaInscripcionApertura(LocalDate.now(clock));
         grupoEspera.setPeriodo(1);
         iterableEnEspera = grupoServicio.insertarGrupo(grupoEspera).getIterable();
@@ -189,6 +191,7 @@ class InscripcionMisCursosIT {
         grupoDesvinculado.setImagenGrupo(imagenId);
         grupoDesvinculado.setCupos(5);
         grupoDesvinculado.setFechaCreacion(LocalDate.now(clock));
+        grupoDesvinculado.setFechaIncripcionCierre(java.time.LocalDate.now().plusYears(1)); // Fase 3: el cierre es obligatorio
         grupoDesvinculado.setFechaInscripcionApertura(LocalDate.now(clock));
         grupoDesvinculado.setPeriodo(1);
         int iterableDesvinculado = grupoServicio.insertarGrupo(grupoDesvinculado).getIterable();

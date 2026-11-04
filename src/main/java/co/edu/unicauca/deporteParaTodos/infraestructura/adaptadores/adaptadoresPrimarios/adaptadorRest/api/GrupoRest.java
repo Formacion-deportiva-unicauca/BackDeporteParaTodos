@@ -18,11 +18,15 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosEntrada.IGrupoServicio;
+import co.edu.unicauca.deporteParaTodos.dominio.modelo.ClaveGrupo;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Grupo;
+import co.edu.unicauca.deporteParaTodos.dominio.modelo.PublicoCurso;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.InstructorGrupoResumen;
 import co.edu.unicauca.deporteParaTodos.dominio.utils.LogSanitizer;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.GrupoDto;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.InstructorGrupoResumenDto;
+import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.OcupacionGrupoDto;
+import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.PeriodoInscripcionRequest;
 import co.edu.unicauca.deporteParaTodos.infraestructura.logs.PeticionLogger;
 import co.edu.unicauca.deporteParaTodos.infraestructura.mappers.GrupoMapper;
 import io.swagger.v3.oas.annotations.Operation;
@@ -35,6 +39,7 @@ import org.springframework.security.oauth2.jwt.Jwt;
 
 import java.util.stream.Collectors;
 
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -153,6 +158,69 @@ public class GrupoRest {
         Grupo datos = GrupoMapper.fromDto(dto);
         Grupo actualizado = servicio.actualizarGrupo(categoria, curso, anio, iterable, datos);
         return new ResponseEntity<>(GrupoMapper.toDto(actualizado, LocalDate.now(clock)), HttpStatus.OK);
+    }
+
+    @Operation(summary = "Cierra (cerradas=true) o reabre (cerradas=false) a mano las inscripciones de un grupo. "
+            + "Reabrir solo es posible mientras la fecha de cierre del grupo no haya pasado (422 si ya paso).")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Estado de inscripciones del grupo actualizado"),
+        @ApiResponse(responseCode = "404", description = "El grupo no existe"),
+        @ApiResponse(responseCode = "422", description = "No se puede reabrir: la fecha de cierre ya paso"),
+    })
+    @PreAuthorize("hasAuthority('Coordinador')")
+    @PatchMapping("/grupo/inscripciones")
+    public ResponseEntity<GrupoDto> cambiarCierreManual(
+            @RequestParam String categoria, @RequestParam String curso,
+            @RequestParam Integer anio, @RequestParam Integer iterable,
+            @RequestParam boolean cerradas) {
+        PeticionLogger.log(LOGGER, "PATCH", "/api/v2/grupo/inscripciones",
+                "categoria=" + categoria + ", curso=" + curso + ", anio=" + anio + ", iterable=" + iterable
+                        + ", cerradas=" + cerradas);
+        Grupo actualizado = servicio.cambiarCierreManual(categoria, curso, anio, iterable, cerradas);
+        return new ResponseEntity<>(GrupoMapper.toDto(actualizado, LocalDate.now(clock)), HttpStatus.OK);
+    }
+
+    @Operation(summary = "Tablero de ocupacion de los grupos (inscritos, en espera, nivel LLENO/POR_LLENAR/CON_CUPO y ventana de "
+            + "inscripcion). Filtros opcionales: categoria, curso y publico (ESTUDIANTE, FUNCIONARIO, MIXTO).")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Ocupacion recuperada"),
+    })
+    @PreAuthorize("hasAuthority('Coordinador')")
+    @GetMapping("/grupo/ocupacion")
+    public ResponseEntity<List<OcupacionGrupoDto>> ocupacion(
+            @RequestParam(required = false) String categoria,
+            @RequestParam(required = false) String curso,
+            @RequestParam(required = false) PublicoCurso publico) {
+        PeticionLogger.log(LOGGER, "GET", "/api/v2/grupo/ocupacion",
+                "categoria=" + LogSanitizer.sanitizar(categoria) + ", curso=" + LogSanitizer.sanitizar(curso)
+                        + ", publico=" + publico);
+        List<OcupacionGrupoDto> dtos = servicio.obtenerOcupacion(categoria, curso, publico).stream()
+                .map(OcupacionGrupoDto::fabricarDeModelo)
+                .collect(Collectors.toList());
+        return new ResponseEntity<>(dtos, HttpStatus.OK);
+    }
+
+    @Operation(summary = "Aplica un periodo de inscripciones (apertura opcional, cierre obligatorio) a los grupos indicados. "
+            + "Todo o nada: si un grupo no existe no se modifica ninguno. No reabre los grupos cerrados a mano.")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Periodo aplicado"),
+        @ApiResponse(responseCode = "404", description = "Alguno de los grupos no existe"),
+        @ApiResponse(responseCode = "422", description = "Fechas invalidas"),
+    })
+    @PreAuthorize("hasAuthority('Coordinador')")
+    @PatchMapping("/grupo/periodo")
+    public ResponseEntity<List<GrupoDto>> aplicarPeriodo(@RequestBody @Valid PeriodoInscripcionRequest request) {
+        PeticionLogger.log(LOGGER, "PATCH", "/api/v2/grupo/periodo",
+                "apertura=" + request.getFechaApertura() + ", cierre=" + request.getFechaCierre()
+                        + ", grupos=" + request.getGrupos().size());
+        List<ClaveGrupo> claves = request.getGrupos().stream()
+                .map(g -> new ClaveGrupo(g.getCategoria(), g.getCurso(), g.getAnio(), g.getIterable()))
+                .collect(Collectors.toList());
+        LocalDate hoy = LocalDate.now(clock);
+        List<GrupoDto> dtos = servicio.aplicarPeriodo(request.getFechaApertura(), request.getFechaCierre(), claves).stream()
+                .map(g -> GrupoMapper.toDto(g, hoy))
+                .collect(Collectors.toList());
+        return new ResponseEntity<>(dtos, HttpStatus.OK);
     }
 
     @Operation(summary = "Borrado lógico de un grupo: marca meta_eliminado=1. Retorna 409 si ya estaba eliminado.")

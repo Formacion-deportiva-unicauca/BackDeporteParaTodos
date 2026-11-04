@@ -38,4 +38,8 @@ public class PerfilDto {
 
     private String alumnoCodigo;
 
+    private String programa;
+
+    private String dependencia;
+
 }

@@ -382,4 +382,27 @@ class InscripcionGatewayTest {
         assertNotNull(resultado);
         assertTrue(resultado.isEmpty());
     }
+
+    // ── Fase 4: contarInscripcionesTodosLosGrupos ──
+
+    @Test
+    void contarInscripcionesTodosLosGrupos_hayFilas_mapeaCamposYConvierteNumerosAInt() {
+        Object[] fila = new Object[]{CATEGORIA, CURSO, ANIO, ITERABLE, 18L, 4L};
+        when(repoInscrp.contarInscripcionesTodosLosGrupos()).thenReturn(List.<Object[]>of(fila));
+
+        List<co.edu.unicauca.deporteParaTodos.dominio.modelo.ConteoInscripcionGrupo> resultado =
+                gateway.contarInscripcionesTodosLosGrupos();
+
+        assertEquals(1, resultado.size());
+        assertEquals(CURSO, resultado.get(0).getCurso());
+        assertEquals(18, resultado.get(0).getInscritos());
+        assertEquals(4, resultado.get(0).getEnEspera());
+    }
+
+    @Test
+    void contarInscripcionesTodosLosGrupos_sinFilas_retornaListaVacia() {
+        when(repoInscrp.contarInscripcionesTodosLosGrupos()).thenReturn(List.of());
+
+        assertTrue(gateway.contarInscripcionesTodosLosGrupos().isEmpty());
+    }
 }

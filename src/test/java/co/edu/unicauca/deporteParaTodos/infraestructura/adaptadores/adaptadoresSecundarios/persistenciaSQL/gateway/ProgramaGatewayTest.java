@@ -141,4 +141,24 @@ class ProgramaGatewayTest {
         when(repoPrograma.findById(NOMBRE)).thenReturn(Optional.empty());
         assertThrows(NoExisteExcepcion.class, () -> programaGateway.eliminarPrograma(NOMBRE));
     }
+
+    // --- obtenerProgramasPorFacultad ---
+
+    @Test
+    void obtenerProgramasPorFacultad_mapeaLasEntidadesAlModelo() {
+        when(repoPrograma.findPorFacultad(NOMBRE_FAC)).thenReturn(List.of(entidadBase()));
+
+        List<Programa> resultado = programaGateway.obtenerProgramasPorFacultad(NOMBRE_FAC);
+
+        assertEquals(1, resultado.size());
+        assertEquals(NOMBRE, resultado.get(0).getPrg_nombre());
+        assertEquals(NOMBRE_FAC, resultado.get(0).getFacultad().getNombre());
+    }
+
+    @Test
+    void obtenerProgramasPorFacultad_sinProgramas_retornaListaVacia() {
+        when(repoPrograma.findPorFacultad("Facultad de Artes")).thenReturn(List.of());
+
+        assertTrue(programaGateway.obtenerProgramasPorFacultad("Facultad de Artes").isEmpty());
+    }
 }

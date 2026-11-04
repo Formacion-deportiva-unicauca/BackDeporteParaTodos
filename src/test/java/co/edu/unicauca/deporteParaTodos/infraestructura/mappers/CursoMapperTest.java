@@ -3,6 +3,7 @@ package co.edu.unicauca.deporteParaTodos.infraestructura.mappers;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Curso;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.EstadoCurso;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.EstadoInscripciones;
+import co.edu.unicauca.deporteParaTodos.dominio.modelo.PublicoCurso;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.CursoDto;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresSecundarios.persistenciaSQL.entidades.CursoEntidad;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.NoProcesableEntidadException;
@@ -170,5 +171,74 @@ class CursoMapperTest {
     @Test
     void toDto_cursoNulo_lanzaNoProcesableEntidadException() {
         assertThrows(NoProcesableEntidadException.class, () -> CursoMapper.toDto(null));
+    }
+
+    // ── publico del curso (ESTUDIANTE, FUNCIONARIO, MIXTO) ────────────────────
+
+    @Test
+    void toDominio_publicoNuloEnLaBase_seTomaComoMixto() {
+        CursoEntidad e = entidadBase();
+        e.setPublico(null);
+
+        assertEquals(PublicoCurso.MIXTO, CursoMapper.toDominio(e).getPublico());
+    }
+
+    @Test
+    void toDominio_mapeaElPublicoGuardado() {
+        CursoEntidad e = entidadBase();
+        e.setPublico("FUNCIONARIO");
+
+        assertEquals(PublicoCurso.FUNCIONARIO, CursoMapper.toDominio(e).getPublico());
+    }
+
+    @Test
+    void toDominio_publicoDesconocidoEnLaBase_lanzaNoProcesable() {
+        CursoEntidad e = entidadBase();
+        e.setPublico("DOCENTES");
+
+        assertThrows(NoProcesableEntidadException.class, () -> CursoMapper.toDominio(e));
+    }
+
+    @Test
+    void toEntidad_publicoNuloSeGuardaComoMixto() {
+        Curso c = cursoBase();
+        c.setPublico(null);
+
+        assertEquals("MIXTO", CursoMapper.toEntidad(c).getPublico());
+    }
+
+    @Test
+    void toEntidad_guardaElPublicoElegido() {
+        Curso c = cursoBase();
+        c.setPublico(PublicoCurso.ESTUDIANTE);
+
+        assertEquals("ESTUDIANTE", CursoMapper.toEntidad(c).getPublico());
+    }
+
+    @Test
+    void toDto_incluyeElPublico() {
+        Curso c = cursoBase();
+        c.setPublico(PublicoCurso.FUNCIONARIO);
+
+        assertEquals(PublicoCurso.FUNCIONARIO, CursoMapper.toDto(c).getPublico());
+    }
+
+    @Test
+    void fromDto_mapeaElPublico() {
+        CursoDto dto = dtoBase();
+        dto.setPublico(PublicoCurso.ESTUDIANTE);
+
+        assertEquals(PublicoCurso.ESTUDIANTE, CursoMapper.fromDto(dto).getPublico());
+    }
+
+    @Test
+    void fromDto_sinPublico_quedaNuloYSeGuardaraComoMixto() {
+        CursoDto dto = dtoBase();
+        dto.setPublico(null);
+
+        Curso c = CursoMapper.fromDto(dto);
+
+        assertEquals(null, c.getPublico());
+        assertEquals("MIXTO", CursoMapper.toEntidad(c).getPublico());
     }
 }

@@ -97,6 +97,12 @@ class RestExceptionHandlerTest {
         void registroAsistenciaVencido() { throw new RegistroAsistenciaVencidoExcepcion("plazo vencido de prueba"); }
 
         // SCRUM-80 (rediseno, bloque 2): se conectan en ClaseServicio/AsistenciaServicio.
+        @GetMapping("/test/publicocursonocoincide")
+        void publicoCursoNoCoincide() { throw new PublicoCursoNoCoincideExcepcion("publico de prueba"); }
+
+        @GetMapping("/test/datosinvalidos")
+        void datosInvalidos() { throw new DatosInvalidosExcepcion("datos de prueba"); }
+
         @GetMapping("/test/justificacioninvalida")
         void justificacionInvalida() { throw new JustificacionInvalidaExcepcion("justificacion de prueba"); }
 
@@ -304,6 +310,22 @@ class RestExceptionHandlerTest {
         mockMvc.perform(get("/test/registroasistenciavencido"))
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.codigoError").value("GC-0019"))
+                .andExpect(jsonPath("$.codigoHttp").value(422));
+    }
+
+    @Test
+    void publicoCursoNoCoincide_retorna422ConSuCodigo() throws Exception {
+        mockMvc.perform(get("/test/publicocursonocoincide"))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.codigoError").value("GC-0030"))
+                .andExpect(jsonPath("$.codigoHttp").value(422));
+    }
+
+    @Test
+    void datosInvalidos_retorna422ConSuCodigo() throws Exception {
+        mockMvc.perform(get("/test/datosinvalidos"))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.codigoError").value("GC-0029"))
                 .andExpect(jsonPath("$.codigoHttp").value(422));
     }
 

@@ -122,6 +122,7 @@ public class CursoGateway implements ICursoGateway{
         actulizacion.setDescripcion(entidad.getDescripcion());
         actulizacion.setEliminado(0);
         actulizacion.setObjImagen(entidad.getObjImagen());
+        actulizacion.setPublico(entidad.getPublico());
         CursoEntidad respuesta = repoCurso.save(actulizacion);
         Curso insertado = CursoMapper.toDominio(respuesta);
         if(insertado==null){
@@ -191,19 +192,6 @@ public class CursoGateway implements ICursoGateway{
         }
         CursoEntidad entidad = op.get();
         entidad.setEliminado(1);
-        CursoEntidad respuesta = repoCurso.save(entidad);
-        return CursoMapper.toDominio(respuesta);
-    }
-
-    @Override
-    public Curso cambiarEstadoInscripciones(String categoria, String nombreCurso, EstadoInscripciones estado) {
-        CursoId id = new CursoId(categoria, nombreCurso);
-        Optional<CursoEntidad> op = repoCurso.findById(id);
-        if (op.isEmpty()) {
-            throw new NoExisteExcepcion("gateway no encuentra el curso a cambiar estado de inscripciones");
-        }
-        CursoEntidad entidad = op.get();
-        entidad.setEstadoInscripciones(estado.name());
         CursoEntidad respuesta = repoCurso.save(entidad);
         return CursoMapper.toDominio(respuesta);
     }

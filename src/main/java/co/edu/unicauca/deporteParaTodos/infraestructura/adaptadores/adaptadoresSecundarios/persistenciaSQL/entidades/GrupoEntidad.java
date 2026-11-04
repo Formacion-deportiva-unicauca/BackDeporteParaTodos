@@ -70,4 +70,7 @@ public class GrupoEntidad {
 
     @Column(name = "META_ELIMINADO")
     private Integer eliminado;
+
+    @Column(name = "GRP_INSCRIP_CERRADA_MANUAL", nullable = false)
+    private boolean inscripcionesCerradasManual;
 }

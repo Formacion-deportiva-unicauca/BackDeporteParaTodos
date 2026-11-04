@@ -158,6 +158,7 @@ class ClaseFechaDuplicadaIT {
         grupo.setIdInstructor(INSTRUCTOR_SEED_ID);
         grupo.setCupos(5);
         grupo.setFechaCreacion(LocalDate.now());
+        grupo.setFechaIncripcionCierre(java.time.LocalDate.now().plusYears(1)); // Fase 3: el cierre es obligatorio
         grupo.setPeriodo(1);
         Grupo insertado = grupoServicio.insertarGrupo(grupo);
         crearHorariosParaGrupo(insertado);
@@ -285,10 +286,12 @@ class ClaseFechaDuplicadaIT {
                 .header("Authorization", "Bearer " + buildJwt("Instructor", INSTRUCTOR_SEED_ID)))
                 .andExpect(status().isCreated());
 
+        // El dia anterior puede caer en el mes anterior (el 1o de cada mes): el Instructor ya no tiene plazo para
+        // ese mes, asi que esta segunda clase la crea el Coordinador (sin limite de plazo, solo "no fecha futura").
         mockMvc.perform(post("/api/v2/claseGrupo")
                 .contentType("application/json")
                 .content(bodyClase(iterable, fechaDia2, "clase dia 2"))
-                .header("Authorization", "Bearer " + buildJwt("Instructor", INSTRUCTOR_SEED_ID)))
+                .header("Authorization", "Bearer " + buildJwt("Coordinador", "1")))
                 .andExpect(status().isCreated());
     }
 }

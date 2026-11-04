@@ -3,6 +3,7 @@ package co.edu.unicauca.deporteParaTodos.dominio.servicios;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IProgramaGateway;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.ListadoVacioExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.NoExisteExcepcion;
+import co.edu.unicauca.deporteParaTodos.dominio.excepciones.DatosInvalidosExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.YaExisteElementoExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Facultad;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Programa;
@@ -122,5 +123,34 @@ class ProgramaServicioTest {
     void eliminarPrograma_noExiste_lanzaNoExisteExcepcion() {
         when(programaGateway.existePrograma(NOMBRE)).thenReturn(false);
         assertThrows(NoExisteExcepcion.class, () -> servicio.eliminarPrograma(NOMBRE));
+    }
+
+    // --- obtenerProgramasPorFacultad ---
+
+    @Test
+    void obtenerProgramasPorFacultad_conProgramas_retornaLista() {
+        when(programaGateway.obtenerProgramasPorFacultad("Facultad de Ingeniería"))
+                .thenReturn(List.of(programaBase()));
+
+        List<Programa> resultado = servicio.obtenerProgramasPorFacultad("Facultad de Ingeniería");
+
+        assertEquals(1, resultado.size());
+        assertEquals(NOMBRE, resultado.get(0).getPrg_nombre());
+    }
+
+    @Test
+    void obtenerProgramasPorFacultad_sinProgramas_lanzaListadoVacio() {
+        when(programaGateway.obtenerProgramasPorFacultad("Facultad de Artes")).thenReturn(List.of());
+
+        assertThrows(ListadoVacioExcepcion.class,
+                () -> servicio.obtenerProgramasPorFacultad("Facultad de Artes"));
+    }
+
+    @Test
+    void obtenerProgramasPorFacultad_facultadEnBlanco_lanzaDatosInvalidos() {
+        assertThrows(DatosInvalidosExcepcion.class, () -> servicio.obtenerProgramasPorFacultad("  "));
+        assertThrows(DatosInvalidosExcepcion.class, () -> servicio.obtenerProgramasPorFacultad(null));
+
+        verify(programaGateway, never()).obtenerProgramasPorFacultad(any());
     }
 }

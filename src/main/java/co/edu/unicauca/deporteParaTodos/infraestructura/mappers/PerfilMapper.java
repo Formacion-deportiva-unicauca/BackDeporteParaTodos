@@ -54,6 +54,8 @@ public class PerfilMapper {
             dto.setTipoId(perfil.getTipoId());
             dto.setFacultad(perfil.getFacultad());
             dto.setTipoAlumno(perfil.getTipoAlumno());
+            dto.setPrograma(perfil.getPrograma());
+            dto.setDependencia(perfil.getDependencia());
             // alumnoCodigo no se mapea — consistente con comportamiento de fabricarDeModelo anterior
             return dto;
         } catch (Exception e) {
@@ -73,6 +75,8 @@ public class PerfilMapper {
             perfil.setFacultad(dto.getFacultad());
             perfil.setTipoAlumno(dto.getTipoAlumno());
             perfil.setAlumnoCodigo(dto.getAlumnoCodigo());
+            perfil.setPrograma(dto.getPrograma());
+            perfil.setDependencia(dto.getDependencia());
             perfil.setImagen(null);
             return perfil;
         } catch (Exception e) {

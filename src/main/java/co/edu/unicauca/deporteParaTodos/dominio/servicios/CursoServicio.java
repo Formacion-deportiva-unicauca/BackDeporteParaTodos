@@ -1,14 +1,23 @@
 package co.edu.unicauca.deporteParaTodos.dominio.servicios;
 
+import java.time.Clock;
+import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosEntrada.ICursoServicio;
+import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IAlumnoGateway;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.ICursoGateway;
+import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IGrupoGateway;
+import co.edu.unicauca.deporteParaTodos.dominio.modelo.Alumno;
+import co.edu.unicauca.deporteParaTodos.dominio.modelo.EstadoVentanaInscripcion;
+import co.edu.unicauca.deporteParaTodos.dominio.modelo.PublicoCurso;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Curso;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.EstadoCurso;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.EstadoInscripciones;
+import co.edu.unicauca.deporteParaTodos.dominio.modelo.Grupo;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.ErrorInternoException;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.InsercionFallidaExepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.NoExisteExcepcion;
@@ -20,19 +29,89 @@ public class CursoServicio implements ICursoServicio {
     @Autowired
     private ICursoGateway cursoGateway;
 
+    @Autowired
+    private IAlumnoGateway alumnoGateway;
+
+    @Autowired
+    private IGrupoGateway grupoGateway;
+
+    @Autowired
+    private Clock clock;
+
     @Override
     public List<Curso> recuperarCursos() {
-        return cursoGateway.obtenerCursos();
+        return conEstadoInscripciones(cursoGateway.obtenerCursos());
     }
 
     @Override
     public List<Curso> cursosDeCategoria(String categoria) {
-        return cursoGateway.obtenerCursosDeCategoria(categoria);
+        return conEstadoInscripciones(cursoGateway.obtenerCursosDeCategoria(categoria));
     }
 
     @Override
     public List<Curso> todosLosCursosDeCategoria(String categoria) {
-        return cursoGateway.obtenerTodosCursosDeCategoria(categoria);
+        return conEstadoInscripciones(cursoGateway.obtenerTodosCursosDeCategoria(categoria));
+    }
+
+    @Override
+    public List<Curso> cursosDeCategoriaParaAlumno(String categoria, String alumnoId) {
+        return visiblesParaAlumno(cursoGateway.obtenerCursosDeCategoria(categoria), alumnoId);
+    }
+
+    @Override
+    public List<Curso> recuperarCursosParaAlumno(String alumnoId) {
+        return visiblesParaAlumno(cursoGateway.obtenerCursos(), alumnoId);
+    }
+
+    // El alumno ve un curso si esta activo, va dirigido a su tipo de vinculo y algun grupo suyo tiene hoy las
+    // inscripciones abiertas por fecha (misma regla EstadoVentanaInscripcion que usa inscribir()).
+    private List<Curso> visiblesParaAlumno(List<Curso> cursos, String alumnoId) {
+        String tipo = alumnoId == null ? null
+                : alumnoGateway.obtenerAlumno(alumnoId).map(Alumno::getTipoAlumno).orElse(null);
+        LocalDate hoy = LocalDate.now(clock);
+        return cursos.stream()
+                .filter(curso -> EstadoCurso.ACTIVO.equals(curso.getEstadoCurso()))
+                .filter(curso -> Optional.ofNullable(curso.getPublico()).orElse(PublicoCurso.MIXTO).admite(tipo))
+                .filter(curso -> tieneGrupoConInscripcionesAbiertas(curso, hoy))
+                .map(curso -> conEstadoInscripciones(curso, hoy))
+                .toList();
+    }
+
+    private boolean tieneGrupoConInscripcionesAbiertas(Curso curso, LocalDate hoy) {
+        return estadoInscripcionesDe(curso, hoy) == EstadoInscripciones.ABIERTO;
+    }
+
+    // Fase 3: el estado de inscripciones del curso no se guarda ni se cambia a mano: se calcula con los grupos del curso
+    // (misma regla que inscribir(): ventana de fechas + cierre manual). ABIERTO si algun grupo acepta inscripciones hoy,
+    // CERRADO si ninguno, SIN_GRUPOS si aun no tiene grupos.
+    private EstadoInscripciones estadoInscripcionesDe(Curso curso, LocalDate hoy) {
+        List<Grupo> grupos = grupoGateway.obtenerGruposDeCurso(curso.getCategoriaCurso(), curso.getNombre());
+        if (grupos == null || grupos.isEmpty()) {
+            return EstadoInscripciones.SIN_GRUPOS;
+        }
+        return grupos.stream().anyMatch(grupo -> grupo.estadoInscripcion(hoy) == EstadoVentanaInscripcion.ABIERTAS)
+                ? EstadoInscripciones.ABIERTO
+                : EstadoInscripciones.CERRADO;
+    }
+
+    private Curso conEstadoInscripciones(Curso curso, LocalDate hoy) {
+        if (curso != null) {
+            curso.setEstadoInscripciones(estadoInscripcionesDe(curso, hoy));
+        }
+        return curso;
+    }
+
+    private Curso conEstadoInscripciones(Curso curso) {
+        return curso == null ? null : conEstadoInscripciones(curso, LocalDate.now(clock));
+    }
+
+    private List<Curso> conEstadoInscripciones(List<Curso> cursos) {
+        if (cursos == null || cursos.isEmpty()) {
+            return cursos;
+        }
+        LocalDate hoy = LocalDate.now(clock);
+        cursos.forEach(curso -> conEstadoInscripciones(curso, hoy));
+        return cursos;
     }
 
     @Override
@@ -44,7 +123,7 @@ public class CursoServicio implements ICursoServicio {
         if (respuesta == null) {
             throw new ErrorInternoException();
         }
-        return respuesta;
+        return conEstadoInscripciones(respuesta);
     }
 
     @Override
@@ -56,7 +135,7 @@ public class CursoServicio implements ICursoServicio {
         if (respuesta == null) {
             throw new InsercionFallidaExepcion("Error en la insercion o conversion de retorno fallida, se ha respondido con nulo");
         }
-        return respuesta;
+        return conEstadoInscripciones(respuesta);
     }
 
     @Override
@@ -68,7 +147,7 @@ public class CursoServicio implements ICursoServicio {
         if (actualizado == null) {
             throw new InsercionFallidaExepcion("Error en la insercion o conversion de retorno fallida, se ha respondido con nulo");
         }
-        return actualizado;
+        return conEstadoInscripciones(actualizado);
     }
 
     @Override
@@ -84,15 +163,7 @@ public class CursoServicio implements ICursoServicio {
         if (!cursoGateway.existeCurso(categoria, nombreCurso)) {
             throw new NoExisteExcepcion("El curso al que se desea cambiar el estado no existe");
         }
-        return cursoGateway.cambiarEstadoCurso(categoria, nombreCurso, estado);
-    }
-
-    @Override
-    public Curso cambiarEstadoInscripciones(String categoria, String nombreCurso, EstadoInscripciones estado) {
-        if (!cursoGateway.existeCurso(categoria, nombreCurso)) {
-            throw new NoExisteExcepcion("El curso al que se desea cambiar el estado de inscripciones no existe");
-        }
-        return cursoGateway.cambiarEstadoInscripciones(categoria, nombreCurso, estado);
+        return conEstadoInscripciones(cursoGateway.cambiarEstadoCurso(categoria, nombreCurso, estado));
     }
 
     @Override

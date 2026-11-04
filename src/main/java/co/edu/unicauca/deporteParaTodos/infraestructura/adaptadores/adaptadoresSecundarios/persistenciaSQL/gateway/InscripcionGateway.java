@@ -171,4 +171,17 @@ public class InscripcionGateway implements IInscripcionGateway {
                         ((Number) row[5]).intValue()))
                 .collect(Collectors.toList());
     }
+
+    @Override
+    public List<ConteoInscripcionGrupo> contarInscripcionesTodosLosGrupos() {
+        return repoInscrp.contarInscripcionesTodosLosGrupos().stream()
+                .map(row -> new ConteoInscripcionGrupo(
+                        (String) row[0],
+                        (String) row[1],
+                        ((Number) row[2]).intValue(),
+                        ((Number) row[3]).intValue(),
+                        ((Number) row[4]).intValue(),
+                        ((Number) row[5]).intValue()))
+                .collect(Collectors.toList());
+    }
 }

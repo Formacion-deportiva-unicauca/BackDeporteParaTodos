@@ -106,4 +106,13 @@ public interface IGrupoGateway {
      * Obtiene un grupo con bloqueo pesimista (SELECT FOR UPDATE) para control de concurrencia en inscripciones
      */
     public Grupo obtenerGrupoConLock(String categoria, String curso, Integer anio, Integer iterable);
+
+    /** Fase 3: marca o desmarca el cierre manual de las inscripciones del grupo. */
+    public Grupo cambiarCierreManual(String categoria, String curso, Integer anio, Integer iterable, boolean cerrada);
+
+    /**
+     * Fase 4: cambia la ventana de inscripcion del grupo. La apertura null conserva la actual; el cierre siempre se escribe.
+     */
+    public Grupo actualizarVentanaInscripcion(String categoria, String curso, Integer anio, Integer iterable,
+            LocalDate apertura, LocalDate cierre);
 }

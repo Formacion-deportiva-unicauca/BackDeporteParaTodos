@@ -34,6 +34,10 @@ import co.edu.unicauca.deporteParaTodos.dominio.modelo.Inscripcion;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.InscripcionEnEspera;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.InscripcionResumen;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Instructor;
+import co.edu.unicauca.deporteParaTodos.dominio.modelo.Alumno;
+import co.edu.unicauca.deporteParaTodos.dominio.modelo.PublicoCurso;
+import co.edu.unicauca.deporteParaTodos.dominio.excepciones.PublicoCursoNoCoincideExcepcion;
+import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IAlumnoGateway;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -48,6 +52,7 @@ public class InscripcionServicio implements IInscripcionServicio {
     private final IGrupoGateway grupoGateway;
     private final IHorarioGateway horarioGateway;
     private final IInstructorGateway instructorGateway;
+    private final IAlumnoGateway alumnoGateway;
     private final AutorizacionGrupoServicio autorizacionGrupo;
     private final Clock clock;
 
@@ -55,13 +60,14 @@ public class InscripcionServicio implements IInscripcionServicio {
     private int limiteCursosAlumno;
 
     public InscripcionServicio(IInscripcionGateway gateway, ICursoGateway cursoGateway, IGrupoGateway grupoGateway,
-            IHorarioGateway horarioGateway, IInstructorGateway instructorGateway,
+            IHorarioGateway horarioGateway, IInstructorGateway instructorGateway, IAlumnoGateway alumnoGateway,
             AutorizacionGrupoServicio autorizacionGrupo, Clock clock) {
         this.gateway = gateway;
         this.cursoGateway = cursoGateway;
         this.grupoGateway = grupoGateway;
         this.horarioGateway = horarioGateway;
         this.instructorGateway = instructorGateway;
+        this.alumnoGateway = alumnoGateway;
         this.autorizacionGrupo = autorizacionGrupo;
         this.clock = clock;
     }
@@ -78,7 +84,7 @@ public class InscripcionServicio implements IInscripcionServicio {
     @Transactional(isolation = Isolation.READ_COMMITTED)
     public Inscripcion inscribir(Inscripcion datos, String perfIdLlamador, String rolLlamador) {
         Curso curso = cursoGateway.obtenerCurso(datos.getCategoria(), datos.getCurso());
-        if (curso == null || !EstadoInscripciones.ABIERTO.equals(curso.getEstadoInscripciones())) {
+        if (curso == null) {
             throw new InscripcionesCerradasExcepcion(
                     "Las inscripciones para el curso " + datos.getCurso() + " estan cerradas");
         }
@@ -87,6 +93,18 @@ public class InscripcionServicio implements IInscripcionServicio {
         if (!EstadoCurso.ACTIVO.equals(curso.getEstadoCurso())) {
             throw new InscripcionesCerradasExcepcion(
                     "El curso " + datos.getCurso() + " no esta disponible para inscripciones");
+        }
+
+        // Publico del curso: el tipo de vinculo del alumno debe corresponder (los cursos para toda la comunidad no consultan
+        // al alumno). Se valida antes de tomar el lock del grupo: no depende de cupos ni de fechas.
+        PublicoCurso publico = curso.getPublico();
+        if (publico != null && publico != PublicoCurso.MIXTO) {
+            String tipoAlumno = alumnoGateway.obtenerAlumno(datos.getAlumnoId()).map(Alumno::getTipoAlumno).orElse(null);
+            if (!publico.admite(tipoAlumno)) {
+                throw new PublicoCursoNoCoincideExcepcion(publico == PublicoCurso.ESTUDIANTE
+                        ? "El curso " + datos.getCurso() + " esta dirigido a estudiantes"
+                        : "El curso " + datos.getCurso() + " esta dirigido a docentes, administrativos y contratistas");
+            }
         }
 
         Grupo grupo = grupoGateway.obtenerGrupoConLock(
@@ -102,8 +120,12 @@ public class InscripcionServicio implements IInscripcionServicio {
         // (GrupoServicio/GrupoGateway). Solo aplica a inscripciones NUEVAS: no se toca
         // promoverManualmente() ni la promocion automatica desde la lista de espera.
         LocalDate hoy = LocalDate.now(clock);
-        EstadoVentanaInscripcion estadoVentana = EstadoVentanaInscripcion.calcular(
-                grupo.getFechaInscripcionApertura(), grupo.getFechaIncripcionCierre(), hoy);
+        // Fase 3: el estado del grupo suma el cierre manual del Coordinador a la ventana de fechas.
+        if (grupo.isInscripcionesCerradasManual()) {
+            throw new InscripcionesCerradasExcepcion(
+                    "Las inscripciones de este grupo estan cerradas");
+        }
+        EstadoVentanaInscripcion estadoVentana = grupo.estadoInscripcion(hoy);
         if (estadoVentana != EstadoVentanaInscripcion.ABIERTAS) {
             String mensaje = estadoVentana == EstadoVentanaInscripcion.NO_ABIERTAS
                     ? "Las inscripciones de este grupo abren el " + grupo.getFechaInscripcionApertura().format(FORMATO_FECHA)

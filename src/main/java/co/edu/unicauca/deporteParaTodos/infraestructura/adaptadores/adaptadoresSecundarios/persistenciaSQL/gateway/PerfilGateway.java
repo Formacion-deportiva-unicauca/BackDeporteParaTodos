@@ -87,6 +87,7 @@ public class PerfilGateway implements IPerfilGateway {
         entidadAlumno.setIdPerfil(perfil.getId());
         entidadAlumno.setAlm_codigo(perfil.getAlumnoCodigo());
         entidadAlumno.setTipoAlumno(perfil.getTipoAlumno());
+        entidadAlumno.setDependencia(perfil.getDependencia());
         entidadAlumno.setEliminado(0);
 
         try {
@@ -97,10 +98,16 @@ public class PerfilGateway implements IPerfilGateway {
                 throw new InternalError("No se ha logrado registrar el alumno");
             }
 
+            if (perfil.getPrograma() != null) {
+                repoAlumno.insertarAlumnoPrograma(perfil.getId(), perfil.getPrograma());
+            }
+
             Perfil perfilRegistrado = PerfilMapper.toDominio(perfilGuardado);
             perfilRegistrado.setRol(Roles.ALUMNO.getValor());
             perfilRegistrado.setTipoAlumno(alumnoGuardado.getTipoAlumno());
             perfilRegistrado.setFacultad(null);
+            perfilRegistrado.setPrograma(perfil.getPrograma());
+            perfilRegistrado.setDependencia(alumnoGuardado.getDependencia());
             return perfilRegistrado;
         } catch (DataIntegrityViolationException e) {
             throw new YaExisteElementoExcepcion("El correo o identificacion ya se encuentra registrado en el sistema");
@@ -193,8 +200,10 @@ public class PerfilGateway implements IPerfilGateway {
                 perfil.setRol(Roles.ALUMNO.getValor());
                 if(alumno != null){
                     perfil.setTipoAlumno(alumno.getTipoAlumno());
+                    perfil.setDependencia(alumno.getDependencia());
                 }
                 perfil.setFacultad(repoAlumno.obtenerFacultadPorPerfilId(id));
+                perfil.setPrograma(repoAlumno.obtenerProgramaPorPerfilId(id));
                 return perfil;
             }
         }

@@ -7,6 +7,7 @@ import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IProgra
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Programa;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.ListadoVacioExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.NoExisteExcepcion;
+import co.edu.unicauca.deporteParaTodos.dominio.excepciones.DatosInvalidosExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.YaExisteElementoExcepcion;
 
 @Service
@@ -23,6 +24,18 @@ public class ProgramaServicio implements IProgramaServicio {
         List<Programa> lista = programaGateway.obtenerProgramas();
         if (lista.isEmpty()) {
             throw new ListadoVacioExcepcion("No hay programas registrados");
+        }
+        return lista;
+    }
+
+    @Override
+    public List<Programa> obtenerProgramasPorFacultad(String nombreFacultad) {
+        if (nombreFacultad == null || nombreFacultad.isBlank()) {
+            throw new DatosInvalidosExcepcion("La facultad es obligatoria para listar sus programas");
+        }
+        List<Programa> lista = programaGateway.obtenerProgramasPorFacultad(nombreFacultad);
+        if (lista.isEmpty()) {
+            throw new ListadoVacioExcepcion("No hay programas registrados para la facultad " + nombreFacultad);
         }
         return lista;
     }

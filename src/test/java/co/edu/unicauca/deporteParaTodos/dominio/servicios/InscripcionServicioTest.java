@@ -19,7 +19,12 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IAlumnoGateway;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.ICursoGateway;
+import co.edu.unicauca.deporteParaTodos.dominio.excepciones.PublicoCursoNoCoincideExcepcion;
+import co.edu.unicauca.deporteParaTodos.dominio.modelo.Alumno;
+import co.edu.unicauca.deporteParaTodos.dominio.modelo.PublicoCurso;
+import java.util.Optional;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IGrupoGateway;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IHorarioGateway;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IInscripcionGateway;
@@ -56,6 +61,9 @@ class InscripcionServicioTest {
 
     @Mock
     private IGrupoGateway grupoGateway;
+
+    @Mock
+    private IAlumnoGateway alumnoGateway;
 
     @Mock
     private IHorarioGateway horarioGateway;
@@ -103,14 +111,36 @@ class InscripcionServicioTest {
 
     // ── inscribir ─────────────────────────────────────────────────────────────
 
+    // Fase 3: el interruptor del curso ya no decide; manda el estado del grupo (fechas + cierre manual).
     @Test
-    void inscribir_conInscripcionesCerradas_lanzaExcepcion() {
-        Curso cursoCerrado = new Curso();
-        cursoCerrado.setEstadoInscripciones(EstadoInscripciones.CERRADO);
-        when(cursoGateway.obtenerCurso("cat1", "cur1")).thenReturn(cursoCerrado);
+    void inscribir_grupoCerradoAMano_lanzaInscripcionesCerradasExcepcion() {
+        grupoCon5Cupos.setInscripcionesCerradasManual(true);
+        when(cursoGateway.obtenerCurso("cat1", "cur1")).thenReturn(cursoAbierto);
+        when(grupoGateway.obtenerGrupoConLock("cat1", "cur1", 2026, 1)).thenReturn(grupoCon5Cupos);
 
-        assertThrows(InscripcionesCerradasExcepcion.class, () -> servicio.inscribir(datos, COORD, "Coordinador"));
-        verify(grupoGateway, never()).obtenerGrupoConLock(any(), any(), anyInt(), anyInt());
+        InscripcionesCerradasExcepcion ex = assertThrows(InscripcionesCerradasExcepcion.class,
+                () -> servicio.inscribir(datos, COORD, "Coordinador"));
+
+        assertTrue(ex.getMessage().contains("cerradas"), "mensaje real: " + ex.getMessage());
+        verify(gateway, never()).guardarInscripcion(any());
+        verify(gateway, never()).contarInscripcionesActivasGrupo(any(), any(), anyInt(), anyInt());
+    }
+
+    @Test
+    void inscribir_elValorViejoCERRADODelCurso_yaNoBloquea() {
+        Inscripcion guardada = new Inscripcion("alum1", "cat1", "cur1", 2026, 1,
+                Timestamp.from(Instant.now()), null, "INSCRITO");
+        Curso conInterruptorViejoCerrado = new Curso();
+        conInterruptorViejoCerrado.setEstadoCurso(EstadoCurso.ACTIVO);
+        conInterruptorViejoCerrado.setEstadoInscripciones(EstadoInscripciones.CERRADO);
+        when(cursoGateway.obtenerCurso("cat1", "cur1")).thenReturn(conInterruptorViejoCerrado);
+        when(grupoGateway.obtenerGrupoConLock("cat1", "cur1", 2026, 1)).thenReturn(grupoCon5Cupos);
+        when(gateway.contarInscripcionesActivasGrupo("cat1", "cur1", 2026, 1)).thenReturn(1L);
+        when(gateway.contarCursosActivosAlumno("alum1")).thenReturn(0L);
+        when(gateway.existeInscripcion("alum1", "cat1", "cur1", 2026, 1)).thenReturn(false);
+        when(gateway.guardarInscripcion(any())).thenReturn(guardada);
+
+        assertNotNull(servicio.inscribir(datos, COORD, "Coordinador"));
     }
 
     @Test
@@ -785,5 +815,102 @@ class InscripcionServicioTest {
                 "alum1", "cat1", "cur1", 2026, 1, COORD, "Coordinador"));
 
         verify(autorizacionGrupo).verificarPropietario("cat1", "cur1", 2026, 1, COORD, "Coordinador");
+    }
+
+    // ── Publico del curso: el tipo de vinculo del alumno debe corresponder ────────────────────────────
+
+    private void alumnoDeTipo(String tipo) {
+        Alumno a = new Alumno();
+        a.setTipoAlumno(tipo);
+        when(alumnoGateway.obtenerAlumno("alum1")).thenReturn(Optional.of(a));
+    }
+
+    private void prepararInscripcionConCupo(PublicoCurso publico) {
+        cursoAbierto.setPublico(publico);
+        when(cursoGateway.obtenerCurso("cat1", "cur1")).thenReturn(cursoAbierto);
+        when(grupoGateway.obtenerGrupoConLock("cat1", "cur1", 2026, 1)).thenReturn(grupoCon5Cupos);
+        when(gateway.contarInscripcionesActivasGrupo("cat1", "cur1", 2026, 1)).thenReturn(2L);
+        when(gateway.contarCursosActivosAlumno("alum1")).thenReturn(1L);
+        when(gateway.existeInscripcion("alum1", "cat1", "cur1", 2026, 1)).thenReturn(false);
+        when(gateway.guardarInscripcion(any())).thenAnswer(inv -> inv.getArgument(0));
+    }
+
+    @Test
+    void inscribir_cursoParaFuncionarios_conUnEstudiante_lanzaPublicoNoCoincide() {
+        alumnoDeTipo("Estudiante");
+        cursoAbierto.setPublico(PublicoCurso.FUNCIONARIO);
+        when(cursoGateway.obtenerCurso("cat1", "cur1")).thenReturn(cursoAbierto);
+
+        assertThrows(PublicoCursoNoCoincideExcepcion.class, () -> servicio.inscribir(datos, COORD, "Coordinador"));
+
+        verify(grupoGateway, never()).obtenerGrupoConLock(any(), any(), anyInt(), anyInt());
+        verify(gateway, never()).guardarInscripcion(any());
+    }
+
+    @Test
+    void inscribir_cursoParaEstudiantes_conUnDocente_lanzaPublicoNoCoincide() {
+        alumnoDeTipo("Docente");
+        cursoAbierto.setPublico(PublicoCurso.ESTUDIANTE);
+        when(cursoGateway.obtenerCurso("cat1", "cur1")).thenReturn(cursoAbierto);
+
+        assertThrows(PublicoCursoNoCoincideExcepcion.class, () -> servicio.inscribir(datos, COORD, "Coordinador"));
+
+        verify(gateway, never()).guardarInscripcion(any());
+    }
+
+    @Test
+    void inscribir_cursoEspecifico_conAlumnoNoEncontrado_lanzaPublicoNoCoincide() {
+        when(alumnoGateway.obtenerAlumno("alum1")).thenReturn(Optional.empty());
+        cursoAbierto.setPublico(PublicoCurso.ESTUDIANTE);
+        when(cursoGateway.obtenerCurso("cat1", "cur1")).thenReturn(cursoAbierto);
+
+        assertThrows(PublicoCursoNoCoincideExcepcion.class, () -> servicio.inscribir(datos, COORD, "Coordinador"));
+    }
+
+    @Test
+    void inscribir_cursoParaFuncionarios_conDocenteAdministrativoOContratista_inscribe() {
+        for (String tipo : new String[] {"Docente", "Administrativo", "Contratista"}) {
+            org.mockito.Mockito.reset(alumnoGateway, cursoGateway, grupoGateway, gateway);
+            alumnoDeTipo(tipo);
+            prepararInscripcionConCupo(PublicoCurso.FUNCIONARIO);
+
+            assertNotNull(servicio.inscribir(datos, COORD, "Coordinador"), tipo);
+        }
+    }
+
+    @Test
+    void inscribir_cursoParaEstudiantes_conUnEstudiante_inscribe() {
+        alumnoDeTipo("Estudiante");
+        prepararInscripcionConCupo(PublicoCurso.ESTUDIANTE);
+
+        assertNotNull(servicio.inscribir(datos, COORD, "Coordinador"));
+        verify(gateway).guardarInscripcion(any());
+    }
+
+    @Test
+    void inscribir_cursoMixto_noConsultaAlAlumno() {
+        prepararInscripcionConCupo(PublicoCurso.MIXTO);
+
+        assertNotNull(servicio.inscribir(datos, COORD, "Coordinador"));
+        verify(alumnoGateway, never()).obtenerAlumno(any());
+    }
+
+    @Test
+    void inscribir_cursoSinPublico_seTrataComoMixto() {
+        prepararInscripcionConCupo(null);
+
+        assertNotNull(servicio.inscribir(datos, COORD, "Coordinador"));
+        verify(alumnoGateway, never()).obtenerAlumno(any());
+    }
+
+    @Test
+    void inscribir_publicoNoCoincide_seValidaAntesDeLasFechasYDelCupo() {
+        alumnoDeTipo("Estudiante");
+        cursoAbierto.setPublico(PublicoCurso.FUNCIONARIO);
+        when(cursoGateway.obtenerCurso("cat1", "cur1")).thenReturn(cursoAbierto);
+
+        assertThrows(PublicoCursoNoCoincideExcepcion.class, () -> servicio.inscribir(datos, COORD, "Coordinador"));
+
+        verify(gateway, never()).contarInscripcionesActivasGrupo(any(), any(), anyInt(), anyInt());
     }
 }

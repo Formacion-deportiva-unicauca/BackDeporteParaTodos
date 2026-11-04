@@ -216,6 +216,7 @@ class AutorizacionGrupoIT {
         // orden real de ejecucion, lo que rompe "repetible sin depender del orden".
         nuevo.setCupos(999);
         nuevo.setFechaCreacion(fechaInscripcionApertura);
+        nuevo.setFechaIncripcionCierre(java.time.LocalDate.now().plusYears(1)); // Fase 3: el cierre es obligatorio
         nuevo.setFechaInscripcionApertura(fechaInscripcionApertura);
         nuevo.setPeriodo(0);
         return grupoServicio.insertarGrupo(nuevo);

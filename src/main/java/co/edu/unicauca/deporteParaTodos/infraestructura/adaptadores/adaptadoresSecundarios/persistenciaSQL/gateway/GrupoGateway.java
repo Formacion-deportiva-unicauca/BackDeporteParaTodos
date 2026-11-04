@@ -72,8 +72,7 @@ public class GrupoGateway implements IGrupoGateway {
     public List<Grupo> obtenerGruposInscripcionDisponible(LocalDate hoy) {
         return repoGrupo.findByEliminado(0).stream()
                 .map(GrupoMapper::toDominio)
-                .filter(g -> EstadoVentanaInscripcion.calcular(
-                        g.getFechaInscripcionApertura(), g.getFechaIncripcionCierre(), hoy) == EstadoVentanaInscripcion.ABIERTAS)
+                .filter(g -> g.estadoInscripcion(hoy) == EstadoVentanaInscripcion.ABIERTAS)
                 .collect(Collectors.toList());
     }
 
@@ -186,6 +185,26 @@ public class GrupoGateway implements IGrupoGateway {
         } catch (Exception e) {
             throw new InsercionFallidaExepcion("No se ha logrado realizar el registro en gateway");
         }
+    }
+
+    @Override
+    public Grupo cambiarCierreManual(String categoria, String curso, Integer anio, Integer iterable, boolean cerrada) {
+        GrupoEntidad entidad = repoGrupo.findById(new GrupoId(categoria, curso, anio, iterable))
+                .orElseThrow(() -> new NoExisteExcepcion("el grupo no se encuentra registrado en el sistema"));
+        entidad.setInscripcionesCerradasManual(cerrada);
+        return GrupoMapper.toDominio(repoGrupo.save(entidad));
+    }
+
+    @Override
+    public Grupo actualizarVentanaInscripcion(String categoria, String curso, Integer anio, Integer iterable,
+            java.time.LocalDate apertura, java.time.LocalDate cierre) {
+        GrupoEntidad entidad = repoGrupo.findById(new GrupoId(categoria, curso, anio, iterable))
+                .orElseThrow(() -> new NoExisteExcepcion("el grupo no se encuentra registrado en el sistema"));
+        if (apertura != null) {
+            entidad.setFechaInscripcionApertura(apertura);
+        }
+        entidad.setFechaIncripcionCierre(cierre);
+        return GrupoMapper.toDominio(repoGrupo.save(entidad));
     }
 
     public Grupo eliminarGrupo(String categoria, String curso, Integer anio, Integer iterable) {

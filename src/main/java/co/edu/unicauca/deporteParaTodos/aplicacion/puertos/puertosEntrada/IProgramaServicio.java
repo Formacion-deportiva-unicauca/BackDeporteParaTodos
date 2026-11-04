@@ -7,6 +7,8 @@ public interface IProgramaServicio {
 
     public List<Programa> obtenerProgramas();
 
+    public List<Programa> obtenerProgramasPorFacultad(String nombreFacultad);
+
     public Programa obtenerPrograma(String nombrePrograma);
 
     public Programa insertarPrograma(Programa datosPrograma);
