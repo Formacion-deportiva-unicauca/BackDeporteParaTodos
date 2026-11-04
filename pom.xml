@@ -213,6 +213,9 @@
 								<exclude>**/EstadisticasMetaEliminadoIT.java</exclude>
 								<exclude>**/ConfirmacionAsistenciaIT.java</exclude>
 								<exclude>**/FaltasAlumnosGrupoIT.java</exclude>
+								<exclude>**/RegistroPerfilPorTipoIT.java</exclude>
+								<exclude>**/CursoPublicoIT.java</exclude>
+								<exclude>**/GrupoCierreInscripcionIT.java</exclude>
 							</excludes>
 						</configuration>
 					</plugin>

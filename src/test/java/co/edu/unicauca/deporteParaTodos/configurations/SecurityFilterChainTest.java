@@ -2,6 +2,13 @@ package co.edu.unicauca.deporteParaTodos.configurations;
 
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosEntrada.IAutenticacionServicio;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosEntrada.IDeporteServicio;
+import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosEntrada.IFacultadServicio;
+import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosEntrada.IProgramaServicio;
+import co.edu.unicauca.deporteParaTodos.dominio.excepciones.DatosInvalidosExcepcion;
+import co.edu.unicauca.deporteParaTodos.dominio.modelo.Facultad;
+import co.edu.unicauca.deporteParaTodos.dominio.modelo.Programa;
+import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.api.FacultadRest;
+import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.api.ProgramaRest;
 import co.edu.unicauca.deporteParaTodos.dominio.servicios.TokenServicio;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.api.AutenticacionRest;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.api.DeporteRest;
@@ -28,9 +35,11 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest(controllers = {DeporteRest.class, AutenticacionRest.class, TokenInterchangeRest.class})
+@WebMvcTest(controllers = {DeporteRest.class, AutenticacionRest.class, TokenInterchangeRest.class,
+        FacultadRest.class, ProgramaRest.class})
 @Import(SecurityConfig.class)
 @TestPropertySource(properties = {
         "app.jwt.secret=dGVzdFNlY3JldEtleUZvckNJMTIzNDU2Nzg5MDEyMzQ1Njc4OTA=",
@@ -52,6 +61,12 @@ class SecurityFilterChainTest {
 
     @MockBean
     private TokenServicio tokenServicio;
+
+    @MockBean
+    private IFacultadServicio servicioFacultad;
+
+    @MockBean
+    private IProgramaServicio servicioPrograma;
 
     // ── Test 1: endpoint protegido sin token → 401 de Spring Security ────────
 
@@ -82,6 +97,56 @@ class SecurityFilterChainTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
                 .andExpect(status().is(not(401)));
+    }
+
+    // ── Registro con datos que no corresponden al tipo de vínculo: 422 con código GC-0029 (antes era 500) ──
+
+    @Test
+    void postRegistroAlumno_datosInvalidosParaElTipo_retorna422ConSuMensaje() throws Exception {
+        when(servicioAutenticacion.registrarAlumno(org.mockito.ArgumentMatchers.any()))
+                .thenThrow(new DatosInvalidosExcepcion("La dependencia es obligatoria para administrativos y contratistas"));
+
+        mockMvc.perform(post("/api/v2/RegistroPerfilAlumno")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"id\":\"1\",\"nombre\":\"Ana\",\"correo\":\"ana@unicauca.edu.co\","
+                                + "\"tipoId\":\"CC\",\"sexo\":\"F\",\"tipoAlumno\":\"Contratista\"}"))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.codigoError").value("GC-0029"))
+                .andExpect(jsonPath("$.mensaje").value(org.hamcrest.Matchers.containsString("La dependencia es obligatoria")));
+    }
+
+    // ── Catálogo de facultades y programas: público, lo necesita el formulario de registro ──
+    // (quien se registra todavía no tiene dpt_token). Solo expone nombres de catálogo.
+
+    @Test
+    void getFacultades_sinToken_noEsBloqueadoPorSecurity() throws Exception {
+        when(servicioFacultad.obtenerFacultades()).thenReturn(List.of());
+
+        mockMvc.perform(get("/api/v2/facultades"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void getProgramasDeUnaFacultad_sinToken_retornaNombreYFacultad() throws Exception {
+        when(servicioPrograma.obtenerProgramasPorFacultad("Facultad de Ingeniería Civil"))
+                .thenReturn(List.of(new Programa("Ingeniería Civil", new Facultad("Facultad de Ingeniería Civil"))));
+
+        mockMvc.perform(get("/api/v2/programas").param("facultad", "Facultad de Ingeniería Civil"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].nombre").value("Ingeniería Civil"))
+                .andExpect(jsonPath("$[0].facultad").value("Facultad de Ingeniería Civil"));
+    }
+
+    @Test
+    void getProgramas_sinParametroFacultad_retorna400NoEs401() throws Exception {
+        mockMvc.perform(get("/api/v2/programas"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void otrosGetDelCatalogo_siguenProtegidos() throws Exception {
+        mockMvc.perform(get("/api/v2/deportes"))
+                .andExpect(status().isUnauthorized());
     }
 
     // ── Test 4: POST /api/v2/auth/token sin Google token → 401 del CONTROLLER, no de Security ──

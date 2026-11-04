@@ -198,4 +198,16 @@ WHERE i.categoria = g.categoria AND i.curso = g.curso
 GROUP BY i.categoria, i.curso, i.anio, i.iterable
 """)
     List<Object[]> contarInscripcionesPorInstructor(@Param("idInstructor") String idInstructor);
+
+    // Fase 4: mismos conteos que contarInscripcionesPorInstructor pero de TODOS los grupos (tablero del Coordinador).
+    @Query("""
+SELECT i.categoria, i.curso, i.anio, i.iterable,
+       SUM(CASE WHEN i.estado = 'INSCRITO' THEN 1 ELSE 0 END),
+       SUM(CASE WHEN i.estado = 'EN_ESPERA' THEN 1 ELSE 0 END)
+FROM InscripcionEntidad i
+WHERE i.eliminado = 0
+  AND i.fechaDesvinculacion IS NULL
+GROUP BY i.categoria, i.curso, i.anio, i.iterable
+""")
+    List<Object[]> contarInscripcionesTodosLosGrupos();
 }

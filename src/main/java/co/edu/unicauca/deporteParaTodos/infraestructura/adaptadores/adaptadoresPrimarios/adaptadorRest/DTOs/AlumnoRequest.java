@@ -34,8 +34,8 @@ public class AlumnoRequest {
 
     @NotBlank(message = "El tipo de alumno no puede estar vacío")
     @Pattern(
-        regexp = "Estudiante|Administrativo|Docente",
-        message = "El tipo de alumno debe ser: Estudiante, Administrativo o Docente"
+        regexp = "Estudiante|Docente|Administrativo|Contratista",
+        message = "El tipo de alumno debe ser: Estudiante, Docente, Administrativo o Contratista"
     )
     private String tipoAlumno;
 }

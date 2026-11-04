@@ -130,4 +130,50 @@ class AlumnoGatewayTest {
         assertNull(resultado.getAlm_codigo(), "HALLAZGO: alm_codigo real en BD se preserva, pero la RESPUESTA lo pierde");
         assertNull(resultado.getEliminadoestado(), "HALLAZGO: eliminadoestado real en BD se preserva, pero la RESPUESTA lo pierde");
     }
+
+    // ── obtenerAlumno ─────────────────────────────────────────────────────────
+    // Con la base real, buscarAlumnoPorIdRaw (retorna Object[]) entrega la fila ENVUELTA en otro arreglo de una sola
+    // posicion (Object[]{ Object[]{...columnas} }); leer registro[1] lanzaba ArrayIndexOutOfBoundsException. Los mocks
+    // devolvian la fila "directa", por eso no se veia en las pruebas unitarias.
+
+    @Test
+    void obtenerAlumno_filaDirecta_mapeaElAlumno() {
+        when(repoAlumno.existsById("12345678")).thenReturn(true);
+        when(repoAlumno.buscarAlumnoPorIdRaw("12345678")).thenReturn(filaAlumnoActivo());
+
+        Alumno resultado = alumnoGateway.obtenerAlumno("12345678").orElseThrow();
+
+        assertEquals("Estudiante", resultado.getTipoAlumno());
+        assertEquals("12345678", resultado.getPerfil().getId());
+        assertEquals("Juan Test", resultado.getPerfil().getNombre());
+    }
+
+    @Test
+    void obtenerAlumno_filaEnvueltaEnUnArregloDeUnaPosicion_seDesenvuelve() {
+        when(repoAlumno.existsById("12345678")).thenReturn(true);
+        when(repoAlumno.buscarAlumnoPorIdRaw("12345678")).thenReturn(new Object[]{ filaAlumnoActivo() });
+
+        Alumno resultado = alumnoGateway.obtenerAlumno("12345678").orElseThrow();
+
+        assertEquals("Estudiante", resultado.getTipoAlumno());
+        assertEquals("12345678", resultado.getPerfil().getId());
+        assertEquals("2025-CIEN-001", resultado.getAlm_codigo());
+        assertEquals("juan@unicauca.edu.co", resultado.getPerfil().getCorreo());
+    }
+
+    @Test
+    void obtenerAlumno_alumnoInexistente_retornaVacio() {
+        when(repoAlumno.existsById("nadie")).thenReturn(false);
+
+        assertTrue(alumnoGateway.obtenerAlumno("nadie").isEmpty());
+        verify(repoAlumno, never()).buscarAlumnoPorIdRaw(any());
+    }
+
+    @Test
+    void obtenerAlumno_consultaSinRegistro_retornaVacio() {
+        when(repoAlumno.existsById("12345678")).thenReturn(true);
+        when(repoAlumno.buscarAlumnoPorIdRaw("12345678")).thenReturn(null);
+
+        assertTrue(alumnoGateway.obtenerAlumno("12345678").isEmpty());
+    }
 }

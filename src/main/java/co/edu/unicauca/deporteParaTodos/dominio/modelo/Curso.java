@@ -24,4 +24,7 @@ public class Curso {
     private EstadoCurso estadoCurso;
 
     private EstadoInscripciones estadoInscripciones;
+
+    // A quien va dirigido; ausente = MIXTO (toda la comunidad).
+    private PublicoCurso publico;
 }

@@ -81,6 +81,7 @@ class GrupoServicioTest {
         g.setImagenGrupo(1);
         g.setIdInstructor("INS001");
         g.setFechaCreacion(LocalDate.of(2025, 1, 15));
+        g.setFechaIncripcionCierre(LocalDate.of(2026, 12, 31));
         g.setPeriodo(1);
         return g;
     }
@@ -288,15 +289,17 @@ class GrupoServicioTest {
         verify(grupoGateway).insertarGrupo(grupo);
     }
 
+    // Fase 3: toda inscripcion tiene fecha de cierre; un grupo sin ella quedaria abierto para siempre.
     @Test
-    void insertarGrupo_conFechaCierreNula_noValidaR2() {
+    void insertarGrupo_sinFechaCierre_lanzaFechasGrupoInvalidasExcepcion() {
         Grupo grupo = grupoModelo();
         grupo.setFechaInscripcionApertura(LocalDate.of(2026, 1, 1));
-        grupo.setFechaIncripcionCierre(null); // R2 no aplica sin fechaIncripcionCierre.
-        when(grupoGateway.insertarGrupo(grupo)).thenReturn(grupo);
+        grupo.setFechaIncripcionCierre(null);
 
-        assertDoesNotThrow(() -> grupoServicio.insertarGrupo(grupo));
-        verify(grupoGateway).insertarGrupo(grupo);
+        FechasGrupoInvalidasExcepcion ex = assertThrows(FechasGrupoInvalidasExcepcion.class,
+                () -> grupoServicio.insertarGrupo(grupo));
+        assertTrue(ex.getMessage().toLowerCase().contains("cierre"));
+        verify(grupoGateway, never()).insertarGrupo(any());
     }
 
     // ──────────────────────────────────────────────────────────────────────────
@@ -421,16 +424,85 @@ class GrupoServicioTest {
     }
 
     @Test
-    void actualizarGrupo_sinFechasNiEnBodyNiEnFila_noValidaNada() {
-        Grupo filaActual = grupoModelo(); // sin fechas seteadas
+    void actualizarGrupo_sinCierreNiEnBodyNiEnFila_lanzaExcepcion() {
+        Grupo filaActual = grupoModelo();
+        filaActual.setFechaIncripcionCierre(null); // grupo anterior a la regla, sin cierre
         when(grupoGateway.existeGrupo(CATEGORIA, CURSO, ANIO, ITERABLE)).thenReturn(true);
         when(grupoGateway.obtenerGrupo(CATEGORIA, CURSO, ANIO, ITERABLE)).thenReturn(filaActual);
+
+        assertThrows(FechasGrupoInvalidasExcepcion.class,
+                () -> grupoServicio.actualizarGrupo(CATEGORIA, CURSO, ANIO, ITERABLE, new Grupo()));
+        verify(grupoGateway, never()).actualizarGrupo(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void actualizarGrupo_sinCierreEnBodyPeroLaFilaLoTiene_conservaElCierreYActualiza() {
+        when(grupoGateway.existeGrupo(CATEGORIA, CURSO, ANIO, ITERABLE)).thenReturn(true);
+        when(grupoGateway.obtenerGrupo(CATEGORIA, CURSO, ANIO, ITERABLE)).thenReturn(grupoModelo());
         when(grupoGateway.actualizarGrupo(eq(CATEGORIA), eq(CURSO), eq(ANIO), eq(ITERABLE), any()))
                 .thenReturn(grupoModelo());
 
-        Grupo datos = new Grupo();
+        assertDoesNotThrow(() -> grupoServicio.actualizarGrupo(CATEGORIA, CURSO, ANIO, ITERABLE, new Grupo()));
+    }
 
-        assertDoesNotThrow(() -> grupoServicio.actualizarGrupo(CATEGORIA, CURSO, ANIO, ITERABLE, datos));
+    // ──────────────────────────────────────────────────────────────────────────
+    // cambiarCierreManual (Fase 3)
+    // ──────────────────────────────────────────────────────────────────────────
+
+    @Test
+    void cambiarCierreManual_cerrar_delegaAlGateway() {
+        Grupo cerrado = grupoModelo();
+        cerrado.setInscripcionesCerradasManual(true);
+        when(grupoGateway.existeGrupo(CATEGORIA, CURSO, ANIO, ITERABLE)).thenReturn(true);
+        when(grupoGateway.cambiarCierreManual(CATEGORIA, CURSO, ANIO, ITERABLE, true)).thenReturn(cerrado);
+
+        Grupo resultado = grupoServicio.cambiarCierreManual(CATEGORIA, CURSO, ANIO, ITERABLE, true);
+
+        assertTrue(resultado.isInscripcionesCerradasManual());
+        verify(grupoGateway).cambiarCierreManual(CATEGORIA, CURSO, ANIO, ITERABLE, true);
+    }
+
+    @Test
+    void cambiarCierreManual_cerrarUnGrupoCuyaFechaYaPaso_tambienSeGuarda() {
+        when(grupoGateway.existeGrupo(CATEGORIA, CURSO, ANIO, ITERABLE)).thenReturn(true);
+        when(grupoGateway.cambiarCierreManual(CATEGORIA, CURSO, ANIO, ITERABLE, true)).thenReturn(grupoModelo());
+
+        assertDoesNotThrow(() -> grupoServicio.cambiarCierreManual(CATEGORIA, CURSO, ANIO, ITERABLE, true));
+        verify(grupoGateway, never()).obtenerGrupo(any(), any(), any(), any());
+    }
+
+    @Test
+    void cambiarCierreManual_reabrirConFechaDeCierreVigente_delegaAlGateway() {
+        Grupo vigente = grupoModelo();
+        vigente.setFechaIncripcionCierre(HOY_FIJO); // el dia de cierre es inclusivo
+        when(grupoGateway.existeGrupo(CATEGORIA, CURSO, ANIO, ITERABLE)).thenReturn(true);
+        when(grupoGateway.obtenerGrupo(CATEGORIA, CURSO, ANIO, ITERABLE)).thenReturn(vigente);
+        when(grupoGateway.cambiarCierreManual(CATEGORIA, CURSO, ANIO, ITERABLE, false)).thenReturn(vigente);
+
+        assertDoesNotThrow(() -> grupoServicio.cambiarCierreManual(CATEGORIA, CURSO, ANIO, ITERABLE, false));
+        verify(grupoGateway).cambiarCierreManual(CATEGORIA, CURSO, ANIO, ITERABLE, false);
+    }
+
+    @Test
+    void cambiarCierreManual_reabrirConFechaDeCierreVencida_lanzaExcepcionConLaSalida() {
+        Grupo vencido = grupoModelo();
+        vencido.setFechaIncripcionCierre(HOY_FIJO.minusDays(1));
+        when(grupoGateway.existeGrupo(CATEGORIA, CURSO, ANIO, ITERABLE)).thenReturn(true);
+        when(grupoGateway.obtenerGrupo(CATEGORIA, CURSO, ANIO, ITERABLE)).thenReturn(vencido);
+
+        FechasGrupoInvalidasExcepcion ex = assertThrows(FechasGrupoInvalidasExcepcion.class,
+                () -> grupoServicio.cambiarCierreManual(CATEGORIA, CURSO, ANIO, ITERABLE, false));
+        assertTrue(ex.getMessage().toLowerCase().contains("fecha de cierre"));
+        verify(grupoGateway, never()).cambiarCierreManual(any(), any(), any(), any(), anyBoolean());
+    }
+
+    @Test
+    void cambiarCierreManual_grupoNoExiste_lanzaNoExisteExcepcion() {
+        when(grupoGateway.existeGrupo(CATEGORIA, CURSO, ANIO, ITERABLE)).thenReturn(false);
+
+        assertThrows(NoExisteExcepcion.class,
+                () -> grupoServicio.cambiarCierreManual(CATEGORIA, CURSO, ANIO, ITERABLE, true));
+        verify(grupoGateway, never()).cambiarCierreManual(any(), any(), any(), any(), anyBoolean());
     }
 
     // ──────────────────────────────────────────────────────────────────────────
@@ -787,5 +859,32 @@ class GrupoServicioTest {
         assertThrows(FechasGrupoInvalidasExcepcion.class, () -> grupoServicio.actualizarGrupo(CATEGORIA, CURSO, ANIO, ITERABLE, datos));
 
         verifyNoInteractions(inscripcionGateway);
+    }
+
+    // Fase 3: la fila del instructor muestra el estado de inscripcion DEL GRUPO (fechas + cierre manual),
+    // ya no el interruptor del curso.
+    @Test
+    void obtenerMisGrupos_estadoInscripciones_esDelGrupoNoDelCurso() {
+        Grupo abierto = grupoModelo();
+        Grupo cerradoManual = grupoModelo();
+        cerradoManual.setIterable(2);
+        cerradoManual.setInscripcionesCerradasManual(true);
+        Grupo vencido = grupoModelo();
+        vencido.setIterable(3);
+        vencido.setFechaIncripcionCierre(HOY_FIJO.minusDays(1));
+        Curso curso = new Curso();
+        curso.setEstadoCurso(EstadoCurso.ACTIVO);
+        curso.setEstadoInscripciones(EstadoInscripciones.CERRADO); // el valor viejo del curso ya no manda
+
+        when(grupoGateway.obtenerGruposInstructor("INS001")).thenReturn(List.of(abierto, cerradoManual, vencido));
+        when(inscripcionGateway.contarInscripcionesPorInstructor("INS001")).thenReturn(List.of());
+        when(cursoGateway.obtenerCurso(eq(CATEGORIA), anyString())).thenReturn(curso);
+        when(horarioGateway.listarHorariosPorGrupo(any(), any(), anyInt(), anyInt())).thenReturn(List.of());
+
+        List<InstructorGrupoResumen> filas = grupoServicio.obtenerMisGrupos("INS001");
+
+        assertEquals(EstadoInscripciones.ABIERTO, filas.get(0).getEstadoInscripciones());
+        assertEquals(EstadoInscripciones.CERRADO, filas.get(1).getEstadoInscripciones());
+        assertEquals(EstadoInscripciones.CERRADO, filas.get(2).getEstadoInscripciones());
     }
 }

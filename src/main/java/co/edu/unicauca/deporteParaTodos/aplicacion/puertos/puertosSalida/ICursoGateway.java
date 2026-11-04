@@ -75,12 +75,4 @@ public interface ICursoGateway{
      * @return curso con meta_eliminado en 1
      */
     public Curso eliminarCursoPermanente(String categoria, String nombreCurso);
-    /**
-     * Cambia el estado de inscripciones de un curso (ABIERTO/CERRADO)
-     * @param categoria identificador de la categoria
-     * @param nombreCurso identificador del curso
-     * @param estado nuevo estado de inscripciones
-     * @return curso con estado de inscripciones actualizado
-     */
-    public Curso cambiarEstadoInscripciones(String categoria, String nombreCurso, EstadoInscripciones estado);
 }

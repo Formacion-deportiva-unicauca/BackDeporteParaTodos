@@ -203,6 +203,7 @@ class EstadoRegistroInstructorIT {
         nuevo.setIdInstructor(idInstructor);
         nuevo.setCupos(5);
         nuevo.setFechaCreacion(fechaCreacion);
+        nuevo.setFechaIncripcionCierre(java.time.LocalDate.now().plusYears(1)); // Fase 3: el cierre es obligatorio
         nuevo.setFechaFinalizacion(fechaFinalizacion);
         nuevo.setFechaInscripcionApertura(fechaCreacion);
         nuevo.setPeriodo(0);

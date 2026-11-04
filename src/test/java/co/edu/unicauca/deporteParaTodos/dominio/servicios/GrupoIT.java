@@ -129,6 +129,7 @@ class GrupoIT {
             grupo.setIdInstructor(INSTRUCTOR_SEED_ID); // arranca CON instructor asignado
             grupo.setCupos(1);
             grupo.setFechaCreacion(LocalDate.now());
+            grupo.setFechaIncripcionCierre(java.time.LocalDate.now().plusYears(1)); // Fase 3: el cierre es obligatorio
             grupo.setPeriodo(1);
             grupoServicio.insertarGrupo(grupo);
         }
@@ -154,7 +155,8 @@ class GrupoIT {
     void putGrupo_instructorNull_dejaPerfIdNullEnBd() throws Exception {
         String body = "{\"categoria\":\"" + CATEGORIA + "\",\"curso\":\"" + CURSO
                 + "\",\"imagenGrupo\":" + imagenId + ",\"cupos\":1,\"idInstructor\":null,"
-                + "\"fechaCreacion\":\"" + LocalDate.now() + "\"}";
+                + "\"fechaCreacion\":\"" + LocalDate.now() + "\","
+                + "\"fechaIncripcionCierre\":\"" + LocalDate.now().plusYears(1) + "\"}";
 
         mockMvc.perform(put("/api/v2/grupo")
                 .param("categoria", CATEGORIA).param("curso", CURSO)
@@ -182,6 +184,7 @@ class GrupoIT {
         grupo.setIdInstructor(INSTRUCTOR_SEED_ID);
         grupo.setCupos(1);
         grupo.setFechaCreacion(LocalDate.now());
+        grupo.setFechaIncripcionCierre(java.time.LocalDate.now().plusYears(1)); // Fase 3: el cierre es obligatorio
         grupo.setPeriodo(1);
         return grupoServicio.insertarGrupo(grupo).getIterable();
     }

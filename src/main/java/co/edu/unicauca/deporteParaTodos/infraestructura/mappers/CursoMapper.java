@@ -3,6 +3,7 @@ package co.edu.unicauca.deporteParaTodos.infraestructura.mappers;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Curso;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.EstadoCurso;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.EstadoInscripciones;
+import co.edu.unicauca.deporteParaTodos.dominio.modelo.PublicoCurso;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.CursoDto;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresSecundarios.persistenciaSQL.entidades.CursoEntidad;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.NoProcesableEntidadException;
@@ -25,6 +26,7 @@ public class CursoMapper {
                     ? EstadoInscripciones.valueOf(entidad.getEstadoInscripciones())
                     : EstadoInscripciones.ABIERTO
             );
+            fabricado.setPublico(PublicoCurso.desdeTexto(entidad.getPublico()));
             return fabricado;
         } catch (Exception e) {
             throw new NoProcesableEntidadException("No fue posible convertir CursoEntidad a dominio: " + e.getMessage());
@@ -44,6 +46,9 @@ public class CursoMapper {
                     ? curso.getEstadoInscripciones().name()
                     : EstadoInscripciones.ABIERTO.name()
             );
+            entidad.setPublico(
+                curso.getPublico() != null ? curso.getPublico().name() : PublicoCurso.MIXTO.name()
+            );
             return entidad;
         } catch (Exception e) {
             throw new NoProcesableEntidadException("No fue posible convertir Curso a entidad: " + e.getMessage());
@@ -60,6 +65,7 @@ public class CursoMapper {
             dto.setDeporte(curso.getDeporte());
             dto.setEstadoCurso(curso.getEstadoCurso());
             dto.setEstadoInscripciones(curso.getEstadoInscripciones());
+            dto.setPublico(curso.getPublico());
             return dto;
         } catch (Exception e) {
             throw new NoProcesableEntidadException("No fue posible convertir Curso a DTO: " + e.getMessage());
@@ -75,6 +81,7 @@ public class CursoMapper {
             fabricado.setDeporte(dto.getDeporte());
             fabricado.setImagenId(dto.getIdImagen());
             fabricado.setEstadoInscripciones(dto.getEstadoInscripciones());
+            fabricado.setPublico(dto.getPublico());
             return fabricado;
         } catch (Exception e) {
             throw new NoProcesableEntidadException("No fue posible convertir CursoDto a dominio: " + e.getMessage());

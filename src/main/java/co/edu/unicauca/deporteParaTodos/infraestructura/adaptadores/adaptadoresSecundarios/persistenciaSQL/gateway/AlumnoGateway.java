@@ -67,6 +67,11 @@ public class AlumnoGateway implements IAlumnoGateway {
     public Optional<Alumno> obtenerAlumno(String alumnoId) {
         if (existeAlumno(alumnoId)) {
             Object[] registro = repoAlumno.buscarAlumnoPorIdRaw(alumnoId);
+            // Con la base real, una consulta nativa que retorna Object[] entrega a veces la fila envuelta en otro arreglo
+            // de una sola posicion (Object[]{ Object[]{columnas} }): se desenvuelve para leer las columnas.
+            if (registro != null && registro.length == 1 && registro[0] instanceof Object[] fila) {
+                registro = fila;
+            }
             Alumno alumno = construirAlumnoDesdeRegistro(registro);
             return Optional.ofNullable(alumno);
         }

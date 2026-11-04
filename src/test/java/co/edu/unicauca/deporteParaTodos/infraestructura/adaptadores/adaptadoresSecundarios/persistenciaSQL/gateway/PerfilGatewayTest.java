@@ -267,6 +267,80 @@ class PerfilGatewayTest {
         assertEquals(ALM_COD, captor.getValue().getAlm_codigo());
     }
 
+    // ── registrarAlumno: dependencia y programa ─────────────────────────────
+
+    private void prepararRegistroExitoso() {
+        when(repoPerfil.existsById(ID)).thenReturn(false);
+        when(repoPerfil.save(any(PerfilEntidad.class))).thenReturn(new PerfilEntidad());
+        when(repoAlumno.save(any(AlumnoEntidad.class))).thenAnswer(inv -> inv.getArgument(0));
+    }
+
+    @Test
+    void registrarAlumno_conDependencia_persisteEnAlmDependencia() {
+        prepararRegistroExitoso();
+        Perfil perfil = perfilBase();
+        perfil.setAlumnoCodigo(null);
+        perfil.setDependencia("Oficina de Planeación");
+
+        perfilGateway.registrarAlumno(perfil);
+
+        ArgumentCaptor<AlumnoEntidad> captor = ArgumentCaptor.forClass(AlumnoEntidad.class);
+        verify(repoAlumno).save(captor.capture());
+        assertEquals("Oficina de Planeación", captor.getValue().getDependencia());
+    }
+
+    @Test
+    void registrarAlumno_conPrograma_insertaLaRelacionAlumnoPrograma() {
+        prepararRegistroExitoso();
+        Perfil perfil = perfilBase();
+        perfil.setPrograma("Ingeniería Civil");
+
+        perfilGateway.registrarAlumno(perfil);
+
+        verify(repoAlumno).insertarAlumnoPrograma(ID, "Ingeniería Civil");
+    }
+
+    @Test
+    void registrarAlumno_sinPrograma_noInsertaRelacion() {
+        prepararRegistroExitoso();
+
+        perfilGateway.registrarAlumno(perfilBase());
+
+        verify(repoAlumno, never()).insertarAlumnoPrograma(anyString(), anyString());
+    }
+
+    @Test
+    void registrarAlumno_devuelveProgramaYDependenciaRegistrados() {
+        prepararRegistroExitoso();
+        Perfil perfil = perfilBase();
+        perfil.setPrograma("Ingeniería Civil");
+        perfil.setDependencia(null);
+
+        Perfil resultado = perfilGateway.registrarAlumno(perfil);
+
+        assertEquals("Ingeniería Civil", resultado.getPrograma());
+    }
+
+    @Test
+    void obtenerUsuario_alumno_incluyeProgramaYDependencia() {
+        AlumnoEntidad alumno = new AlumnoEntidad();
+        alumno.setIdPerfil(ID);
+        alumno.setTipoAlumno("Administrativo");
+        alumno.setDependencia("Oficina de Planeación");
+
+        when(repoPerfil.findByPerfcorreo(CORREO)).thenReturn(Optional.of(entidadBase()));
+        when(repoCoordinador.existsById(ID)).thenReturn(false);
+        when(repoInstructor.existsById(ID)).thenReturn(false);
+        when(repoAlumno.existsById(ID)).thenReturn(true);
+        when(repoAlumno.findById(ID)).thenReturn(Optional.of(alumno));
+        when(repoAlumno.obtenerProgramaPorPerfilId(ID)).thenReturn("Ingeniería Civil");
+
+        Perfil resultado = perfilGateway.obtenerUsuario(CORREO);
+
+        assertEquals("Oficina de Planeación", resultado.getDependencia());
+        assertEquals("Ingeniería Civil", resultado.getPrograma());
+    }
+
     // ── actualizarPerfil (SCRUM-182) ────────────────────────────────────────
 
     // La violacion de UQ_PERFIL_CORREO solo se dispara en el flush -- por eso el

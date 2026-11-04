@@ -74,6 +74,23 @@ public interface IAlumnoRepositorio extends CrudRepository<AlumnoEntidad,String>
         """, nativeQuery = true)
     String obtenerFacultadPorPerfilId(@Param("perfilId") String perfilId);
 
+    @Query(value = """
+        SELECT intermedia.prg_nombre
+        FROM tbl_intermedia_alumno_programa intermedia
+        WHERE intermedia.perf_id = :perfilId
+          AND intermedia.meta_eliminado = 0
+        LIMIT 1
+        """, nativeQuery = true)
+    String obtenerProgramaPorPerfilId(@Param("perfilId") String perfilId);
+
+    @Transactional
+    @Modifying(flushAutomatically = true)
+    @Query(value = """
+        INSERT INTO tbl_intermedia_alumno_programa (META_ELIMINADO, PERF_ID, PRG_NOMBRE)
+        VALUES (0, :perfilId, :programa)
+        """, nativeQuery = true)
+    int insertarAlumnoPrograma(@Param("perfilId") String perfilId, @Param("programa") String programa);
+
     @Transactional
     @Modifying
     @Query(value = """

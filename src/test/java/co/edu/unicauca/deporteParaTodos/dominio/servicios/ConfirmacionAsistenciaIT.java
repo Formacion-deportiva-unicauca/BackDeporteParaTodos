@@ -193,6 +193,7 @@ class ConfirmacionAsistenciaIT {
         nuevo.setIdInstructor(instructorA);
         nuevo.setCupos(50);
         nuevo.setFechaCreacion(hoy);
+        nuevo.setFechaIncripcionCierre(java.time.LocalDate.now().plusYears(1)); // Fase 3: el cierre es obligatorio
         nuevo.setFechaInscripcionApertura(hoy);
         nuevo.setPeriodo(0);
         Grupo grupo = grupoServicio.insertarGrupo(nuevo);

@@ -40,4 +40,7 @@ public interface IInscripcionGateway {
     List<Inscripcion> obtenerInscripcionesAlumno(String alumnoId);
 
     List<ConteoInscripcionGrupo> contarInscripcionesPorInstructor(String idInstructor);
+
+    /** Fase 4: conteos de inscritos/en espera de todos los grupos (los grupos sin inscripciones no aparecen). */
+    List<ConteoInscripcionGrupo> contarInscripcionesTodosLosGrupos();
 }

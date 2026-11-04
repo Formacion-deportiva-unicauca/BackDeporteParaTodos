@@ -165,4 +165,36 @@ class PerfilMapperTest {
         assertNull(resultado.getImagen());
         assertEquals(ALM_COD, resultado.getAlumnoCodigo());
     }
+
+    // ── programa y dependencia (perfil por tipo de vínculo) ───────────────────
+
+    @Test
+    void fromDto_mapeaProgramaYDependencia() {
+        PerfilDto dto = new PerfilDto();
+        dto.setId(ID);
+        dto.setNombre(NOMBRE);
+        dto.setCorreo(CORREO);
+        dto.setTipoId(TIPO_ID);
+        dto.setSexo(SEXO);
+        dto.setTipoAlumno("Administrativo");
+        dto.setPrograma("Ingeniería Civil");
+        dto.setDependencia("Oficina de Planeación");
+
+        Perfil perfil = PerfilMapper.fromDto(dto);
+
+        assertEquals("Ingeniería Civil", perfil.getPrograma());
+        assertEquals("Oficina de Planeación", perfil.getDependencia());
+    }
+
+    @Test
+    void toDto_mapeaProgramaYDependencia() {
+        Perfil perfil = perfilBase();
+        perfil.setPrograma("Ingeniería Civil");
+        perfil.setDependencia("Oficina de Planeación");
+
+        PerfilDto dto = PerfilMapper.toDto(perfil);
+
+        assertEquals("Ingeniería Civil", dto.getPrograma());
+        assertEquals("Oficina de Planeación", dto.getDependencia());
+    }
 }

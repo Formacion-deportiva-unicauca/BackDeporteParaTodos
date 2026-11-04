@@ -441,4 +441,93 @@ class GrupoGatewayTest {
 
         assertTrue(resultado.isEmpty());
     }
+
+    // ── Fase 3: cierre manual de inscripciones ──────────────────────────────
+
+    @Test
+    void obtenerGruposInscripcionDisponible_cerradoAMano_excluyeElGrupoAunqueLaVentanaEsteAbierta() {
+        LocalDate hoy = LocalDate.of(2026, 6, 15);
+        GrupoEntidad cerrado = entidadConVentana("1", null, hoy.plusDays(10));
+        cerrado.setInscripcionesCerradasManual(true);
+        GrupoEntidad abierto = entidadConVentana("2", null, hoy.plusDays(10));
+        when(repoGrupo.findByEliminado(0)).thenReturn(java.util.List.of(cerrado, abierto));
+
+        List<Grupo> resultado = grupoGateway.obtenerGruposInscripcionDisponible(hoy);
+
+        assertEquals(1, resultado.size());
+        assertEquals(2, resultado.get(0).getIterable());
+    }
+
+    @Test
+    void cambiarCierreManual_cerrar_guardaLaMarcaYLaDevuelve() {
+        GrupoEntidad entidad = entidadConVentana("1", null, LocalDate.of(2026, 12, 31));
+        when(repoGrupo.findById(new GrupoId(CATEGORIA, CURSO, 2026, 1))).thenReturn(java.util.Optional.of(entidad));
+        when(repoGrupo.save(any(GrupoEntidad.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Grupo resultado = grupoGateway.cambiarCierreManual(CATEGORIA, CURSO, 2026, 1, true);
+
+        assertTrue(entidad.isInscripcionesCerradasManual());
+        assertTrue(resultado.isInscripcionesCerradasManual());
+        verify(repoGrupo).save(entidad);
+    }
+
+    @Test
+    void cambiarCierreManual_reabrir_quitaLaMarca() {
+        GrupoEntidad entidad = entidadConVentana("1", null, LocalDate.of(2026, 12, 31));
+        entidad.setInscripcionesCerradasManual(true);
+        when(repoGrupo.findById(new GrupoId(CATEGORIA, CURSO, 2026, 1))).thenReturn(java.util.Optional.of(entidad));
+        when(repoGrupo.save(any(GrupoEntidad.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Grupo resultado = grupoGateway.cambiarCierreManual(CATEGORIA, CURSO, 2026, 1, false);
+
+        assertFalse(resultado.isInscripcionesCerradasManual());
+    }
+
+    @Test
+    void cambiarCierreManual_grupoInexistente_lanzaNoExisteExcepcion() {
+        when(repoGrupo.findById(any(GrupoId.class))).thenReturn(java.util.Optional.empty());
+
+        assertThrows(NoExisteExcepcion.class,
+                () -> grupoGateway.cambiarCierreManual(CATEGORIA, CURSO, 2026, 1, true));
+        verify(repoGrupo, never()).save(any());
+    }
+
+    // ── Fase 4: actualizarVentanaInscripcion ──
+
+    @Test
+    void actualizarVentanaInscripcion_conApertura_cambiaAmbasFechasYNoTocaElCierreManual() {
+        GrupoEntidad entidad = entidadConVentana("1", LocalDate.of(2026, 1, 1), LocalDate.of(2026, 2, 1));
+        entidad.setInscripcionesCerradasManual(true);
+        when(repoGrupo.findById(new GrupoId(CATEGORIA, CURSO, 2026, 1))).thenReturn(java.util.Optional.of(entidad));
+        when(repoGrupo.save(any(GrupoEntidad.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Grupo resultado = grupoGateway.actualizarVentanaInscripcion(CATEGORIA, CURSO, 2026, 1,
+                LocalDate.of(2026, 7, 1), LocalDate.of(2026, 8, 1));
+
+        assertEquals(LocalDate.of(2026, 7, 1), resultado.getFechaInscripcionApertura());
+        assertEquals(LocalDate.of(2026, 8, 1), resultado.getFechaIncripcionCierre());
+        assertTrue(resultado.isInscripcionesCerradasManual());
+    }
+
+    @Test
+    void actualizarVentanaInscripcion_sinApertura_conservaLaAperturaActual() {
+        GrupoEntidad entidad = entidadConVentana("1", LocalDate.of(2026, 1, 1), LocalDate.of(2026, 2, 1));
+        when(repoGrupo.findById(new GrupoId(CATEGORIA, CURSO, 2026, 1))).thenReturn(java.util.Optional.of(entidad));
+        when(repoGrupo.save(any(GrupoEntidad.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Grupo resultado = grupoGateway.actualizarVentanaInscripcion(CATEGORIA, CURSO, 2026, 1,
+                null, LocalDate.of(2026, 8, 1));
+
+        assertEquals(LocalDate.of(2026, 1, 1), resultado.getFechaInscripcionApertura());
+        assertEquals(LocalDate.of(2026, 8, 1), resultado.getFechaIncripcionCierre());
+    }
+
+    @Test
+    void actualizarVentanaInscripcion_grupoInexistente_lanzaNoExisteExcepcion() {
+        when(repoGrupo.findById(any(GrupoId.class))).thenReturn(java.util.Optional.empty());
+
+        assertThrows(NoExisteExcepcion.class, () -> grupoGateway.actualizarVentanaInscripcion(
+                CATEGORIA, CURSO, 2026, 1, null, LocalDate.of(2026, 8, 1)));
+        verify(repoGrupo, never()).save(any());
+    }
 }

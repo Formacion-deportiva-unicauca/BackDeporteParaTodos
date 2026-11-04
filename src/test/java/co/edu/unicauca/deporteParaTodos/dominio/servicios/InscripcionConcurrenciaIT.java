@@ -208,6 +208,7 @@ class InscripcionConcurrenciaIT {
             grupo.setIdInstructor(INSTRUCTOR_SEED_ID);
             grupo.setCupos(cupos);
             grupo.setFechaCreacion(LocalDate.now());
+            grupo.setFechaIncripcionCierre(java.time.LocalDate.now().plusYears(1)); // Fase 3: el cierre es obligatorio
             grupo.setPeriodo(1);
             grupoServicio.insertarGrupo(grupo);
         }
@@ -379,6 +380,9 @@ class InscripcionConcurrenciaIT {
 
         Grupo grupoActual = grupoServicio.obtenerGrupoPorId(CATEGORIA, CURSO, ANIO, ITERABLE_PROMOCION);
         grupoActual.setCupos(2);
+        if (grupoActual.getFechaIncripcionCierre() == null) {
+            grupoActual.setFechaIncripcionCierre(java.time.LocalDate.now().plusYears(1)); // Fase 3: el cierre es obligatorio
+        }
         grupoServicio.actualizarGrupo(CATEGORIA, CURSO, ANIO, ITERABLE_PROMOCION, grupoActual);
 
         List<String> candidatos = List.of(ALUMNO_CANDIDATO_1, ALUMNO_CANDIDATO_2);
@@ -516,6 +520,7 @@ class InscripcionConcurrenciaIT {
         nuevo.setIdInstructor(INSTRUCTOR_SEED_ID);
         nuevo.setCupos(1);
         nuevo.setFechaCreacion(LocalDate.now());
+        nuevo.setFechaIncripcionCierre(java.time.LocalDate.now().plusYears(1)); // Fase 3: el cierre es obligatorio
         nuevo.setPeriodo(1);
         int iterableNuevo = grupoServicio.insertarGrupo(nuevo).getIterable();
         String sufijo = UUID.randomUUID().toString().substring(0, 8);

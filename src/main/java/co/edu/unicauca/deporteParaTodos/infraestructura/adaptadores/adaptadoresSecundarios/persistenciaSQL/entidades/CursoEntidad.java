@@ -44,4 +44,7 @@ public class CursoEntidad {
     @Column(name = "CUR_ESTADO_INSCRIPCIONES")
     private String estadoInscripciones;
 
+    @Column(name = "CUR_PUBLICO")
+    private String publico;
+
 }

@@ -18,7 +18,7 @@ class GrupoMapperTest {
     private static final LocalDate FECHA     = LocalDate.of(2025, 1, 15);
 
     private GrupoEntidad entidadBase() {
-        return new GrupoEntidad(CATEGORIA, CURSO, 2025, 1, 1, 20, "INS001", FECHA, null, null, null, 1, 0);
+        return new GrupoEntidad(CATEGORIA, CURSO, 2025, 1, 1, 20, "INS001", FECHA, null, null, null, 1, 0, false);
     }
 
     private Grupo grupoBase() {
@@ -223,5 +223,52 @@ class GrupoMapperTest {
         Grupo resultado = GrupoMapper.fromDto(dto);
 
         assertNull(resultado.getEliminado());
+    }
+
+    // ────────── Fase 3: cierre manual de inscripciones ──────────
+
+    @Test
+    void toDominio_copiaElCierreManual() {
+        GrupoEntidad entidad = entidadBase();
+        entidad.setInscripcionesCerradasManual(true);
+        assertTrue(GrupoMapper.toDominio(entidad).isInscripcionesCerradasManual());
+    }
+
+    @Test
+    void toEntidad_copiaElCierreManual() {
+        Grupo grupo = grupoBase();
+        grupo.setInscripcionesCerradasManual(true);
+        assertTrue(GrupoMapper.toEntidad(grupo).isInscripcionesCerradasManual());
+    }
+
+    @Test
+    void toDto_exponeElCierreManual() {
+        Grupo grupo = grupoBase();
+        grupo.setInscripcionesCerradasManual(true);
+        assertTrue(GrupoMapper.toDto(grupo).isInscripcionesCerradasManual());
+    }
+
+    @Test
+    void toDtoConHoy_cierreManualConVentanaAbierta_marcaCerradas() {
+        Grupo grupo = grupoBase();
+        grupo.setFechaIncripcionCierre(LocalDate.of(2026, 12, 31));
+        grupo.setInscripcionesCerradasManual(true);
+
+        GrupoDto resultado = GrupoMapper.toDto(grupo, LocalDate.of(2026, 6, 15));
+
+        assertFalse(resultado.isInscripcionesAbiertas());
+        assertEquals(EstadoVentanaInscripcion.CERRADAS, resultado.getMotivoInscripcion());
+        assertTrue(resultado.isInscripcionesCerradasManual());
+    }
+
+    @Test
+    void fromDto_ignoraElCierreManualDelCliente() {
+        GrupoDto dto = new GrupoDto();
+        dto.setCategoria(CATEGORIA);
+        dto.setCurso(CURSO);
+        dto.setInscripcionesCerradasManual(true);
+
+        assertFalse(GrupoMapper.fromDto(dto).isInscripcionesCerradasManual(),
+                "el cierre manual solo cambia con PATCH /grupo/inscripciones");
     }
 }

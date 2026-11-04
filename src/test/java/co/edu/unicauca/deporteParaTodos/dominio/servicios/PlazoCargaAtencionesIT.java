@@ -309,6 +309,7 @@ class PlazoCargaAtencionesIT {
         nuevo.setIdInstructor(idInstructor);
         nuevo.setCupos(5);
         nuevo.setFechaCreacion(fechaInscripcionApertura);
+        nuevo.setFechaIncripcionCierre(java.time.LocalDate.now().plusYears(1)); // Fase 3: el cierre es obligatorio
         nuevo.setFechaInscripcionApertura(fechaInscripcionApertura);
         // El periodo lo deriva GrupoGateway.insertarGrupo() de fechaInscripcionApertura
         // (periodo <= 0 -> se calcula) -- no se fuerza aqui, se deja que la regla

@@ -35,6 +35,8 @@ public enum CodigoError {
         CORREO_NO_MODIFICABLE_INSTRUCTOR("GC-0026", "El Instructor no puede modificar el correo del alumno"),
         ALUMNO_FUERA_DE_GRUPO("GC-0027", "El alumno no tiene una inscripcion activa en el grupo de esta clase"),
         CONFIRMACION_SIN_ASISTENTES("GC-0028", "Debe marcar al menos un alumno presente, o confirmar que todos estan ausentes"),
+        DATOS_INVALIDOS("GC-0029", "Los datos enviados no son validos"),
+        PUBLICO_CURSO_NO_COINCIDE("GC-0030", "El curso no esta dirigido al tipo de vinculo del alumno"),
         ;
 
         private final String codigo;

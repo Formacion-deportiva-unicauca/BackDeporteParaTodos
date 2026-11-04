@@ -176,6 +176,7 @@ class InscripcionEstadoCursoIT {
         grupo.setIdInstructor(INSTRUCTOR_SEED_ID);
         grupo.setCupos(1);
         grupo.setFechaCreacion(LocalDate.now(clock));
+        grupo.setFechaIncripcionCierre(java.time.LocalDate.now().plusYears(1)); // Fase 3: el cierre es obligatorio
         grupo.setFechaInscripcionApertura(LocalDate.now(clock));
         grupo.setPeriodo(1);
         iterablePromocion = grupoServicio.insertarGrupo(grupo).getIterable();
@@ -228,6 +229,7 @@ class InscripcionEstadoCursoIT {
             grupo.setIdInstructor(INSTRUCTOR_SEED_ID);
             grupo.setCupos(cupos);
             grupo.setFechaCreacion(LocalDate.now(clock));
+            grupo.setFechaIncripcionCierre(java.time.LocalDate.now().plusYears(1)); // Fase 3: el cierre es obligatorio
             grupo.setFechaInscripcionApertura(LocalDate.now(clock));
             grupo.setPeriodo(1);
             grupoServicio.insertarGrupo(grupo);

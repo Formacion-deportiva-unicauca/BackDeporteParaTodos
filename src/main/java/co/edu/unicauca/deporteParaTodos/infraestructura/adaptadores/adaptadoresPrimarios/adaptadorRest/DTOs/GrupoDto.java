@@ -64,4 +64,8 @@ public class GrupoDto {
 
     @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private EstadoVentanaInscripcion motivoInscripcion;
+
+    // Fase 3: solo de salida; se cambia unicamente con PATCH /grupo/inscripciones.
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    private boolean inscripcionesCerradasManual;
 }

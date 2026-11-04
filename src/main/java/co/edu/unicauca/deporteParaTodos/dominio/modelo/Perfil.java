@@ -30,4 +30,10 @@ public class Perfil {
     private String tipoAlumno;
 
     private String alumnoCodigo;
+
+    // Estudiante y Docente: programa academico (la facultad se deriva de el).
+    private String programa;
+
+    // Administrativo y Contratista: dependencia, oficina o unidad donde trabajan.
+    private String dependencia;
 }

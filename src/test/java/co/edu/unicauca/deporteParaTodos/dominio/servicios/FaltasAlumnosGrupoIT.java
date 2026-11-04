@@ -191,6 +191,7 @@ class FaltasAlumnosGrupoIT {
         nuevo.setIdInstructor(instructorA);
         nuevo.setCupos(50);
         nuevo.setFechaCreacion(hoy.minusDays(60));
+        nuevo.setFechaIncripcionCierre(java.time.LocalDate.now().plusYears(1)); // Fase 3: el cierre es obligatorio
         nuevo.setFechaInscripcionApertura(hoy.minusDays(60));
         nuevo.setPeriodo(0);
         Grupo grupo = grupoServicio.insertarGrupo(nuevo);
@@ -247,6 +248,9 @@ class FaltasAlumnosGrupoIT {
         }
     }
 
+    // Las clases de estas pruebas llevan fecha pasada (hoy.minusDays(N)). El Instructor solo puede registrar dentro del mes
+    // calendario de la clase (VentanaRegistroAsistencia): a comienzos de mes esas fechas caen en el mes anterior y el backend
+    // responde 422 GC-0019. Para armar el escenario se usa el Coordinador, que no tiene limite de plazo (solo "no fecha futura").
     private int crearClase(Grupo grupo, LocalDate fecha) throws Exception {
         String payload = "{\"idGrupoCategoria\":\"" + grupo.getCategoria() + "\",\"idGrupoCurso\":\"" + grupo.getCurso()
                 + "\",\"idGrupoAnio\":" + grupo.getAnio() + ",\"idGrupoIterable\":" + grupo.getIterable()
@@ -255,7 +259,7 @@ class FaltasAlumnosGrupoIT {
         MvcResult creada = mockMvc.perform(post("/api/v2/claseGrupo")
                         .contentType("application/json")
                         .content(payload)
-                        .header("Authorization", "Bearer " + buildJwt("Instructor", instructorA)))
+                        .header("Authorization", "Bearer " + buildJwt("Coordinador", COORD)))
                 .andExpect(status().isCreated())
                 .andReturn();
         return JsonPath.read(creada.getResponse().getContentAsString(), "$.codigo");
@@ -271,7 +275,7 @@ class FaltasAlumnosGrupoIT {
         mockMvc.perform(put("/api/v2/clase/{codigo}/asistencia", claseId)
                         .contentType("application/json")
                         .content(cuerpo)
-                        .header("Authorization", "Bearer " + buildJwt("Instructor", instructorA)))
+                        .header("Authorization", "Bearer " + buildJwt("Coordinador", COORD)))
                 .andExpect(status().isOk());
     }
 
@@ -322,7 +326,7 @@ class FaltasAlumnosGrupoIT {
         confirmarConAusente(claseAEliminar, null);
         mockMvc.perform(delete("/api/v2/clase")
                         .param("id", String.valueOf(claseAEliminar))
-                        .header("Authorization", "Bearer " + buildJwt("Instructor", instructorA)))
+                        .header("Authorization", "Bearer " + buildJwt("Coordinador", COORD)))
                 .andExpect(status().isOk());
 
         assertEquals(1, leerFaltas(grupo, alumno, "Coordinador", COORD));

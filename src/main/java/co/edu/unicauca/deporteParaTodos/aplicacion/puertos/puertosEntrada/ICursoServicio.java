@@ -25,6 +25,18 @@ public interface ICursoServicio {
      */
     public List<Curso> todosLosCursosDeCategoria(String categoria);
     /***
+     * Cursos de una categoria que un alumno puede ver: activos, dirigidos a su tipo de vinculo (o a toda la comunidad)
+     * y con al menos un grupo con inscripciones abiertas por fecha.
+     * @param categoria titulo de la categoria
+     * @param alumnoId identificador del perfil del alumno (null = tipo desconocido: solo cursos para toda la comunidad)
+     * @return cursos visibles para ese alumno
+     */
+    public List<Curso> cursosDeCategoriaParaAlumno(String categoria, String alumnoId);
+    /***
+     * Igual que cursosDeCategoriaParaAlumno pero sobre todos los cursos del sistema.
+     */
+    public List<Curso> recuperarCursosParaAlumno(String alumnoId);
+    /***
      * Obtien un curso del sistema a partir del titulo de la categoria y el nombre del curso que fungen como identificadores
      * @param titulo identificador de la categoria
      * @param nombre identificador del curso
@@ -69,13 +81,4 @@ public interface ICursoServicio {
      * @return curso con estadoCurso INACTIVO
      */
     public Curso eliminarCursoPermanente(String categoria, String nombreCurso);
-    /***
-     * Cambia el estado de inscripciones de un curso (ABIERTO/CERRADO)
-     * Lanza NoExisteExcepcion si el curso no existe
-     * @param categoria identificador de la categoria
-     * @param nombreCurso identificador del curso
-     * @param estado nuevo estado de inscripciones
-     * @return curso con estadoInscripciones actualizado
-     */
-    public Curso cambiarEstadoInscripciones(String categoria, String nombreCurso, EstadoInscripciones estado);
 }

@@ -26,6 +26,7 @@ public class GrupoMapper {
             grupo.setFechaIncripcionCierre(entidad.getFechaIncripcionCierre());
             grupo.setPeriodo(entidad.getPeriodo());
             grupo.setEliminado(entidad.getEliminado());
+            grupo.setInscripcionesCerradasManual(entidad.isInscripcionesCerradasManual());
             return grupo;
         } catch (Exception e) {
             throw new NoProcesableEntidadException("No fue posible convertir GrupoEntidad a dominio: " + e.getMessage());
@@ -47,7 +48,8 @@ public class GrupoMapper {
                 grupo.getFechaInscripcionApertura(),
                 grupo.getFechaIncripcionCierre(),
                 grupo.getPeriodo(),
-                grupo.getEliminado() != null ? grupo.getEliminado() : 0);
+                grupo.getEliminado() != null ? grupo.getEliminado() : 0,
+                grupo.isInscripcionesCerradasManual());
             return entidad;
         } catch (Exception e) {
             throw new NoProcesableEntidadException("No fue posible convertir Grupo a entidad: " + e.getMessage());
@@ -69,6 +71,7 @@ public class GrupoMapper {
             dto.setFechaInscripcionApertura(grupo.getFechaInscripcionApertura());
             dto.setFechaIncripcionCierre(grupo.getFechaIncripcionCierre());
             dto.setPeriodo(grupo.getPeriodo());
+            dto.setInscripcionesCerradasManual(grupo.isInscripcionesCerradasManual());
             return dto;
         } catch (Exception e) {
             throw new NoProcesableEntidadException("No fue posible convertir Grupo a DTO: " + e.getMessage());
@@ -80,8 +83,7 @@ public class GrupoMapper {
     // y el catalogo -- nunca se persisten, se derivan en el momento de la respuesta.
     public static GrupoDto toDto(Grupo grupo, LocalDate hoy) {
         GrupoDto dto = toDto(grupo);
-        EstadoVentanaInscripcion estado = EstadoVentanaInscripcion.calcular(
-                grupo.getFechaInscripcionApertura(), grupo.getFechaIncripcionCierre(), hoy);
+        EstadoVentanaInscripcion estado = grupo.estadoInscripcion(hoy);
         dto.setInscripcionesAbiertas(estado == EstadoVentanaInscripcion.ABIERTAS);
         dto.setMotivoInscripcion(estado);
         return dto;
@@ -102,7 +104,8 @@ public class GrupoMapper {
                 dto.getFechaInscripcionApertura(),
                 dto.getFechaIncripcionCierre(),
                 dto.getPeriodo() != null ? dto.getPeriodo() : 0,
-                null);
+                null,
+                false);
             return grupo;
         } catch (Exception e) {
             throw new NoProcesableEntidadException("No fue posible convertir GrupoDto a dominio: " + e.getMessage());

@@ -235,7 +235,8 @@ class InstructorIT {
 
         String body = "{\"categoria\":\"" + CATEGORIA + "\",\"curso\":\"" + CURSO
                 + "\",\"imagenGrupo\":" + imagenId + ",\"cupos\":5,\"idInstructor\":\"" + instructorId + "\","
-                + "\"fechaCreacion\":\"" + LocalDate.now() + "\"}";
+                + "\"fechaCreacion\":\"" + LocalDate.now() + "\","
+                + "\"fechaIncripcionCierre\":\"" + LocalDate.now().plusYears(1) + "\"}";
 
         mockMvc.perform(post("/api/v2/grupo")
                 .contentType("application/json")
