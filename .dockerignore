@@ -1,0 +1,15 @@
+target
+.git
+.github
+.idea
+.vscode
+.scannerwork
+*.log
+hs_err_pid*
+replay_pid*
+.env
+.env.*
+db
+docker-compose.yml
+Dockerfile
+.dockerignore
