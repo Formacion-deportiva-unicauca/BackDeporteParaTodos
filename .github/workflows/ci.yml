@@ -43,10 +43,13 @@ jobs:
           distribution: 'temurin'
           cache: 'maven'
 
-      - name: Load database schema
+      - name: Apply database migrations (Flyway)
         run: |
-          sudo apt-get update -qq && sudo apt-get install -y mysql-client
-          mysql -h127.0.0.1 -P3306 -uroot -ptestroot deporteParaTodos < src/main/resources/DDL-MYSQL.sql
+          docker run --rm --network host \
+            -v "$GITHUB_WORKSPACE/db/flyway:/flyway/sql:ro" \
+            flyway/flyway:11.13.3@sha256:f0e7c2fb49f55487d8e35bf54e38c1bdf01eeb27444bc10c75c69be3d9e71621 \
+            -url="jdbc:mysql://127.0.0.1:3306/deporteParaTodos?allowPublicKeyRetrieval=true&useSSL=false" \
+            -user=root -password=testroot migrate info
 
       - name: Build and run tests
         run: mvn --batch-mode --update-snapshots verify
