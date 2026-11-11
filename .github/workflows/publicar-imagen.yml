@@ -25,9 +25,13 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
-      - name: Calcular etiqueta (commit corto)
+      - name: Calcular etiquetas (commit corto y, si aplica, version)
         id: v
-        run: echo "sha=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+        run: |
+          {
+            echo "sha=${GITHUB_SHA::7}"
+            if [ "$GITHUB_REF_TYPE" = "tag" ]; then echo "version=$GITHUB_REF_NAME"; fi
+          } >> "$GITHUB_OUTPUT"
 
       - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
 
@@ -43,7 +47,9 @@ jobs:
         with:
           context: .
           push: true
-          tags: ${{ env.IMAGEN }}:${{ steps.v.outputs.sha }}
+          tags: |
+            ${{ env.IMAGEN }}:${{ steps.v.outputs.sha }}
+            ${{ steps.v.outputs.version && format('{0}:{1}', env.IMAGEN, steps.v.outputs.version) || '' }}
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
             org.opencontainers.image.revision=${{ github.sha }}
@@ -56,6 +62,7 @@ jobs:
             echo "### Imagen publicada"
             echo "- Imagen: \`${{ env.IMAGEN }}:${{ steps.v.outputs.sha }}\`"
             echo "- Digest: \`${{ steps.build.outputs.digest }}\`"
+            echo "- Version: ${{ steps.v.outputs.version || '(ejecucion manual, sin version)' }}"
             echo "- Commit: ${{ github.sha }}"
             echo "- Ejecutado por: ${{ github.actor }}"
           } >> "$GITHUB_STEP_SUMMARY"
