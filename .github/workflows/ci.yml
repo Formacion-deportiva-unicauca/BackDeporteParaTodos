@@ -47,8 +47,10 @@ jobs:
         run: |
           docker run --rm --network host \
             -v "$GITHUB_WORKSPACE/db/flyway:/flyway/sql:ro" \
+            -v "$GITHUB_WORKSPACE/db/ci:/flyway/ci:ro" \
             flyway/flyway:11.13.3@sha256:f0e7c2fb49f55487d8e35bf54e38c1bdf01eeb27444bc10c75c69be3d9e71621 \
             -url="jdbc:mysql://127.0.0.1:3306/deporteParaTodos?allowPublicKeyRetrieval=true&useSSL=false" \
+            -locations=filesystem:/flyway/sql,filesystem:/flyway/ci \
             -user=root -password=testroot migrate info
 
       - name: Build and run tests
