@@ -17,6 +17,7 @@ concurrency:
 
 env:
   IMAGEN: ghcr.io/formacion-deportiva-unicauca/deporte-backend
+  IMAGEN_MIGRACIONES: ghcr.io/formacion-deportiva-unicauca/deporte-migraciones
 
 jobs:
   publicar:
@@ -56,6 +57,20 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      - name: Construir y publicar (migraciones)
+        id: build-migraciones
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        with:
+          context: .
+          file: db/Dockerfile.migraciones
+          push: true
+          tags: |
+            ${{ env.IMAGEN_MIGRACIONES }}:${{ steps.v.outputs.sha }}
+            ${{ steps.v.outputs.version && format('{0}:{1}', env.IMAGEN_MIGRACIONES, steps.v.outputs.version) || '' }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+
       - name: Resumen (evidencia)
         run: |
           {
@@ -65,4 +80,7 @@ jobs:
             echo "- Version: ${{ steps.v.outputs.version || '(ejecucion manual, sin version)' }}"
             echo "- Commit: ${{ github.sha }}"
             echo "- Ejecutado por: ${{ github.actor }}"
+            echo "### Imagen de migraciones publicada"
+            echo "- Imagen: \`${{ env.IMAGEN_MIGRACIONES }}:${{ steps.v.outputs.sha }}\`"
+            echo "- Digest: \`${{ steps.build-migraciones.outputs.digest }}\`"
           } >> "$GITHUB_STEP_SUMMARY"

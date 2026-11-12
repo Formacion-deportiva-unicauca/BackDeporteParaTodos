@@ -1,0 +1,6 @@
+db/flyway/*.sql text eol=lf
+db/ci/*.sql text eol=lf
+.github/workflows/*.yml text eol=lf
+db/Dockerfile.migraciones text eol=lf
+.gitattributes text eol=lf
+db/Dockerfile.migraciones.dockerignore text eol=lf
