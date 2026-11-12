@@ -85,7 +85,7 @@ class ClaseFechaDuplicadaIT {
     // GrupoGateway.insertarGrupo() ignora el anio pedido y crea el grupo en el anio ACTUAL.
     private static final int ANIO = LocalDate.now().getYear();
     private static final String DEPORTE_SEED = "Natacion";
-    // Instructor ya insertado por el seed de DDL-MYSQL.sql.
+    // Instructor insertado por db/ci (CI) o db/local (entorno local).
     private static final String INSTRUCTOR_SEED_ID = "2";
 
     @Autowired
