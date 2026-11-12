@@ -94,9 +94,27 @@ REST Controller -> IServicio (puerto entrada) -> Servicio (dominio)
 
 - Oracle XE: jdbc:oracle:thin:@localhost:1521:xe
 - Usuario: TEST / Password: test
-- ddl-auto=none — migraciones siempre manuales
+- ddl-auto=none — el esquema lo gestiona Flyway (ver sección "Base de datos y migraciones")
 - Puerto aplicación: 8082
 - Swagger: http://localhost:8082/swagger-ui.html
+
+## Base de datos y migraciones
+
+- El esquema lo gestiona Flyway: migraciones versionadas en `db/flyway/V<n>__descripcion.sql`,
+  numeración consecutiva; solo se agregan archivos nuevos.
+- NUNCA editar una migración ya fusionada a `main` (ni sus comentarios): Flyway valida el
+  checksum de cada archivo y fallaría en producción.
+- CI aplica `db/flyway` + `db/ci` (datos ficticios). El `docker-compose.yml` local aplica
+  `db/flyway` + `db/local` (datos de prueba).
+- En producción las migraciones se aplican automáticamente antes del despliegue (imagen
+  `deporte-migraciones` del mismo tag `vX.Y.Z`), con respaldo previo; si la migración falla,
+  el backend no se despliega.
+- Toda migración debe ser compatible hacia atrás con la versión anterior del backend
+  (expandir/contraer): primero añadir, borrar o renombrar solo en una versión posterior.
+- MySQL no revierte DDL: una migración fallida puede dejar cambios parciales; por eso las
+  migraciones deben ser pequeñas e idempotentes cuando sea posible.
+- `db/migraciones/` es histórico (ya incorporado en V1): no se usa para cambios nuevos.
+- Los tags de versión se crean anotados: `git tag -a vX.Y.Z -m "..."`.
 
 ## Cómo agregar una entidad nueva (checklist)
 
