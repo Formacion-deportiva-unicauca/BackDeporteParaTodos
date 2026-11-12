@@ -10,9 +10,28 @@ services:
     ports:
       - "3306:3306"
     volumes:
-      - ./src/main/resources/DDL-MYSQL.sql:/docker-entrypoint-initdb.d/DDL-MYSQL.sql
       - mysql_data:/var/lib/mysql
     command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p\"$$MYSQL_ROOT_PASSWORD\" --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  migraciones:
+    image: flyway/flyway:11.13.3@sha256:f0e7c2fb49f55487d8e35bf54e38c1bdf01eeb27444bc10c75c69be3d9e71621
+    depends_on:
+      mysql:
+        condition: service_healthy
+    volumes:
+      - ./db/flyway:/flyway/sql:ro
+      - ./db/local:/flyway/local:ro
+    command:
+      - -url=jdbc:mysql://mysql:3306/deporteParaTodos?allowPublicKeyRetrieval=true&useSSL=false
+      - -user=root
+      - -password=${DB_PASSWORD}
+      - -locations=filesystem:/flyway/sql,filesystem:/flyway/local
+      - migrate
 
 volumes:
   mysql_data:

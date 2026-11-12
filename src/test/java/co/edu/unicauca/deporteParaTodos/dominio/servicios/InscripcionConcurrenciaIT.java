@@ -90,8 +90,8 @@ class InscripcionConcurrenciaIT {
     // GrupoGateway.insertarGrupo() ignora el anio pedido y crea el grupo en el anio ACTUAL.
     private static final int ANIO = LocalDate.now().getYear();
     private static final int ITERABLE = 1;
-    // Referencias a filas ya insertadas por el seed data de DDL-MYSQL.sql -- existen
-    // desde que se carga el esquema, no las crea este fixture.
+    // DEPORTE_SEED viene del catalogo (db/flyway/V2__datos_catalogo.sql); INSTRUCTOR_SEED_ID
+    // lo inserta db/ci (CI) o db/local (entorno local) -- no las crea este fixture.
     private static final String DEPORTE_SEED = "Natacion";
     private static final String INSTRUCTOR_SEED_ID = "2";
 

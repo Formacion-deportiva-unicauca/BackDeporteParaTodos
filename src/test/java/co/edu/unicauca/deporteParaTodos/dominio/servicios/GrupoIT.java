@@ -51,7 +51,7 @@ import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresP
 /**
  * Test de integracion (BD MySQL real, via HTTP con MockMvc) para PUT /api/v2/grupo.
  * Fixtures via los servicios reales de la app, no SQL directo -- el grupo arranca
- * CON un instructor asignado (seed de DDL-MYSQL.sql) para poder probar que quitarlo
+ * CON un instructor asignado (seed de db/ci o db/local) para poder probar que quitarlo
  * (idInstructor null) deja PERF_ID en NULL de verdad en la BD.
  */
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -66,7 +66,7 @@ class GrupoIT {
     private static final int ANIO = LocalDate.now().getYear();
     private static final int ITERABLE = 1;
     private static final String DEPORTE_SEED = "Natacion";
-    // Instructor ya insertado por el seed de DDL-MYSQL.sql.
+    // Instructor insertado por db/ci (CI) o db/local (entorno local).
     private static final String INSTRUCTOR_SEED_ID = "2";
 
     @Autowired
