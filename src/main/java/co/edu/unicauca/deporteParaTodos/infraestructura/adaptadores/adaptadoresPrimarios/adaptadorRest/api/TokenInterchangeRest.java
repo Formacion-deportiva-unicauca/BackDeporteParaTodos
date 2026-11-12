@@ -61,6 +61,15 @@ public class TokenInterchangeRest {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
+        // email_verified puede llegar como Boolean o como String "true" segun el emisor;
+        // se exige explicitamente antes de confiar en el correo. No se distingue el motivo
+        // en la respuesta (mismo 401 generico que los demas casos de este endpoint).
+        Object emailVerificado = googleJwt.getClaim("email_verified");
+        boolean verificado = Boolean.TRUE.equals(emailVerificado) || "true".equals(emailVerificado);
+        if (!verificado) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
         // autenticacionServicio.login lanza NoExisteExcepcion (→ 404 via handler global)
         // si el correo no esta registrado en el sistema
         PerfilDto perfil = autenticacionServicio.login(email);

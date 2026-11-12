@@ -16,9 +16,13 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.oauth2.core.OAuth2TokenValidator;
+import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
+import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.slf4j.Logger;
@@ -47,6 +51,11 @@ public class SecurityConfig {
 
     @Value("${app.jwt.secret}")
     private String jwtSecret;
+
+    // client_id de la app registrada en Google (publico, no es secreto). Sin valor por
+    // defecto: si falta GOOGLE_CLIENT_ID, el arranque falla igual que con app.jwt.secret.
+    @Value("${app.google.client-id}")
+    private String googleClientId;
 
     // Chain 1 (Orden 1): solo /auth/token — recibe Google ID Token y lo decodifica manualmente
     // en el controller. BearerTokenAuthenticationFilter NO debe interceptar esta ruta porque
@@ -95,9 +104,16 @@ public class SecurityConfig {
 
     // Decodifica tokens Google ID (RS256, valida firma via JWKS publico de Google).
     // Usado exclusivamente por TokenInterchangeRest para validar el token entrante de Google.
+    // Ademas de la firma, valida (via setJwtValidator): exp/nbf (JwtValidators.createDefault(),
+    // sin esto no se pierde nada de lo que ya habia) + aud (debe contener nuestro client_id) +
+    // iss (debe ser Google, en cualquiera de sus dos formas) -- ver GoogleJwtClaimsValidator.
     @Bean("googleJwtDecoder")
     public JwtDecoder googleJwtDecoder() {
-        return NimbusJwtDecoder.withJwkSetUri(googleJwksUri).build();
+        NimbusJwtDecoder decoder = NimbusJwtDecoder.withJwkSetUri(googleJwksUri).build();
+        OAuth2TokenValidator<Jwt> validadorPorDefecto = JwtValidators.createDefault();
+        OAuth2TokenValidator<Jwt> validadorClaims = new GoogleJwtClaimsValidator(googleClientId);
+        decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(validadorPorDefecto, validadorClaims));
+        return decoder;
     }
 
     // Decodifica los JWT propios del sistema (HS256, firmados con JWT_SECRET).
