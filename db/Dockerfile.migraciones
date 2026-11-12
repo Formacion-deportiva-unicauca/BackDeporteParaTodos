@@ -1,0 +1,5 @@
+# Imagen de migraciones: aplica db/flyway contra la base de datos ANTES de
+# desplegar el backend. No incluye credenciales: la conexion se recibe en
+# tiempo de ejecucion via FLYWAY_URL, FLYWAY_USER y FLYWAY_PASSWORD.
+FROM flyway/flyway:11.13.3@sha256:f0e7c2fb49f55487d8e35bf54e38c1bdf01eeb27444bc10c75c69be3d9e71621
+COPY db/flyway/ /flyway/sql/

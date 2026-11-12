@@ -1,0 +1,4 @@
+# Contexto de build para db/Dockerfile.migraciones: solo permite db/flyway/. El .dockerignore raiz se mantiene intacto para el build del backend.
+*
+!db/flyway/
+!db/flyway/**
