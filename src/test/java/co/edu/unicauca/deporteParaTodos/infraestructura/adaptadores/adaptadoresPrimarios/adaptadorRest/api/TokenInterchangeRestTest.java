@@ -86,6 +86,7 @@ class TokenInterchangeRestTest {
         Jwt googleJwt = Jwt.withTokenValue("google-token")
                 .header("alg", "RS256")
                 .claim("email", "desconocido@externo.com")
+                .claim("email_verified", true)
                 .build();
         when(googleDecoder.decode("google-token")).thenReturn(googleJwt);
         when(autenticacionServicio.login("desconocido@externo.com"))
@@ -98,6 +99,54 @@ class TokenInterchangeRestTest {
                 .andExpect(jsonPath("$.codigoHttp").value(404));
     }
 
+    // --- email_verified ---
+
+    @Test
+    void emailVerificadoFalse_retorna401() throws Exception {
+        Jwt googleJwt = Jwt.withTokenValue("google-token")
+                .header("alg", "RS256")
+                .claim("email", "alumno@unicauca.edu.co")
+                .claim("email_verified", false)
+                .build();
+        when(googleDecoder.decode("google-token")).thenReturn(googleJwt);
+
+        mockMvc.perform(post("/api/v2/auth/token")
+                        .header("Authorization", "Bearer google-token"))
+                .andExpect(status().isUnauthorized());
+        verify(autenticacionServicio, never()).login(any());
+    }
+
+    @Test
+    void emailVerificadoAusente_retorna401() throws Exception {
+        Jwt googleJwt = Jwt.withTokenValue("google-token")
+                .header("alg", "RS256")
+                .claim("email", "alumno@unicauca.edu.co")
+                .build();
+        when(googleDecoder.decode("google-token")).thenReturn(googleJwt);
+
+        mockMvc.perform(post("/api/v2/auth/token")
+                        .header("Authorization", "Bearer google-token"))
+                .andExpect(status().isUnauthorized());
+        verify(autenticacionServicio, never()).login(any());
+    }
+
+    @Test
+    void emailVerificadoComoStringTrue_continua() throws Exception {
+        Jwt googleJwt = Jwt.withTokenValue("google-token")
+                .header("alg", "RS256")
+                .claim("email", "alumno@unicauca.edu.co")
+                .claim("email_verified", "true")
+                .build();
+        when(googleDecoder.decode("google-token")).thenReturn(googleJwt);
+        when(autenticacionServicio.login("alumno@unicauca.edu.co"))
+                .thenThrow(new NoExisteExcepcion("alumno@unicauca.edu.co"));
+
+        // Si llega a 404 (y no a 401) es porque email_verified="true" (String) si fue aceptado.
+        mockMvc.perform(post("/api/v2/auth/token")
+                        .header("Authorization", "Bearer google-token"))
+                .andExpect(status().isNotFound());
+    }
+
     // --- Happy path ---
 
     @Test
@@ -105,6 +154,7 @@ class TokenInterchangeRestTest {
         Jwt googleJwt = Jwt.withTokenValue("google-token")
                 .header("alg", "RS256")
                 .claim("email", "alumno@unicauca.edu.co")
+                .claim("email_verified", true)
                 .issuedAt(Instant.now())
                 .build();
         when(googleDecoder.decode("google-token")).thenReturn(googleJwt);
