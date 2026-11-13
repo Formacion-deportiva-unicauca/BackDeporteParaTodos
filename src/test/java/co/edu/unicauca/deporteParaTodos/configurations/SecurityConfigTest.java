@@ -24,6 +24,10 @@ class SecurityConfigTest {
         securityConfig = new SecurityConfig();
         ReflectionTestUtils.setField(securityConfig, "googleJwksUri", JWKS_URI);
         ReflectionTestUtils.setField(securityConfig, "jwtSecret", TEST_SECRET);
+        // En produccion Spring invoca este @PostConstruct automaticamente tras inyectar
+        // los @Value; aqui se simula el mismo ciclo de vida para poblar systemJwtKey,
+        // que jwtEncoder()/systemJwtDecoder() reutilizan en vez de decodificar de nuevo.
+        securityConfig.validarClaveJwt();
     }
 
     @Test
