@@ -1,9 +1,12 @@
 package co.edu.unicauca.deporteParaTodos.configurations;
 
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosEntrada.IAsistenciaServicio;
+import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosEntrada.IAutenticacionServicio;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosEntrada.ICategoriaCursoServicio;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosEntrada.IEstadisticaServicio;
+import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.DTOs.PerfilDto;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.api.AtencionRest;
+import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.api.AutenticacionRest;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.api.CategoriaRest;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresPrimarios.adaptadorRest.api.EstadisticasRest;
 import org.junit.jupiter.api.Test;
@@ -30,7 +33,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest(controllers = {CategoriaRest.class, AtencionRest.class, EstadisticasRest.class})
+@WebMvcTest(controllers = {CategoriaRest.class, AtencionRest.class, EstadisticasRest.class, AutenticacionRest.class})
 @Import(SecurityConfig.class)
 @TestPropertySource(properties = {
         "app.jwt.secret=dGVzdFNlY3JldEtleUZvckNJMTIzNDU2Nzg5MDEyMzQ1Njc4OTA=",
@@ -44,6 +47,7 @@ class RolAuthorizationTest {
     @MockBean private ICategoriaCursoServicio servicioCategoria;
     @MockBean private IAsistenciaServicio servicioAsistencia;
     @MockBean private IEstadisticaServicio servEstadistica;
+    @MockBean private IAutenticacionServicio servicioAutenticacion;
 
     // ── Tier: Solo Coordinador ────────────────────────────────────────────────
 
@@ -138,12 +142,97 @@ class RolAuthorizationTest {
                 .andExpect(status().isOk());
     }
 
+    // ── Tier: GET /login -- Alumno solo su propio correo; staff, cualquiera ──
+
+    @Test
+    void getLogin_sinToken_retorna401() throws Exception {
+        mockMvc.perform(get("/api/v2/login").param("email", "alguien@unicauca.edu.co"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void getLogin_rolDesconocido_retorna403() throws Exception {
+        mockMvc.perform(get("/api/v2/login")
+                        .param("email", "alguien@unicauca.edu.co")
+                        .header("Authorization", "Bearer " + generarTokenConRol("Visitante")))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void getLogin_alumnoConsultaSuPropioCorreo_retorna200() throws Exception {
+        when(servicioAutenticacion.login("yo@unicauca.edu.co")).thenReturn(new PerfilDto());
+
+        mockMvc.perform(get("/api/v2/login")
+                        .param("email", "yo@unicauca.edu.co")
+                        .header("Authorization", "Bearer " + generarTokenConRolYCorreo("Alumno", "yo@unicauca.edu.co")))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void getLogin_alumnoConsultaSuPropioCorreoConOtrasMayusculas_retorna200() throws Exception {
+        when(servicioAutenticacion.login("Yo@Unicauca.edu.co")).thenReturn(new PerfilDto());
+
+        mockMvc.perform(get("/api/v2/login")
+                        .param("email", "Yo@Unicauca.edu.co")
+                        .header("Authorization", "Bearer " + generarTokenConRolYCorreo("Alumno", "yo@unicauca.edu.co")))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void getLogin_alumnoConsultaOtroCorreo_retorna403() throws Exception {
+        mockMvc.perform(get("/api/v2/login")
+                        .param("email", "otro@unicauca.edu.co")
+                        .header("Authorization", "Bearer " + generarTokenConRolYCorreo("Alumno", "yo@unicauca.edu.co")))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void getLogin_coordinadorConsultaOtroCorreo_retorna200() throws Exception {
+        when(servicioAutenticacion.login("otro@unicauca.edu.co")).thenReturn(new PerfilDto());
+
+        mockMvc.perform(get("/api/v2/login")
+                        .param("email", "otro@unicauca.edu.co")
+                        .header("Authorization", "Bearer " + generarTokenConRolYCorreo("Coordinador", "coord@unicauca.edu.co")))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void getLogin_instructorConsultaOtroCorreo_retorna200() throws Exception {
+        when(servicioAutenticacion.login("otro@unicauca.edu.co")).thenReturn(new PerfilDto());
+
+        mockMvc.perform(get("/api/v2/login")
+                        .param("email", "otro@unicauca.edu.co")
+                        .header("Authorization", "Bearer " + generarTokenConRolYCorreo("Instructor", "inst@unicauca.edu.co")))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void getLogin_administradorConsultaOtroCorreo_retorna200() throws Exception {
+        when(servicioAutenticacion.login("otro@unicauca.edu.co")).thenReturn(new PerfilDto());
+
+        mockMvc.perform(get("/api/v2/login")
+                        .param("email", "otro@unicauca.edu.co")
+                        .header("Authorization", "Bearer " + generarTokenConRolYCorreo("Administrador", "admin@unicauca.edu.co")))
+                .andExpect(status().isOk());
+    }
+
     // ─────────────────────────────────────────────────────────────────────────
 
     private String generarTokenConRol(String rol) {
         JwsHeader header = JwsHeader.with(MacAlgorithm.HS256).build();
         JwtClaimsSet claims = JwtClaimsSet.builder()
                 .subject("test-user@test.com")
+                .issuedAt(Instant.now())
+                .expiresAt(Instant.now().plusSeconds(3600))
+                .claim("rol", rol)
+                .build();
+        return jwtEncoder.encode(JwtEncoderParameters.from(header, claims)).getTokenValue();
+    }
+
+    private String generarTokenConRolYCorreo(String rol, String correo) {
+        JwsHeader header = JwsHeader.with(MacAlgorithm.HS256).build();
+        JwtClaimsSet claims = JwtClaimsSet.builder()
+                .subject(correo)
                 .issuedAt(Instant.now())
                 .expiresAt(Instant.now().plusSeconds(3600))
                 .claim("rol", rol)
