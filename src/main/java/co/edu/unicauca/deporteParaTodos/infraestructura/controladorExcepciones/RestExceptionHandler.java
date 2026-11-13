@@ -128,16 +128,21 @@ public class RestExceptionHandler {
 
         /**
          * Captura excepcion por json mal formados que ingresan como peticion,
-         * es un error del usuario al introducir de forma inadecuada los datos
+         * es un error del usuario al introducir de forma inadecuada los datos.
+         * El detalle interno (mensaje de Jackson/Spring) nunca se expone al cliente -- solo
+         * se registra en el log del servidor a nivel WARN, porque es un error de entrada del
+         * usuario y no un fallo del servidor.
          * @param ex
          * @return
          */
         @ExceptionHandler(HttpMessageNotReadableException.class)
                 public ResponseEntity<Map<String, String>> handleJsonParseError(HttpServletRequest req, HttpMessageNotReadableException ex) {
                 Map<String, String> error = new HashMap<>();
-                error.put("mensaje", "El cuerpo de la solicitud contiene JSON mal formado o datos no válidos.");
-                error.put("detalle", ex.getMostSpecificCause().getMessage());
-                logExcepcion("HttpMessageNotReadableException", req, ex);
+                error.put("mensaje", "La solicitud no es válida.");
+                LOGGER.warn("Peticion [{} {}] con cuerpo JSON invalido. Detalle: {}",
+                                req != null ? req.getMethod() : "N/A",
+                                req != null ? req.getRequestURL().toString() : "N/A",
+                                ex.getMostSpecificCause().getMessage());
                 return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
         }
 

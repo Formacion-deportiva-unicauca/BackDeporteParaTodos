@@ -385,6 +385,20 @@ class RestExceptionHandlerTest {
     }
 
     @Test
+    void jsonMalformado_mensajeEsNeutro_sinExponerDetalleInternoDeJackson() throws Exception {
+        // Antes el handler exponia ex.getMostSpecificCause().getMessage() en la clave
+        // "detalle" (texto interno de Jackson: nombres de clase, numero de linea/columna).
+        // Ahora el mensaje es neutro y la clave "detalle" ya no existe en la respuesta;
+        // el detalle real solo se registra en el log del servidor (a nivel WARN).
+        mockMvc.perform(post("/test/jsonroto")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{campo_invalido"))  // JSON mal formado
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.mensaje").value("La solicitud no es válida."))
+                .andExpect(jsonPath("$.detalle").doesNotExist());
+    }
+
+    @Test
     void handlerMethodValidation_retorna400() throws Exception {
         // standaloneSetup no activa MethodValidationAdapter en Spring MVC 6.1.
         // Se usa webAppContextSetup con @EnableWebMvc para que RequestMappingHandlerAdapter

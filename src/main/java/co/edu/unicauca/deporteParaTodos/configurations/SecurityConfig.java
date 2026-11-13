@@ -34,6 +34,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import jakarta.annotation.PostConstruct;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 import java.util.Base64;
@@ -46,6 +47,11 @@ public class SecurityConfig {
 
     private static final Logger DIAG_LOG = LoggerFactory.getLogger(SecurityConfig.class);
 
+    // HS256 con clave < 32 bytes es criptograficamente debil (NIST SP 800-117 / RFC 2104
+    // recomiendan clave >= tamano del hash). Verificado despues de decodificar Base64: lo que
+    // importa es la entropia real, no la longitud del texto de app.jwt.secret.
+    private static final int LONGITUD_MINIMA_CLAVE_JWT_BYTES = 32;
+
     @Value("${spring.security.oauth2.resourceserver.jwt.jwk-set-uri}")
     private String googleJwksUri;
 
@@ -56,6 +62,33 @@ public class SecurityConfig {
     // defecto: si falta GOOGLE_CLIENT_ID, el arranque falla igual que con app.jwt.secret.
     @Value("${app.google.client-id}")
     private String googleClientId;
+
+    // Clave HS256 ya decodificada y validada -- unica fuente de verdad, reutilizada por
+    // systemJwtDecoder() y jwtEncoder() para no decodificar/validar dos veces.
+    private SecretKey systemJwtKey;
+
+    // Decodifica y valida app.jwt.secret una sola vez al arrancar. Si la clave resultante
+    // tiene menos de 32 bytes, el arranque falla con un mensaje claro que NUNCA incluye el
+    // valor de la clave (solo su longitud).
+    @PostConstruct
+    public void validarClaveJwt() {
+        byte[] keyBytes;
+        try {
+            keyBytes = Base64.getDecoder().decode(jwtSecret);
+        } catch (IllegalArgumentException ex) {
+            throw new IllegalStateException(
+                    "app.jwt.secret no es un valor Base64 valido. Genera uno nuevo con: "
+                            + "openssl rand -base64 32");
+        }
+        if (keyBytes.length < LONGITUD_MINIMA_CLAVE_JWT_BYTES) {
+            throw new IllegalStateException(
+                    "app.jwt.secret es demasiado corta: tiene " + keyBytes.length
+                            + " bytes tras decodificar desde Base64, se requieren al menos "
+                            + LONGITUD_MINIMA_CLAVE_JWT_BYTES
+                            + ". Genera una nueva con: openssl rand -base64 32 (o mayor)");
+        }
+        systemJwtKey = new SecretKeySpec(keyBytes, "HmacSHA256");
+    }
 
     // Chain 1 (Orden 1): solo /auth/token — recibe Google ID Token y lo decodifica manualmente
     // en el controller. BearerTokenAuthenticationFilter NO debe interceptar esta ruta porque
@@ -120,9 +153,7 @@ public class SecurityConfig {
     // Usado por mainChain para validar el dpt_token que emite TokenServicio.
     @Bean("systemJwtDecoder")
     public JwtDecoder systemJwtDecoder() {
-        byte[] keyBytes = Base64.getDecoder().decode(jwtSecret);
-        SecretKey key = new SecretKeySpec(keyBytes, "HmacSHA256");
-        return NimbusJwtDecoder.withSecretKey(key).macAlgorithm(MacAlgorithm.HS256).build();
+        return NimbusJwtDecoder.withSecretKey(systemJwtKey).macAlgorithm(MacAlgorithm.HS256).build();
     }
 
     // Mapea el claim "rol" del JWT propio del sistema a GrantedAuthority de Spring Security.
@@ -147,9 +178,7 @@ public class SecurityConfig {
     // Firma los JWT propios del sistema con HMAC-SHA256
     @Bean
     public JwtEncoder jwtEncoder() {
-        byte[] keyBytes = Base64.getDecoder().decode(jwtSecret);
-        SecretKey key = new SecretKeySpec(keyBytes, "HmacSHA256");
-        OctetSequenceKey jwk = new OctetSequenceKey.Builder(key).build();
+        OctetSequenceKey jwk = new OctetSequenceKey.Builder(systemJwtKey).build();
         JWKSource<SecurityContext> jwkSource = new ImmutableJWKSet<>(new JWKSet(jwk));
         return new NimbusJwtEncoder(jwkSource);
     }
