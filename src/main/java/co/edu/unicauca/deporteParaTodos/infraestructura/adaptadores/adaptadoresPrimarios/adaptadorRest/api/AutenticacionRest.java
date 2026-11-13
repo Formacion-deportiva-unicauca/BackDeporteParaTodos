@@ -23,6 +23,9 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 
 @RestController
 @RequestMapping("api/v2")
@@ -34,15 +37,25 @@ public class AutenticacionRest {
     @Autowired
     private IAutenticacionServicio servicioAutenticacion;
 
+    // Coordinador/Instructor/Administrador: cualquier correo (lo usa el flujo de inscribir
+    // alumnos). Alumno: solo su propio correo (comparado contra el "sub" del dpt_token, que
+    // es el correo -- ver TokenServicio). Cualquier otro rol lo rechaza @PreAuthorize con 403.
     @Operation(summary = "Autentica un perfil a partir del correo y retorna su rol dentro del sistema")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Perfil autenticado"),
+        @ApiResponse(responseCode = "403", description = "Un Alumno solo puede consultar su propio correo"),
         @ApiResponse(responseCode = "404", description = "Perfil no encontrado")
     })
+    @PreAuthorize("hasAnyAuthority('Alumno','Coordinador','Instructor','Administrador')")
     @GetMapping("/login")
     public ResponseEntity<PerfilDto> login(
             @Parameter(description = "Correo del perfil que desea autenticarse")
-            @RequestParam @NotBlank @Email String email) {
+            @RequestParam @NotBlank @Email String email,
+            @AuthenticationPrincipal Jwt jwt) {
+        if (jwt != null && "Alumno".equals(jwt.getClaimAsString("rol"))
+                && !email.equalsIgnoreCase(jwt.getSubject())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
         PeticionLogger.log(LOGGER, "GET", "/api/v2/login", "email=" + email);
         PerfilDto respuesta = servicioAutenticacion.login(email);
         return new ResponseEntity<>(respuesta, HttpStatus.OK);
