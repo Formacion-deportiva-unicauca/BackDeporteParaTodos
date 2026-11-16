@@ -127,6 +127,13 @@ public class InscripcionServicio implements IInscripcionServicio {
             if ("INSCRITO".equals(previa.getEstado()) && previa.getFechaDesvinculacion() == null) {
                 throw new YaExisteElementoExcepcion("Ya estás inscrito en este grupo");
             }
+            // Lo mismo para quien ya esta EN_ESPERA (vigente, no eliminada): con cupo libre esta rama lo pasaba a
+            // INSCRITO saltandose la cola. Su lugar en la lista no se toca: ni estado, ni fechaInscripcion.
+            // Si hay cupo y gente esperando, quien decide es la promocion (automatica o manual del Coordinador).
+            if (gateway.existeEnEspera(datos.getAlumnoId(), datos.getCategoria(),
+                    datos.getCurso(), datos.getAnio(), datos.getIterable())) {
+                throw new YaExisteElementoExcepcion("Ya estás en la lista de espera de este grupo");
+            }
         }
 
         // SCRUM-185: ventana de inscripcion del grupo (apertura/cierre), evaluada con

@@ -330,22 +330,69 @@ class InscripcionServicioTest {
         verify(gateway).guardarInscripcion(any());
     }
 
-    @Test
-    void inscribir_filaEnEspera_noSeRechazaComoDuplicadoInscrito_conservaSuFlujo() {
-        // EN_ESPERA vigente + ahora hay cupo: sigue el flujo de antes (pasa a INSCRITO), no el rechazo de duplicado.
-        Inscripcion enEspera = new Inscripcion("alum1", "cat1", "cur1", 2026, 1,
+    private Inscripcion filaEnEsperaVigente() {
+        return new Inscripcion("alum1", "cat1", "cur1", 2026, 1,
                 Timestamp.valueOf("2026-03-01 10:00:00"), null, "EN_ESPERA");
+    }
+
+    @Test
+    void inscribir_filaEnEsperaConCupoLibre_seRechaza_noPasaAInscrito() {
+        // EN_ESPERA vigente + hay cupo: ya no se salta la cola. La fila queda exactamente como estaba.
+        Inscripcion fila = filaEnEsperaVigente();
+        when(cursoGateway.obtenerCurso("cat1", "cur1")).thenReturn(cursoAbierto);
+        when(grupoGateway.obtenerGrupoConLock("cat1", "cur1", 2026, 1)).thenReturn(grupoCon5Cupos);
+        lenient().when(gateway.contarInscripcionesActivasGrupo("cat1", "cur1", 2026, 1)).thenReturn(2L);
+        when(gateway.existeInscripcion("alum1", "cat1", "cur1", 2026, 1)).thenReturn(true);
+        when(gateway.obtenerInscripcion("alum1", "cat1", "cur1", 2026, 1)).thenReturn(fila);
+        when(gateway.existeEnEspera("alum1", "cat1", "cur1", 2026, 1)).thenReturn(true);
+
+        YaExisteElementoExcepcion ex = assertThrows(YaExisteElementoExcepcion.class,
+                () -> servicio.inscribir(datos, COORD, "Coordinador"));
+
+        assertEquals("Ya estás en la lista de espera de este grupo", ex.getMessage());
+        verify(gateway, never()).guardarInscripcion(any());
+        verify(gateway, never()).contarCursosActivosAlumno(any());
+        assertEquals("EN_ESPERA", fila.getEstado());
+        assertEquals(Timestamp.valueOf("2026-03-01 10:00:00"), fila.getFechaInscripcion());
+        assertNull(fila.getFechaDesvinculacion());
+    }
+
+    @Test
+    void inscribir_filaEnEsperaConGrupoLleno_sigueRechazada() {
+        Inscripcion fila = filaEnEsperaVigente();
+        when(cursoGateway.obtenerCurso("cat1", "cur1")).thenReturn(cursoAbierto);
+        when(grupoGateway.obtenerGrupoConLock("cat1", "cur1", 2026, 1)).thenReturn(grupoCon5Cupos);
+        lenient().when(gateway.contarInscripcionesActivasGrupo("cat1", "cur1", 2026, 1)).thenReturn(5L);
+        when(gateway.existeInscripcion("alum1", "cat1", "cur1", 2026, 1)).thenReturn(true);
+        when(gateway.obtenerInscripcion("alum1", "cat1", "cur1", 2026, 1)).thenReturn(fila);
+        when(gateway.existeEnEspera("alum1", "cat1", "cur1", 2026, 1)).thenReturn(true);
+
+        assertThrows(YaExisteElementoExcepcion.class, () -> servicio.inscribir(datos, COORD, "Coordinador"));
+
+        verify(gateway, never()).guardarInscripcion(any());
+        assertEquals("EN_ESPERA", fila.getEstado());
+        assertEquals(Timestamp.valueOf("2026-03-01 10:00:00"), fila.getFechaInscripcion());
+    }
+
+    @Test
+    void inscribir_filaEnEsperaDesvinculada_reinscribeComoInscritoSiHayCupo() {
+        // Salio de la lista (fila desvinculada, estado historico EN_ESPERA) y vuelve: no es "en espera vigente".
+        Inscripcion salida = new Inscripcion("alum1", "cat1", "cur1", 2026, 1,
+                Timestamp.valueOf("2026-03-01 10:00:00"), Timestamp.valueOf("2026-03-05 10:00:00"), "EN_ESPERA");
         when(cursoGateway.obtenerCurso("cat1", "cur1")).thenReturn(cursoAbierto);
         when(grupoGateway.obtenerGrupoConLock("cat1", "cur1", 2026, 1)).thenReturn(grupoCon5Cupos);
         when(gateway.contarInscripcionesActivasGrupo("cat1", "cur1", 2026, 1)).thenReturn(2L);
         when(gateway.contarCursosActivosAlumno("alum1")).thenReturn(1L);
         when(gateway.existeInscripcion("alum1", "cat1", "cur1", 2026, 1)).thenReturn(true);
-        when(gateway.obtenerInscripcion("alum1", "cat1", "cur1", 2026, 1)).thenReturn(enEspera);
+        when(gateway.obtenerInscripcion("alum1", "cat1", "cur1", 2026, 1)).thenReturn(salida);
+        when(gateway.existeEnEspera("alum1", "cat1", "cur1", 2026, 1)).thenReturn(false);
         when(gateway.guardarInscripcion(any())).thenAnswer(inv -> inv.getArgument(0));
 
         Inscripcion resultado = servicio.inscribir(datos, COORD, "Coordinador");
 
         assertEquals("INSCRITO", resultado.getEstado());
+        assertNull(resultado.getFechaDesvinculacion());
+        verify(gateway).guardarInscripcion(any());
     }
 
     // Correccion de fechaInscripcion (auditoria previa a "faltas acumuladas"):
