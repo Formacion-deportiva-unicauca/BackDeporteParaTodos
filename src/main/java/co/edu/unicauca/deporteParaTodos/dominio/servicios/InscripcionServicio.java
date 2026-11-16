@@ -115,6 +115,20 @@ public class InscripcionServicio implements IInscripcionServicio {
         // arriba -- no se vuelve a consultar.
         autorizacionGrupo.verificarPropietario(grupo, perfIdLlamador, rolLlamador);
 
+        // Inscripcion duplicada: quien ya esta INSCRITO (vigente, sin desvincular) en este grupo no se vuelve a
+        // inscribir. Se rechaza ANTES de decidir el camino: no reactiva la fila ni cambia fechaInscripcion, no la
+        // pasa a EN_ESPERA si el grupo esta lleno (el alumno ya ocupa un cupo) y no evalua el tope de cursos.
+        // Se hace con el lock del grupo tomado, asi dos envios simultaneos no pasan los dos. EN_ESPERA y la
+        // reinscripcion tras cancelar (fila desvinculada) conservan su flujo.
+        if (gateway.existeInscripcion(datos.getAlumnoId(), datos.getCategoria(),
+                datos.getCurso(), datos.getAnio(), datos.getIterable())) {
+            Inscripcion previa = gateway.obtenerInscripcion(datos.getAlumnoId(), datos.getCategoria(),
+                    datos.getCurso(), datos.getAnio(), datos.getIterable());
+            if ("INSCRITO".equals(previa.getEstado()) && previa.getFechaDesvinculacion() == null) {
+                throw new YaExisteElementoExcepcion("Ya estás inscrito en este grupo");
+            }
+        }
+
         // SCRUM-185: ventana de inscripcion del grupo (apertura/cierre), evaluada con
         // "hoy" en America/Bogota -- unica regla, la misma que usa el catalogo
         // (GrupoServicio/GrupoGateway). Solo aplica a inscripciones NUEVAS: no se toca
