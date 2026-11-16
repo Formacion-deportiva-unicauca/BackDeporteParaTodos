@@ -43,6 +43,7 @@ import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosEntrada.ICurso
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosEntrada.IGrupoServicio;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosEntrada.IImagenServicio;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosEntrada.IInscripcionServicio;
+import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IGrupoGateway;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IInscripcionGateway;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IPerfilGateway;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.LimiteCursosExcepcion;
@@ -62,6 +63,8 @@ import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresP
  * volver a inscribirse en el. Antes, reenviar POST /inscripcion reactivaba la fila (refrescaba
  * fechaInscripcion) y, con el grupo lleno, pasaba al alumno a EN_ESPERA porque el propio alumno ocupaba un cupo.
  *
+ * Lo mismo para quien esta EN_ESPERA: con cupo libre ya no se salta la cola (antes pasaba a INSCRITO).
+ *
  * Cada escenario crea su propio grupo (iterable nuevo) y sus propios alumnos, asi que no depende del estado
  * que haya dejado una corrida anterior contra una BD persistente.
  */
@@ -78,6 +81,7 @@ class InscripcionDuplicadaIT {
     private static final String INSTRUCTOR_SEED_ID = "2";
     // "Ya estas inscrito en este grupo", con la tilde como escape para no depender de la codificacion del archivo.
     private static final String MENSAJE_DUPLICADO = "Ya estás inscrito en este grupo";
+    private static final String MENSAJE_EN_ESPERA = "Ya estás en la lista de espera de este grupo";
 
     @Autowired
     private IInscripcionServicio servicio;
@@ -93,6 +97,9 @@ class InscripcionDuplicadaIT {
 
     @Autowired
     private IGrupoServicio grupoServicio;
+
+    @Autowired
+    private IGrupoGateway grupoGateway;
 
     @Autowired
     private IImagenServicio imagenServicio;
@@ -221,6 +228,54 @@ class InscripcionDuplicadaIT {
         assertNull(despues.getFechaDesvinculacion());
         // Y, ya reinscrito, un nuevo envio vuelve a ser un duplicado.
         assertThrows(YaExisteElementoExcepcion.class, () -> inscribir(alumnoId, iterable));
+    }
+
+    @Test
+    void enEsperaConCupoLibre_recibe409YLaFilaQuedaIgual() throws Exception {
+        int iterable = crearGrupo(1);
+        String primero = nuevoAlumno();
+        String enEspera = nuevoAlumno();
+        inscribir(primero, iterable);                    // ocupa el unico cupo
+        assertEquals("EN_ESPERA", inscribir(enEspera, iterable).getEstado());
+        // Queda un cupo libre SIN auto-promocion (el gateway no promueve; lo haria GrupoServicio al ampliar).
+        Grupo ampliar = new Grupo();
+        ampliar.setCupos(2);
+        ampliar.setIdInstructor(INSTRUCTOR_SEED_ID);
+        grupoGateway.actualizarGrupo(CATEGORIA, CURSO, anio, iterable, ampliar);
+        Inscripcion antes = inscripcionGateway.obtenerInscripcion(enEspera, CATEGORIA, CURSO, anio, iterable);
+        assertEquals("EN_ESPERA", antes.getEstado());
+
+        MvcResult respuesta = mockMvc.perform(post("/api/v2/inscripcion")
+                .contentType("application/json")
+                .content(bodyInscripcion(enEspera, iterable))
+                .header("Authorization", "Bearer " + buildJwt("Alumno", enEspera)))
+                .andExpect(status().isConflict())
+                .andReturn();
+
+        String cuerpo = respuesta.getResponse().getContentAsString(StandardCharsets.UTF_8);
+        assertTrue(cuerpo.contains(MENSAJE_EN_ESPERA), "el mensaje debe decir que ya esta en la lista de espera: " + cuerpo);
+
+        Inscripcion despues = inscripcionGateway.obtenerInscripcion(enEspera, CATEGORIA, CURSO, anio, iterable);
+        assertEquals("EN_ESPERA", despues.getEstado(), "no debe pasar a INSCRITO saltandose la cola");
+        assertEquals(antes.getFechaInscripcion(), despues.getFechaInscripcion(),
+                "no debe cambiar su posicion en la lista");
+        assertNull(despues.getFechaDesvinculacion());
+    }
+
+    @Test
+    void salirDeLaListaYVolverAInscribirse_conCupoLibre_sigueFuncionando() {
+        int iterable = crearGrupo(1);
+        String primero = nuevoAlumno();
+        String alumno = nuevoAlumno();
+        inscribir(primero, iterable);
+        inscribir(alumno, iterable); // EN_ESPERA
+        servicio.desvincularInscripcion(alumno, CATEGORIA, CURSO, anio, iterable, "coord-it", "Coordinador");
+        Grupo ampliar = new Grupo();
+        ampliar.setCupos(2);
+        ampliar.setIdInstructor(INSTRUCTOR_SEED_ID);
+        grupoGateway.actualizarGrupo(CATEGORIA, CURSO, anio, iterable, ampliar);
+
+        assertEquals("INSCRITO", inscribir(alumno, iterable).getEstado());
     }
 
     // ── Ayudas ────────────────────────────────────────────────────────────────
