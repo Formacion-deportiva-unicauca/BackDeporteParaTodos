@@ -252,6 +252,102 @@ class InscripcionServicioTest {
         assertNull(resultado.getFechaDesvinculacion());
     }
 
+    // ── Inscripcion duplicada: quien ya esta INSCRITO en el grupo no se vuelve a inscribir ──────
+
+    private Inscripcion filaInscritaVigente() {
+        return new Inscripcion("alum1", "cat1", "cur1", 2026, 1,
+                Timestamp.valueOf("2026-03-01 10:00:00"), null, "INSCRITO");
+    }
+
+    @Test
+    void inscribir_yaInscrito_lanzaYaExisteElementoExcepcion_sinTocarLaFila() {
+        Inscripcion fila = filaInscritaVigente();
+        when(cursoGateway.obtenerCurso("cat1", "cur1")).thenReturn(cursoAbierto);
+        when(grupoGateway.obtenerGrupoConLock("cat1", "cur1", 2026, 1)).thenReturn(grupoCon5Cupos);
+        when(gateway.existeInscripcion("alum1", "cat1", "cur1", 2026, 1)).thenReturn(true);
+        when(gateway.obtenerInscripcion("alum1", "cat1", "cur1", 2026, 1)).thenReturn(fila);
+
+        YaExisteElementoExcepcion ex = assertThrows(YaExisteElementoExcepcion.class,
+                () -> servicio.inscribir(datos, COORD, "Coordinador"));
+
+        assertEquals("Ya estás inscrito en este grupo", ex.getMessage());
+        verify(gateway, never()).guardarInscripcion(any());
+        // La fila queda exactamente como estaba: ni fecha refrescada, ni estado, ni desvinculacion.
+        assertEquals(Timestamp.valueOf("2026-03-01 10:00:00"), fila.getFechaInscripcion());
+        assertEquals("INSCRITO", fila.getEstado());
+        assertNull(fila.getFechaDesvinculacion());
+    }
+
+    @Test
+    void inscribir_yaInscritoConGrupoLleno_noPasaAEnEspera() {
+        Inscripcion fila = filaInscritaVigente();
+        when(cursoGateway.obtenerCurso("cat1", "cur1")).thenReturn(cursoAbierto);
+        when(grupoGateway.obtenerGrupoConLock("cat1", "cur1", 2026, 1)).thenReturn(grupoCon5Cupos);
+        // El grupo esta lleno y el propio alumno ocupa uno de los cupos.
+        lenient().when(gateway.contarInscripcionesActivasGrupo("cat1", "cur1", 2026, 1)).thenReturn(5L);
+        when(gateway.existeInscripcion("alum1", "cat1", "cur1", 2026, 1)).thenReturn(true);
+        when(gateway.obtenerInscripcion("alum1", "cat1", "cur1", 2026, 1)).thenReturn(fila);
+
+        assertThrows(YaExisteElementoExcepcion.class, () -> servicio.inscribir(datos, COORD, "Coordinador"));
+
+        verify(gateway, never()).guardarInscripcion(any());
+        verify(gateway, never()).existeEnEspera(any(), any(), any(), anyInt(), anyInt());
+        assertEquals("INSCRITO", fila.getEstado());
+    }
+
+    @Test
+    void inscribir_yaInscritoConTresCursos_recibeElErrorDeDuplicado_noElDeLimite() {
+        Inscripcion fila = filaInscritaVigente();
+        when(cursoGateway.obtenerCurso("cat1", "cur1")).thenReturn(cursoAbierto);
+        when(grupoGateway.obtenerGrupoConLock("cat1", "cur1", 2026, 1)).thenReturn(grupoCon5Cupos);
+        lenient().when(gateway.contarCursosActivosAlumno("alum1")).thenReturn(3L);
+        when(gateway.existeInscripcion("alum1", "cat1", "cur1", 2026, 1)).thenReturn(true);
+        when(gateway.obtenerInscripcion("alum1", "cat1", "cur1", 2026, 1)).thenReturn(fila);
+
+        assertThrows(YaExisteElementoExcepcion.class, () -> servicio.inscribir(datos, COORD, "Coordinador"));
+
+        verify(gateway, never()).contarCursosActivosAlumno(any());
+        verify(gateway, never()).guardarInscripcion(any());
+    }
+
+    @Test
+    void inscribir_trasCancelar_filaDesvinculada_sigueReinscribiendoComoInscrito() {
+        Timestamp desvinculada = Timestamp.valueOf("2026-04-01 09:00:00");
+        Inscripcion cancelada = new Inscripcion("alum1", "cat1", "cur1", 2026, 1,
+                Timestamp.valueOf("2026-03-01 10:00:00"), desvinculada, "INSCRITO");
+        when(cursoGateway.obtenerCurso("cat1", "cur1")).thenReturn(cursoAbierto);
+        when(grupoGateway.obtenerGrupoConLock("cat1", "cur1", 2026, 1)).thenReturn(grupoCon5Cupos);
+        when(gateway.contarInscripcionesActivasGrupo("cat1", "cur1", 2026, 1)).thenReturn(2L);
+        when(gateway.contarCursosActivosAlumno("alum1")).thenReturn(1L);
+        when(gateway.existeInscripcion("alum1", "cat1", "cur1", 2026, 1)).thenReturn(true);
+        when(gateway.obtenerInscripcion("alum1", "cat1", "cur1", 2026, 1)).thenReturn(cancelada);
+        when(gateway.guardarInscripcion(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        Inscripcion resultado = servicio.inscribir(datos, COORD, "Coordinador");
+
+        assertEquals("INSCRITO", resultado.getEstado());
+        assertNull(resultado.getFechaDesvinculacion());
+        verify(gateway).guardarInscripcion(any());
+    }
+
+    @Test
+    void inscribir_filaEnEspera_noSeRechazaComoDuplicadoInscrito_conservaSuFlujo() {
+        // EN_ESPERA vigente + ahora hay cupo: sigue el flujo de antes (pasa a INSCRITO), no el rechazo de duplicado.
+        Inscripcion enEspera = new Inscripcion("alum1", "cat1", "cur1", 2026, 1,
+                Timestamp.valueOf("2026-03-01 10:00:00"), null, "EN_ESPERA");
+        when(cursoGateway.obtenerCurso("cat1", "cur1")).thenReturn(cursoAbierto);
+        when(grupoGateway.obtenerGrupoConLock("cat1", "cur1", 2026, 1)).thenReturn(grupoCon5Cupos);
+        when(gateway.contarInscripcionesActivasGrupo("cat1", "cur1", 2026, 1)).thenReturn(2L);
+        when(gateway.contarCursosActivosAlumno("alum1")).thenReturn(1L);
+        when(gateway.existeInscripcion("alum1", "cat1", "cur1", 2026, 1)).thenReturn(true);
+        when(gateway.obtenerInscripcion("alum1", "cat1", "cur1", 2026, 1)).thenReturn(enEspera);
+        when(gateway.guardarInscripcion(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        Inscripcion resultado = servicio.inscribir(datos, COORD, "Coordinador");
+
+        assertEquals("INSCRITO", resultado.getEstado());
+    }
+
     // Correccion de fechaInscripcion (auditoria previa a "faltas acumuladas"):
     // de los 4 caminos que reactivan una fila de inscripcion (este, la rama
     // EN_ESPERA de abajo, y promoverPrimeroEnEspera/promoverInscripcion en
