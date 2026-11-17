@@ -11,6 +11,11 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 
 import org.junit.jupiter.api.BeforeEach;
+import org.slf4j.LoggerFactory;
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -109,6 +114,132 @@ class InscripcionServicioTest {
         // lenient() porque los tests que no llegan a inscribir() no necesitan el stub.
         lenient().when(clock.instant()).thenReturn(HOY_FIJO.atStartOfDay(ZoneId.of("America/Bogota")).toInstant());
         lenient().when(clock.getZone()).thenReturn(ZoneId.of("America/Bogota"));
+    }
+
+    // ── inscribir: cola de espera con cupo libre ──────────────────────────────
+
+    private void preparaGrupoConCupoLibre(long inscritos, long enCola) {
+        lenient().when(cursoGateway.obtenerCurso("cat1", "cur1")).thenReturn(cursoAbierto);
+        lenient().when(grupoGateway.obtenerGrupoConLock("cat1", "cur1", 2026, 1)).thenReturn(grupoCon5Cupos);
+        lenient().when(gateway.contarInscripcionesActivasGrupo("cat1", "cur1", 2026, 1)).thenReturn(inscritos);
+        lenient().when(gateway.contarEnEsperaGrupo("cat1", "cur1", 2026, 1)).thenReturn(enCola);
+        lenient().when(gateway.guardarInscripcion(any(Inscripcion.class))).thenAnswer(inv -> inv.getArgument(0));
+    }
+
+    @Test
+    void inscribir_cupoLibreConCola_alumnoNuevoQuedaEnEsperaAlFinal_sinExcepcion() {
+        preparaGrupoConCupoLibre(2L, 3L);
+
+        Inscripcion resultado = servicio.inscribir(datos, COORD, "Coordinador");
+
+        assertEquals("EN_ESPERA", resultado.getEstado());
+        assertNull(resultado.getFechaDesvinculacion());
+        assertNotNull(resultado.getFechaInscripcion(), "fechaInscripcion = ahora: va al FINAL de la cola");
+        ArgumentCaptor<Inscripcion> guardada = ArgumentCaptor.forClass(Inscripcion.class);
+        verify(gateway).guardarInscripcion(guardada.capture());
+        assertEquals("EN_ESPERA", guardada.getValue().getEstado());
+        verify(gateway, never()).promoverInscripcion(any(), any(), any(), anyInt(), anyInt());
+    }
+
+    @Test
+    void inscribir_cupoLibreSinCola_entraDirectoComoInscrito() {
+        preparaGrupoConCupoLibre(2L, 0L);
+
+        Inscripcion resultado = servicio.inscribir(datos, COORD, "Coordinador");
+
+        assertEquals("INSCRITO", resultado.getEstado());
+        verify(gateway).contarEnEsperaGrupo("cat1", "cur1", 2026, 1);
+    }
+
+    @Test
+    void inscribir_grupoLlenoConCola_sigueEnEspera_sinConsultarLaCola() {
+        preparaGrupoConCupoLibre(5L, 4L);
+
+        Inscripcion resultado = servicio.inscribir(datos, COORD, "Coordinador");
+
+        assertEquals("EN_ESPERA", resultado.getEstado());
+        verify(gateway, never()).contarEnEsperaGrupo(any(), any(), anyInt(), anyInt());
+    }
+
+    @Test
+    void inscribir_salioYVuelveConColaYCupoLibre_vuelveAlFinalDeLaCola() {
+        Inscripcion desvinculada = new Inscripcion("alum1", "cat1", "cur1", 2026, 1,
+                Timestamp.valueOf("2026-01-01 08:00:00"), Timestamp.valueOf("2026-01-05 08:00:00"), "INSCRITO");
+        preparaGrupoConCupoLibre(2L, 1L);
+        when(gateway.existeInscripcion("alum1", "cat1", "cur1", 2026, 1)).thenReturn(true);
+        when(gateway.obtenerInscripcion("alum1", "cat1", "cur1", 2026, 1)).thenReturn(desvinculada);
+
+        Inscripcion resultado = servicio.inscribir(datos, COORD, "Coordinador");
+
+        assertEquals("EN_ESPERA", resultado.getEstado());
+        assertNull(resultado.getFechaDesvinculacion(), "se reactiva la fila");
+        assertTrue(resultado.getFechaInscripcion().after(Timestamp.valueOf("2026-01-01 08:00:00")),
+                "fechaInscripcion nueva: entra al final, no conserva su turno anterior");
+    }
+
+    @Test
+    void inscribir_cupoLibreConCola_registraAdvertenciaSinDatosPersonales() {
+        Logger logger = (Logger) LoggerFactory.getLogger(InscripcionServicio.class);
+        ListAppender<ILoggingEvent> appender = new ListAppender<>();
+        appender.start();
+        logger.addAppender(appender);
+        try {
+            preparaGrupoConCupoLibre(2L, 3L);
+
+            servicio.inscribir(datos, COORD, "Coordinador");
+
+            List<ILoggingEvent> avisos = appender.list.stream().filter(e -> e.getLevel() == Level.WARN).toList();
+            assertEquals(1, avisos.size());
+            String mensaje = avisos.get(0).getFormattedMessage();
+            assertTrue(mensaje.contains("cupo libre con cola de espera en el grupo cat1/cur1/2026/1"), mensaje);
+            assertTrue(mensaje.contains("en cola=3"), mensaje);
+            assertFalse(mensaje.contains("alum1"), "el log no lleva el id del alumno");
+            assertFalse(mensaje.contains(COORD), "ni el del llamador");
+        } finally {
+            logger.detachAppender(appender);
+        }
+    }
+
+    @Test
+    void inscribir_sinColaOGrupoLleno_noRegistraLaAdvertencia() {
+        Logger logger = (Logger) LoggerFactory.getLogger(InscripcionServicio.class);
+        ListAppender<ILoggingEvent> appender = new ListAppender<>();
+        appender.start();
+        logger.addAppender(appender);
+        try {
+            preparaGrupoConCupoLibre(2L, 0L);
+            servicio.inscribir(datos, COORD, "Coordinador");
+            preparaGrupoConCupoLibre(5L, 2L);
+            servicio.inscribir(datos, COORD, "Coordinador");
+
+            assertTrue(appender.list.stream().noneMatch(e -> e.getLevel() == Level.WARN));
+        } finally {
+            logger.detachAppender(appender);
+        }
+    }
+
+    @Test
+    void inscribir_elCruceSeValidaAntesDeMirarLaCola() {
+        preparaGrupoConCupoLibre(2L, 3L);
+        InOrder orden = inOrder(cruceHorarios, gateway);
+
+        servicio.inscribir(datos, COORD, "Coordinador");
+
+        orden.verify(cruceHorarios).validarSinCruce(grupoCon5Cupos, "alum1");
+        orden.verify(gateway).contarEnEsperaGrupo("cat1", "cur1", 2026, 1);
+        orden.verify(gateway).guardarInscripcion(any(Inscripcion.class));
+    }
+
+    @Test
+    void inscribir_conCruce_noConsultaLaColaNiGuarda() {
+        when(cursoGateway.obtenerCurso("cat1", "cur1")).thenReturn(cursoAbierto);
+        when(grupoGateway.obtenerGrupoConLock("cat1", "cur1", 2026, 1)).thenReturn(grupoCon5Cupos);
+        doThrow(new CruceHorarioExcepcion("Se cruza con Yoga")).when(cruceHorarios).validarSinCruce(grupoCon5Cupos, "alum1");
+
+        assertThrows(CruceHorarioExcepcion.class, () -> servicio.inscribir(datos, COORD, "Coordinador"));
+
+        verify(gateway, never()).contarEnEsperaGrupo(any(), any(), anyInt(), anyInt());
+        verify(gateway, never()).guardarInscripcion(any());
     }
 
     // ── inscribir ─────────────────────────────────────────────────────────────

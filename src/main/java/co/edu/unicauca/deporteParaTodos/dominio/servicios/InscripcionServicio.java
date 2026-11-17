@@ -6,6 +6,8 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
@@ -43,6 +45,7 @@ import java.util.List;
 @Service
 public class InscripcionServicio implements IInscripcionServicio {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(InscripcionServicio.class);
     private static final DateTimeFormatter FORMATO_FECHA = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     private final IInscripcionGateway gateway;
@@ -163,8 +166,23 @@ public class InscripcionServicio implements IInscripcionServicio {
         long inscritos = gateway.contarInscripcionesActivasGrupo(
                 datos.getCategoria(), datos.getCurso(), datos.getAnio(), datos.getIterable());
 
-        if (inscritos < grupo.getCupos()) {
-            // Hay cupos — camino INSCRITO
+        // Orden de llegada: si hay alguien esperando (EN_ESPERA vigente, sin desvincular ni eliminado), quien llega NUEVO
+        // (sin fila vigente: las filas INSCRITO y EN_ESPERA ya se rechazaron arriba; quien salio y vuelve cuenta como
+        // nuevo) no entra directo aunque haya cupo: se une a la lista, al final, como si el grupo estuviera lleno. Un cupo
+        // libre con cola solo ocurre en casos raros (ampliar cupos con el curso inactivo, o todos los de la cola con cruce);
+        // la cola la resuelve la promocion automatica o la manual del Coordinador. Se decide con el lock del grupo tomado y
+        // despues del cruce de horarios, asi dos llegadas simultaneas ven la misma cola. Sin cola nada cambia.
+        boolean cupoLibre = inscritos < grupo.getCupos();
+        long enCola = cupoLibre
+                ? gateway.contarEnEsperaGrupo(datos.getCategoria(), datos.getCurso(), datos.getAnio(), datos.getIterable())
+                : 0;
+        if (cupoLibre && enCola > 0) {
+            LOGGER.warn("cupo libre con cola de espera en el grupo {}/{}/{}/{}: en cola={}; la persona que llega pasa a la lista de espera",
+                    datos.getCategoria(), datos.getCurso(), datos.getAnio(), datos.getIterable(), enCola);
+        }
+
+        if (cupoLibre && enCola == 0) {
+            // Hay cupos y nadie esperando — camino INSCRITO
             if (gateway.existeInscripcion(datos.getAlumnoId(), datos.getCategoria(),
                     datos.getCurso(), datos.getAnio(), datos.getIterable())) {
                 Inscripcion existente = gateway.obtenerInscripcion(
@@ -189,7 +207,7 @@ public class InscripcionServicio implements IInscripcionServicio {
             datos.setEstado("INSCRITO");
             return gateway.guardarInscripcion(datos);
         } else {
-            // Sin cupos — camino EN_ESPERA
+            // Sin cupos, o con cupo pero con cola — camino EN_ESPERA (al final: fechaInscripcion = ahora)
             if (gateway.existeEnEspera(datos.getAlumnoId(), datos.getCategoria(),
                     datos.getCurso(), datos.getAnio(), datos.getIterable())) {
                 throw new YaExisteElementoExcepcion(
