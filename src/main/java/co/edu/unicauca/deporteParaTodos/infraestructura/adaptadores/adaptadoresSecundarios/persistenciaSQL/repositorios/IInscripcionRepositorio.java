@@ -141,6 +141,32 @@ ORDER BY i.fechaInscripcion ASC
             @Param("anio") int anio,
             @Param("iterable") int iterable);
 
+    // Validacion de cruce de horarios: UNA consulta con las franjas de todos los grupos donde el alumno esta INSCRITO y vigente
+    // (sin desvincular, no eliminada), de grupos no eliminados, del mismo anio y periodo y que no hayan terminado
+    // (fechaFinalizacion null = vigente). Sin N+1: la comparacion se hace en memoria.
+    @Query("""
+SELECT new co.edu.unicauca.deporteParaTodos.dominio.modelo.HorarioInscrito(
+       i.categoria, i.curso, i.anio, i.iterable, g.periodo, h.id, h.dia, h.horaInicio, h.horaFin)
+FROM InscripcionEntidad i, GrupoEntidad g, HorarioEntidad h
+WHERE i.alumnoId = :alumnoId
+  AND i.estado = 'INSCRITO'
+  AND i.eliminado = 0
+  AND i.fechaDesvinculacion IS NULL
+  AND g.categoria = i.categoria AND g.curso = i.curso AND g.anio = i.anio AND g.iterable = i.iterable
+  AND (g.eliminado IS NULL OR g.eliminado = 0)
+  AND g.anio = :anio
+  AND g.periodo = :periodo
+  AND (g.fechaFinalizacion IS NULL OR g.fechaFinalizacion >= :hoy)
+  AND h.categoria = g.categoria AND h.curso = g.curso AND h.anio = g.anio AND h.iterable = g.iterable
+  AND h.eliminado = 0
+ORDER BY i.categoria, i.curso, i.iterable, h.id
+""")
+    List<co.edu.unicauca.deporteParaTodos.dominio.modelo.HorarioInscrito> findHorariosInscritosVigentes(
+            @Param("alumnoId") String alumnoId,
+            @Param("anio") int anio,
+            @Param("periodo") int periodo,
+            @Param("hoy") java.time.LocalDate hoy);
+
     // "Mis cursos": solo inscripciones activas del alumno (sin importar si el curso/grupo
     // destino fue eliminado logicamente -- eso se refleja aparte via el flag grupoActivo,
     // no ocultando la fila). Orden: INSCRITO antes que EN_ESPERA, luego mas reciente primero.

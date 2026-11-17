@@ -14,6 +14,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -28,6 +29,7 @@ import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IGrupoG
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IHorarioGateway;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IInscripcionGateway;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IInstructorGateway;
+import co.edu.unicauca.deporteParaTodos.dominio.excepciones.CruceHorarioExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.CuposAgotadosExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.InscripcionFueraDeFechasExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.InscripcionesCerradasExcepcion;
@@ -71,6 +73,9 @@ class InscripcionServicioTest {
 
     @Mock
     private AutorizacionGrupoServicio autorizacionGrupo;
+
+    @Mock
+    private CruceHorariosServicio cruceHorarios;
 
     @Mock
     private Clock clock;
@@ -532,6 +537,106 @@ class InscripcionServicioTest {
         assertEquals("INSCRITO", resultado.getEstado());
     }
 
+    // ── Cruce de horarios ─────────────────────────────────────────────────────
+
+    private void prepararInscripcionNueva(long inscritos) {
+        when(cursoGateway.obtenerCurso("cat1", "cur1")).thenReturn(cursoAbierto);
+        when(grupoGateway.obtenerGrupoConLock("cat1", "cur1", 2026, 1)).thenReturn(grupoCon5Cupos);
+        lenient().when(gateway.contarInscripcionesActivasGrupo("cat1", "cur1", 2026, 1)).thenReturn(inscritos);
+    }
+
+    @Test
+    void inscribir_conCruceDeHorario_seRechazaAntesDeContarCuposYNoGuarda() {
+        prepararInscripcionNueva(2L);
+        doThrow(new CruceHorarioExcepcion("Se cruza con Natación, grupo A, martes 10:00-12:00"))
+                .when(cruceHorarios).validarSinCruce(grupoCon5Cupos, "alum1");
+
+        CruceHorarioExcepcion ex = assertThrows(CruceHorarioExcepcion.class,
+                () -> servicio.inscribir(datos, COORD, "Coordinador"));
+
+        assertEquals("Se cruza con Natación, grupo A, martes 10:00-12:00", ex.getMessage());
+        verify(gateway, never()).guardarInscripcion(any());
+        verify(gateway, never()).contarInscripcionesActivasGrupo(any(), any(), anyInt(), anyInt());
+    }
+
+    @Test
+    void inscribir_grupoLlenoConCruce_noSeUneALaListaDeEspera() {
+        prepararInscripcionNueva(5L);   // sin cupo: el camino seria EN_ESPERA
+        doThrow(new CruceHorarioExcepcion("cruce")).when(cruceHorarios).validarSinCruce(grupoCon5Cupos, "alum1");
+
+        assertThrows(CruceHorarioExcepcion.class, () -> servicio.inscribir(datos, COORD, "Coordinador"));
+
+        verify(gateway, never()).guardarInscripcion(any());
+    }
+
+    @Test
+    void inscribir_aplicaElCruceATodosLosRoles() {
+        for (String rol : new String[] {"Alumno", "Coordinador", "Instructor", "Administrador"}) {
+            org.mockito.Mockito.clearInvocations(cruceHorarios);
+            prepararInscripcionNueva(2L);
+            when(gateway.guardarInscripcion(any())).thenAnswer(inv -> inv.getArgument(0));
+            servicio.inscribir(new Inscripcion("alum1", "cat1", "cur1", 2026, 1, null, null, null), COORD, rol);
+            verify(cruceHorarios).validarSinCruce(grupoCon5Cupos, "alum1");
+        }
+    }
+
+    @Test
+    void inscribir_elCruceSeValidaDespuesDelLockDelGrupoYAntesDeContarCupos() {
+        prepararInscripcionNueva(2L);
+        when(gateway.guardarInscripcion(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        servicio.inscribir(datos, COORD, "Coordinador");
+
+        InOrder orden = inOrder(grupoGateway, cruceHorarios, gateway);
+        orden.verify(grupoGateway).obtenerGrupoConLock("cat1", "cur1", 2026, 1);
+        orden.verify(cruceHorarios).validarSinCruce(grupoCon5Cupos, "alum1");
+        orden.verify(gateway).contarInscripcionesActivasGrupo("cat1", "cur1", 2026, 1);
+    }
+
+    @Test
+    void inscribir_duplicadoInscritoOEnEspera_seRechazaSinEvaluarElCruce() {
+        when(cursoGateway.obtenerCurso("cat1", "cur1")).thenReturn(cursoAbierto);
+        when(grupoGateway.obtenerGrupoConLock("cat1", "cur1", 2026, 1)).thenReturn(grupoCon5Cupos);
+        when(gateway.existeInscripcion("alum1", "cat1", "cur1", 2026, 1)).thenReturn(true);
+        when(gateway.obtenerInscripcion("alum1", "cat1", "cur1", 2026, 1)).thenReturn(filaInscritaVigente());
+        assertThrows(YaExisteElementoExcepcion.class, () -> servicio.inscribir(datos, COORD, "Coordinador"));
+
+        when(gateway.obtenerInscripcion("alum1", "cat1", "cur1", 2026, 1)).thenReturn(filaEnEsperaVigente());
+        when(gateway.existeEnEspera("alum1", "cat1", "cur1", 2026, 1)).thenReturn(true);
+        assertThrows(YaExisteElementoExcepcion.class, () -> servicio.inscribir(datos, COORD, "Coordinador"));
+
+        verifyNoInteractions(cruceHorarios);
+    }
+
+    @Test
+    void promoverManualmente_conCruce_seRechazaYNoPromueve() {
+        when(cursoGateway.obtenerCurso("cat1", "cur1")).thenReturn(cursoAbierto);
+        when(gateway.existeEnEspera("alum1", "cat1", "cur1", 2026, 1)).thenReturn(true);
+        when(grupoGateway.obtenerGrupoConLock("cat1", "cur1", 2026, 1)).thenReturn(grupoCon5Cupos);
+        when(gateway.contarInscripcionesActivasGrupo("cat1", "cur1", 2026, 1)).thenReturn(2L);
+        doThrow(new CruceHorarioExcepcion("cruce")).when(cruceHorarios).validarSinCruce(grupoCon5Cupos, "alum1");
+
+        assertThrows(CruceHorarioExcepcion.class, () -> servicio.promoverManualmente("alum1", "cat1", "cur1", 2026, 1));
+
+        verify(gateway, never()).promoverInscripcion(any(), any(), any(), anyInt(), anyInt());
+    }
+
+    @Test
+    void desvincularInscripcion_tomaElLockDelGrupoAntesDeTocarLaFila_yPromueveConElGrupoBloqueado() {
+        Timestamp ahora = Timestamp.from(Instant.now());
+        Inscripcion desvinculada = new Inscripcion("alum1", "cat1", "cur1", 2026, 1, ahora, ahora, "INSCRITO");
+        when(grupoGateway.obtenerGrupoConLock("cat1", "cur1", 2026, 1)).thenReturn(grupoCon5Cupos);
+        when(gateway.existeInscripcionSinDesvincular("alum1", "cat1", "cur1", 2026, 1)).thenReturn(true);
+        when(gateway.desvincularInscripcion("alum1", "cat1", "cur1", 2026, 1)).thenReturn(desvinculada);
+
+        servicio.desvincularInscripcion("alum1", "cat1", "cur1", 2026, 1, COORD, "Coordinador");
+
+        InOrder orden = inOrder(grupoGateway, gateway, cruceHorarios);
+        orden.verify(grupoGateway).obtenerGrupoConLock("cat1", "cur1", 2026, 1);
+        orden.verify(gateway).desvincularInscripcion("alum1", "cat1", "cur1", 2026, 1);
+        orden.verify(cruceHorarios).promoverSiguientes(grupoCon5Cupos, 1);
+    }
+
     // ── validarInscripcion ────────────────────────────────────────────────────
 
     @Test
@@ -564,7 +669,7 @@ class InscripcionServicioTest {
         Inscripcion resultado = servicio.desvincularInscripcion("alum1", "cat1", "cur1", 2026, 1, COORD, "Coordinador");
 
         assertNotNull(resultado);
-        verify(gateway).promoverPrimeroEnEspera("cat1", "cur1", 2026, 1);
+        verify(cruceHorarios).promoverSiguientes(any(), eq(1));
     }
 
     // HALLAZGO 3-B: si el desvinculado estaba EN_ESPERA (no ocupaba cupo), no se debe
@@ -579,7 +684,7 @@ class InscripcionServicioTest {
         Inscripcion resultado = servicio.desvincularInscripcion("alum1", "cat1", "cur1", 2026, 1, COORD, "Coordinador");
 
         assertNotNull(resultado);
-        verify(gateway, never()).promoverPrimeroEnEspera(any(), any(), anyInt(), anyInt());
+        verify(cruceHorarios, never()).promoverSiguientes(any(), anyInt());
     }
 
     // Llamar desvincularInscripcion dos veces sobre la misma fila (doble clic, reintento):
@@ -595,11 +700,11 @@ class InscripcionServicioTest {
 
         Inscripcion primeraLlamada = servicio.desvincularInscripcion("alum1", "cat1", "cur1", 2026, 1, COORD, "Coordinador");
         assertNotNull(primeraLlamada);
-        verify(gateway, times(1)).promoverPrimeroEnEspera("cat1", "cur1", 2026, 1);
+        verify(cruceHorarios, times(1)).promoverSiguientes(any(), eq(1));
 
         assertThrows(NoExisteExcepcion.class,
                 () -> servicio.desvincularInscripcion("alum1", "cat1", "cur1", 2026, 1, COORD, "Coordinador"));
-        verify(gateway, times(1)).promoverPrimeroEnEspera("cat1", "cur1", 2026, 1);
+        verify(cruceHorarios, times(1)).promoverSiguientes(any(), eq(1));
         verify(gateway, times(1)).desvincularInscripcion(any(), any(), any(), anyInt(), anyInt());
     }
 

@@ -52,11 +52,12 @@ public class InscripcionServicio implements IInscripcionServicio {
     private final IInstructorGateway instructorGateway;
     private final IAlumnoGateway alumnoGateway;
     private final AutorizacionGrupoServicio autorizacionGrupo;
+    private final CruceHorariosServicio cruceHorarios;
     private final Clock clock;
 
     public InscripcionServicio(IInscripcionGateway gateway, ICursoGateway cursoGateway, IGrupoGateway grupoGateway,
             IHorarioGateway horarioGateway, IInstructorGateway instructorGateway, IAlumnoGateway alumnoGateway,
-            AutorizacionGrupoServicio autorizacionGrupo, Clock clock) {
+            AutorizacionGrupoServicio autorizacionGrupo, CruceHorariosServicio cruceHorarios, Clock clock) {
         this.gateway = gateway;
         this.cursoGateway = cursoGateway;
         this.grupoGateway = grupoGateway;
@@ -64,6 +65,7 @@ public class InscripcionServicio implements IInscripcionServicio {
         this.instructorGateway = instructorGateway;
         this.alumnoGateway = alumnoGateway;
         this.autorizacionGrupo = autorizacionGrupo;
+        this.cruceHorarios = cruceHorarios;
         this.clock = clock;
     }
 
@@ -153,6 +155,11 @@ public class InscripcionServicio implements IInscripcionServicio {
             throw new CuposAgotadosExcepcion("El grupo no tiene cupos configurados");
         }
 
+        // Cruce de horarios: el alumno no puede estar inscrito en dos grupos cuyas franjas se solapan. Aplica a los dos caminos
+        // (quedar INSCRITO y unirse a la lista) y va despues de los duplicados y de la ventana. Toma el lock del alumno
+        // (despues del lock del grupo, ya tomado arriba) para que dos inscripciones simultaneas del mismo alumno no pasen las dos.
+        cruceHorarios.validarSinCruce(grupo, datos.getAlumnoId());
+
         long inscritos = gateway.contarInscripcionesActivasGrupo(
                 datos.getCategoria(), datos.getCurso(), datos.getAnio(), datos.getIterable());
 
@@ -211,10 +218,14 @@ public class InscripcionServicio implements IInscripcionServicio {
     }
 
     @Override
-    @Transactional
+    // READ_COMMITTED + lock del grupo ANTES de tocar la fila: la promocion de la lista valida el cruce de horarios de cada candidato
+    // con lo ya confirmado, y no puede intercalarse con una inscripcion o promocion concurrente del mismo grupo.
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public Inscripcion desvincularInscripcion(String alumnoId, String categoria, String curso, int anio, int iterable,
             String perfIdLlamador, String rolLlamador) {
         autorizacionGrupo.verificarPropietario(categoria, curso, anio, iterable, perfIdLlamador, rolLlamador);
+
+        Grupo grupo = grupoGateway.obtenerGrupoConLock(categoria, curso, anio, iterable);
 
         if (!gateway.existeInscripcionSinDesvincular(alumnoId, categoria, curso, anio, iterable)) {
             throw new NoExisteExcepcion("La inscripcion a desvincular no existe");
@@ -223,7 +234,7 @@ public class InscripcionServicio implements IInscripcionServicio {
         // Solo promover si el desvinculado ocupaba realmente un cupo (INSCRITO).
         // Si estaba EN_ESPERA, no se libero ningun cupo y promover aqui sobre-inscribiria el grupo.
         if ("INSCRITO".equals(desvinculada.getEstado())) {
-            gateway.promoverPrimeroEnEspera(categoria, curso, anio, iterable);
+            cruceHorarios.promoverSiguientes(grupo, 1);
         }
         return desvinculada;
     }
@@ -255,6 +266,8 @@ public class InscripcionServicio implements IInscripcionServicio {
         if (inscritos >= grupo.getCupos()) {
             throw new CuposAgotadosExcepcion("No hay cupos disponibles para promover al alumno");
         }
+        // Mismo cruce que al inscribir: no se promueve a quien quedaria inscrito en dos grupos que se solapan.
+        cruceHorarios.validarSinCruce(grupo, alumnoId);
         return gateway.promoverInscripcion(alumnoId, categoria, curso, anio, iterable);
     }
 

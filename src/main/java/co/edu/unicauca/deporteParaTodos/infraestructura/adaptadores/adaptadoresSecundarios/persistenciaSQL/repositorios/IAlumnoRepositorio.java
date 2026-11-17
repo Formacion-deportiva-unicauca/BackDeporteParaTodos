@@ -1,6 +1,10 @@
 package co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresSecundarios.persistenciaSQL.repositorios;
 
 import java.util.List;
+import java.util.Optional;
+
+import jakarta.persistence.LockModeType;
+import org.springframework.data.jpa.repository.Lock;
 
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -11,6 +15,11 @@ import org.springframework.transaction.annotation.Transactional;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresSecundarios.persistenciaSQL.entidades.AlumnoEntidad;
 
 public interface IAlumnoRepositorio extends CrudRepository<AlumnoEntidad,String>{
+
+    /** Lock pesimista (SELECT ... FOR UPDATE) de la fila del alumno: serializa lo que se decide sobre el mismo alumno. */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT a FROM AlumnoEntidad a WHERE a.idPerfil = :alumnoId")
+    Optional<AlumnoEntidad> findByIdWithLock(@Param("alumnoId") String alumnoId);
 
      @Query(value = """
         SELECT 

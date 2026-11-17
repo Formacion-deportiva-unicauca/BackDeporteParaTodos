@@ -47,6 +47,9 @@ class GrupoServicioTest {
     private IHorarioGateway horarioGateway;
 
     @Mock
+    private CruceHorariosServicio cruceHorarios;
+
+    @Mock
     private IInstructorGateway instructorGateway;
 
     @Mock
@@ -121,7 +124,7 @@ class GrupoServicioTest {
 
         grupoServicio.eliminarGrupo(CATEGORIA, CURSO, ANIO, ITERABLE);
 
-        verify(inscripcionGateway, never()).promoverPrimeroEnEspera(any(), any(), anyInt(), anyInt());
+        verifyNoInteractions(cruceHorarios);
     }
 
     @Test
@@ -747,7 +750,7 @@ class GrupoServicioTest {
 
         grupoServicio.actualizarGrupo(CATEGORIA, CURSO, ANIO, ITERABLE, grupoModelo());
 
-        verify(inscripcionGateway, times(2)).promoverPrimeroEnEspera(CATEGORIA, CURSO, ANIO, ITERABLE);
+        verify(cruceHorarios).promoverSiguientes(any(), eq(2));
     }
 
     @Test
@@ -757,7 +760,7 @@ class GrupoServicioTest {
 
         grupoServicio.actualizarGrupo(CATEGORIA, CURSO, ANIO, ITERABLE, grupoModelo());
 
-        verify(inscripcionGateway, times(2)).promoverPrimeroEnEspera(CATEGORIA, CURSO, ANIO, ITERABLE);
+        verify(cruceHorarios).promoverSiguientes(any(), eq(2));
     }
 
     @Test
@@ -767,7 +770,7 @@ class GrupoServicioTest {
 
         grupoServicio.actualizarGrupo(CATEGORIA, CURSO, ANIO, ITERABLE, grupoModelo());
 
-        verify(inscripcionGateway, never()).promoverPrimeroEnEspera(any(), any(), anyInt(), anyInt());
+        verify(cruceHorarios).promoverSiguientes(any(), eq(0));
     }
 
     @Test
@@ -777,7 +780,7 @@ class GrupoServicioTest {
 
         grupoServicio.actualizarGrupo(CATEGORIA, CURSO, ANIO, ITERABLE, grupoModelo());
 
-        verify(inscripcionGateway, never()).promoverPrimeroEnEspera(any(), any(), anyInt(), anyInt());
+        verify(cruceHorarios).promoverSiguientes(any(), intThat(n -> n <= 0));
     }
 
     @Test
@@ -806,7 +809,7 @@ class GrupoServicioTest {
 
         grupoServicio.actualizarGrupo(CATEGORIA, CURSO, ANIO, ITERABLE, grupoModelo());
 
-        verify(inscripcionGateway, never()).promoverPrimeroEnEspera(any(), any(), anyInt(), anyInt());
+        verifyNoInteractions(cruceHorarios);
     }
 
     @Test
@@ -815,7 +818,7 @@ class GrupoServicioTest {
         when(cursoGateway.obtenerCurso(CATEGORIA, CURSO)).thenReturn(null);
 
         assertDoesNotThrow(() -> grupoServicio.actualizarGrupo(CATEGORIA, CURSO, ANIO, ITERABLE, grupoModelo()));
-        verify(inscripcionGateway, never()).promoverPrimeroEnEspera(any(), any(), anyInt(), anyInt());
+        verifyNoInteractions(cruceHorarios);
     }
 
     @Test
@@ -839,11 +842,11 @@ class GrupoServicioTest {
 
         grupoServicio.actualizarGrupo(CATEGORIA, CURSO, ANIO, ITERABLE, grupoModelo());
 
-        org.mockito.InOrder orden = inOrder(grupoGateway, inscripcionGateway);
+        org.mockito.InOrder orden = inOrder(grupoGateway, inscripcionGateway, cruceHorarios);
         orden.verify(grupoGateway).actualizarGrupo(eq(CATEGORIA), eq(CURSO), eq(ANIO), eq(ITERABLE), any());
         orden.verify(grupoGateway).obtenerGrupoConLock(CATEGORIA, CURSO, ANIO, ITERABLE);
         orden.verify(inscripcionGateway).contarInscripcionesActivasGrupo(CATEGORIA, CURSO, ANIO, ITERABLE);
-        orden.verify(inscripcionGateway).promoverPrimeroEnEspera(CATEGORIA, CURSO, ANIO, ITERABLE);
+        orden.verify(cruceHorarios).promoverSiguientes(any(), eq(1));
     }
 
     @Test

@@ -36,6 +36,7 @@ public enum CodigoError {
         CONFIRMACION_SIN_ASISTENTES("GC-0028", "Debe marcar al menos un alumno presente, o confirmar que todos estan ausentes"),
         DATOS_INVALIDOS("GC-0029", "Los datos enviados no son validos"),
         PUBLICO_CURSO_NO_COINCIDE("GC-0030", "El curso no esta dirigido al tipo de vinculo del alumno"),
+        CRUCE_HORARIO("GC-0031", "Cruce de horario"),
         ;
 
         private final String codigo;

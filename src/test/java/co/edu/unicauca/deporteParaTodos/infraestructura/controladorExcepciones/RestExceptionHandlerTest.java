@@ -81,6 +81,9 @@ class RestExceptionHandlerTest {
         @GetMapping("/test/inscripcionescerradas")
         void inscripcionesCerradas() { throw new InscripcionesCerradasExcepcion("curso cerrado"); }
 
+        @GetMapping("/test/cruce")
+        void cruceHorario() { throw new CruceHorarioExcepcion("Se cruza con Natación, grupo A, martes 10:00-12:00"); }
+
         @GetMapping("/test/cuposagotados")
         void cuposAgotados() { throw new CuposAgotadosExcepcion("sin cupos"); }
 
@@ -284,6 +287,15 @@ class RestExceptionHandlerTest {
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.codigoError").value("GC-0013"))
                 .andExpect(jsonPath("$.codigoHttp").value(409));
+    }
+
+    @Test
+    void cruceHorario_retorna422ConElMensajeFormateado() throws Exception {
+        mockMvc.perform(get("/test/cruce"))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.codigoError").value("GC-0031"))
+                .andExpect(jsonPath("$.codigoHttp").value(422))
+                .andExpect(jsonPath("$.mensaje").value("Cruce de horario, Se cruza con Natación, grupo A, martes 10:00-12:00"));
     }
 
     @Test
