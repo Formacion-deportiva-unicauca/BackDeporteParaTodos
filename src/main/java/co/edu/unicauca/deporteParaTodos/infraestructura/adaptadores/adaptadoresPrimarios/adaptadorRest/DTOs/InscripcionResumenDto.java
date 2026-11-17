@@ -7,6 +7,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -25,6 +26,8 @@ public class InscripcionResumenDto {
     private String nombreInstructor;
     private boolean grupoActivo;
     private List<HorarioDto> horarios;
+    /** ISO yyyy-MM-dd; null si el grupo no tiene fecha de finalizacion. */
+    private LocalDate fechaFinalizacion;
 
     public static InscripcionResumenDto fabricarDeModelo(InscripcionResumen modelo) {
         InscripcionResumenDto dto = new InscripcionResumenDto();
@@ -39,6 +42,7 @@ public class InscripcionResumenDto {
         dto.setHorarios(modelo.getHorarios().stream()
                 .map(HorarioMapper::toDto)
                 .collect(Collectors.toList()));
+        dto.setFechaFinalizacion(modelo.getFechaFinalizacion());
         return dto;
     }
 }

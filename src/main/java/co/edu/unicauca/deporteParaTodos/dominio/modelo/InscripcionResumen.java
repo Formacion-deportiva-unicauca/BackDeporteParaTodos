@@ -5,6 +5,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @AllArgsConstructor
@@ -22,4 +23,6 @@ public class InscripcionResumen {
     private String nombreInstructor;
     private boolean grupoActivo;
     private List<Horario> horarios;
+    /** Fecha de finalizacion del grupo (null si no tiene): la misma que usa el cruce de horarios para ignorar grupos terminados. */
+    private LocalDate fechaFinalizacion;
 }

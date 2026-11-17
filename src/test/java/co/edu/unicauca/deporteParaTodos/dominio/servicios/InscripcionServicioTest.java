@@ -950,6 +950,45 @@ class InscripcionServicioTest {
         assertFalse(resultado.get(0).isGrupoActivo());
     }
 
+    private InscripcionResumen misCursosConFechaFinalizacion(LocalDate fecha) {
+        Inscripcion inscripcion = new Inscripcion("alum1", "cat1", "cur1", 2026, 1,
+                Timestamp.from(Instant.now()), null, "INSCRITO");
+        Grupo grupo = new Grupo();
+        grupo.setPeriodo(1);
+        grupo.setEliminado(0);
+        grupo.setFechaFinalizacion(fecha);
+        when(gateway.obtenerInscripcionesAlumno("alum1")).thenReturn(List.of(inscripcion));
+        when(grupoGateway.obtenerGrupo("cat1", "cur1", 2026, 1)).thenReturn(grupo);
+        when(horarioGateway.listarHorariosPorGrupo("cat1", "cur1", 2026, 1)).thenReturn(List.of());
+        List<InscripcionResumen> resultado = servicio.listarMisCursos("alum1");
+        assertEquals(1, resultado.size(), "el filtro de misCursos no cambia: la fila siempre se devuelve");
+        return resultado.get(0);
+    }
+
+    @Test
+    void listarMisCursos_conFechaFinalizacion_laExponeTalCual() {
+        assertEquals(LocalDate.of(2026, 12, 15), misCursosConFechaFinalizacion(LocalDate.of(2026, 12, 15)).getFechaFinalizacion());
+    }
+
+    @Test
+    void listarMisCursos_sinFechaFinalizacion_esNull() {
+        assertNull(misCursosConFechaFinalizacion(null).getFechaFinalizacion());
+    }
+
+    @Test
+    void listarMisCursos_fechaFinalizacionDeHoy_seExponeSinFiltrar() {
+        LocalDate hoy = LocalDate.now();
+        assertEquals(hoy, misCursosConFechaFinalizacion(hoy).getFechaFinalizacion());
+    }
+
+    @Test
+    void listarMisCursos_fechaFinalizacionPasada_laFilaSigueApareciendoConSuFecha() {
+        LocalDate ayer = LocalDate.now().minusDays(1);
+        InscripcionResumen item = misCursosConFechaFinalizacion(ayer);
+        assertEquals(ayer, item.getFechaFinalizacion());
+        assertTrue(item.isGrupoActivo(), "grupoActivo sigue significando solo 'no eliminado'");
+    }
+
     // ──────────────────────────────────────────────────────────────────────────
     // Autorizacion por grupo (rol Instructor) -- inscribir / desvincularInscripcion
     // ──────────────────────────────────────────────────────────────────────────

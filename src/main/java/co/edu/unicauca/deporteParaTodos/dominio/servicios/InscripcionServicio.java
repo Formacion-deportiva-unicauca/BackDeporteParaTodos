@@ -313,7 +313,8 @@ public class InscripcionServicio implements IInscripcionServicio {
             boolean grupoActivo = grupo.getEliminado() == null || grupo.getEliminado() == 0;
             resultado.add(new InscripcionResumen(
                     inscripcion.getCategoria(), inscripcion.getCurso(), inscripcion.getAnio(), inscripcion.getIterable(),
-                    grupo.getPeriodo(), inscripcion.getEstado(), nombreInstructor, grupoActivo, horarios));
+                    grupo.getPeriodo(), inscripcion.getEstado(), nombreInstructor, grupoActivo, horarios,
+                    grupo.getFechaFinalizacion()));
         }
         return resultado;
     }
