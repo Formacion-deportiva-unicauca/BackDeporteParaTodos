@@ -118,6 +118,7 @@ class InscripcionMisCursosIT {
     private String instructorNombre;
     private int iterableInscrito;
     private int iterableEnEspera;
+    private LocalDate fechaFinalizacionInscrito;
 
     @BeforeAll
     void crearFixtures() {
@@ -161,6 +162,8 @@ class InscripcionMisCursosIT {
         grupoInscrito.setFechaIncripcionCierre(java.time.LocalDate.now().plusYears(1)); // Fase 3: el cierre es obligatorio
         grupoInscrito.setFechaInscripcionApertura(LocalDate.now(clock));
         grupoInscrito.setPeriodo(1);
+        fechaFinalizacionInscrito = LocalDate.now(clock).plusMonths(3);
+        grupoInscrito.setFechaFinalizacion(fechaFinalizacionInscrito);
         iterableInscrito = grupoServicio.insertarGrupo(grupoInscrito).getIterable();
 
         insertarHorario(CURSO_INSCRITO, iterableInscrito, "LUNES", "08:00", "10:00");
@@ -308,6 +311,9 @@ class InscripcionMisCursosIT {
                 .andExpect(jsonPath("$[0].grupoActivo").value(true))
                 .andExpect(jsonPath("$[0].nombreInstructor").value(instructorNombre))
                 .andExpect(jsonPath("$[0].horarios.length()").value(2))
+                // fechaFinalizacion: ISO yyyy-MM-dd con fecha, null sin ella
+                .andExpect(jsonPath("$[0].fechaFinalizacion").value(fechaFinalizacionInscrito.toString()))
+                .andExpect(jsonPath("$[1].fechaFinalizacion").value(org.hamcrest.Matchers.nullValue()))
                 .andExpect(jsonPath("$[1].curso").value(CURSO_ESPERA))
                 .andExpect(jsonPath("$[1].estado").value("EN_ESPERA"))
                 .andExpect(jsonPath("$[1].nombreInstructor").isEmpty());

@@ -325,7 +325,7 @@ class InscripcionRestSecurityTest {
     @Test
     void misCursos_usaPerfIdDelJwt_ignorandoCualquierParametroDeCliente() throws Exception {
         InscripcionResumen item = new InscripcionResumen(
-                "cat1", "cur1", 2026, 1, 1, "INSCRITO", "Prof. Garcia", true, List.of());
+                "cat1", "cur1", 2026, 1, 1, "INSCRITO", "Prof. Garcia", true, List.of(), null);
         when(servicio.listarMisCursos("alum1")).thenReturn(List.of(item));
 
         mockMvc.perform(get("/api/v2/inscripcion/misCursos")
