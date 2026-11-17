@@ -91,15 +91,6 @@ WHERE i.categoria = :categoria
 
     @Query("""
 SELECT COUNT(i) FROM InscripcionEntidad i
-WHERE i.alumnoId = :alumnoId
-  AND i.eliminado = 0
-  AND i.estado = 'INSCRITO'
-  AND i.fechaDesvinculacion IS NULL
-""")
-    long contarCursosActivosAlumno(@Param("alumnoId") String alumnoId);
-
-    @Query("""
-SELECT COUNT(i) FROM InscripcionEntidad i
 WHERE i.categoria = :categoria
   AND i.curso = :curso
   AND i.anio = :anio

@@ -27,8 +27,6 @@ public interface IInscripcionGateway {
 
     long contarInscripcionesActivasGrupo(String categoria, String curso, int anio, int iterable);
 
-    long contarCursosActivosAlumno(String alumnoId);
-
     long contarEnEsperaGrupo(String categoria, String curso, int anio, int iterable);
 
     void promoverPrimeroEnEspera(String categoria, String curso, int anio, int iterable);

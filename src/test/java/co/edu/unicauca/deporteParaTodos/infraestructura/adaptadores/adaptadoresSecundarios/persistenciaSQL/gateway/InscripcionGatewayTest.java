@@ -222,18 +222,6 @@ class InscripcionGatewayTest {
         verify(repoInscrp).contarInscripcionesActivasGrupo(CATEGORIA, CURSO, ANIO, ITERABLE);
     }
 
-    // ── contarCursosActivosAlumno ─────────────────────────────────────────────
-
-    @Test
-    void contarCursosActivosAlumno_delegaAlRepositorio() {
-        when(repoInscrp.contarCursosActivosAlumno(ALUMNO_ID)).thenReturn(2L);
-
-        long resultado = gateway.contarCursosActivosAlumno(ALUMNO_ID);
-
-        assertEquals(2L, resultado);
-        verify(repoInscrp).contarCursosActivosAlumno(ALUMNO_ID);
-    }
-
     // ── contarEnEsperaGrupo ───────────────────────────────────────────────────
 
     @Test

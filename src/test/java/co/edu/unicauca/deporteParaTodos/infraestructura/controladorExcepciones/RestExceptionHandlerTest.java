@@ -84,9 +84,6 @@ class RestExceptionHandlerTest {
         @GetMapping("/test/cuposagotados")
         void cuposAgotados() { throw new CuposAgotadosExcepcion("sin cupos"); }
 
-        @GetMapping("/test/limitecursos")
-        void limiteCursos() { throw new LimiteCursosExcepcion("limite alcanzado"); }
-
         // SCRUM-80 (rediseno, bloque 1): sin endpoint real todavia (se conecta en
         // el bloque 2, cuando POST /claseGrupo y POST /atenciones empiecen a
         // llamar a VentanaRegistroAsistencia) -- se cubre el handler aqui.
@@ -287,14 +284,6 @@ class RestExceptionHandlerTest {
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.codigoError").value("GC-0013"))
                 .andExpect(jsonPath("$.codigoHttp").value(409));
-    }
-
-    @Test
-    void limiteCursos_retorna422() throws Exception {
-        mockMvc.perform(get("/test/limitecursos"))
-                .andExpect(status().isUnprocessableEntity())
-                .andExpect(jsonPath("$.codigoError").value("GC-0014"))
-                .andExpect(jsonPath("$.codigoHttp").value(422));
     }
 
     @Test

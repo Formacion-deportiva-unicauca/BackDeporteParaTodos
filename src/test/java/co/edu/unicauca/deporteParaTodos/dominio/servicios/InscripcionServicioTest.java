@@ -17,7 +17,6 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IAlumnoGateway;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.ICursoGateway;
@@ -32,7 +31,6 @@ import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IInstru
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.CuposAgotadosExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.InscripcionFueraDeFechasExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.InscripcionesCerradasExcepcion;
-import co.edu.unicauca.deporteParaTodos.dominio.excepciones.LimiteCursosExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.NoExisteExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.YaExisteElementoExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Curso;
@@ -93,7 +91,6 @@ class InscripcionServicioTest {
 
     @BeforeEach
     void setUp() {
-        ReflectionTestUtils.setField(servicio, "limiteCursosAlumno", 3);
         datos = new Inscripcion("alum1", "cat1", "cur1", 2026, 1, null, null, null);
         cursoAbierto = new Curso();
         cursoAbierto.setEstadoInscripciones(EstadoInscripciones.ABIERTO);
@@ -136,7 +133,6 @@ class InscripcionServicioTest {
         when(cursoGateway.obtenerCurso("cat1", "cur1")).thenReturn(conInterruptorViejoCerrado);
         when(grupoGateway.obtenerGrupoConLock("cat1", "cur1", 2026, 1)).thenReturn(grupoCon5Cupos);
         when(gateway.contarInscripcionesActivasGrupo("cat1", "cur1", 2026, 1)).thenReturn(1L);
-        when(gateway.contarCursosActivosAlumno("alum1")).thenReturn(0L);
         when(gateway.existeInscripcion("alum1", "cat1", "cur1", 2026, 1)).thenReturn(false);
         when(gateway.guardarInscripcion(any())).thenReturn(guardada);
 
@@ -205,24 +201,12 @@ class InscripcionServicioTest {
     }
 
     @Test
-    void inscribir_conLimiteAlcanzado_lanzaLimiteCursosExcepcion() {
-        when(cursoGateway.obtenerCurso("cat1", "cur1")).thenReturn(cursoAbierto);
-        when(grupoGateway.obtenerGrupoConLock("cat1", "cur1", 2026, 1)).thenReturn(grupoCon5Cupos);
-        when(gateway.contarInscripcionesActivasGrupo("cat1", "cur1", 2026, 1)).thenReturn(2L);
-        when(gateway.contarCursosActivosAlumno("alum1")).thenReturn(3L);
-
-        assertThrows(LimiteCursosExcepcion.class, () -> servicio.inscribir(datos, COORD, "Coordinador"));
-        verify(gateway, never()).guardarInscripcion(any());
-    }
-
-    @Test
     void inscribir_nueva_exitosa_guarda_con_fechaInscripcion() {
         Inscripcion guardada = new Inscripcion("alum1", "cat1", "cur1", 2026, 1,
                 Timestamp.from(Instant.now()), null, "INSCRITO");
         when(cursoGateway.obtenerCurso("cat1", "cur1")).thenReturn(cursoAbierto);
         when(grupoGateway.obtenerGrupoConLock("cat1", "cur1", 2026, 1)).thenReturn(grupoCon5Cupos);
         when(gateway.contarInscripcionesActivasGrupo("cat1", "cur1", 2026, 1)).thenReturn(2L);
-        when(gateway.contarCursosActivosAlumno("alum1")).thenReturn(1L);
         when(gateway.existeInscripcion("alum1", "cat1", "cur1", 2026, 1)).thenReturn(false);
         when(gateway.guardarInscripcion(any())).thenReturn(guardada);
 
@@ -242,7 +226,6 @@ class InscripcionServicioTest {
         when(cursoGateway.obtenerCurso("cat1", "cur1")).thenReturn(cursoAbierto);
         when(grupoGateway.obtenerGrupoConLock("cat1", "cur1", 2026, 1)).thenReturn(grupoCon5Cupos);
         when(gateway.contarInscripcionesActivasGrupo("cat1", "cur1", 2026, 1)).thenReturn(2L);
-        when(gateway.contarCursosActivosAlumno("alum1")).thenReturn(1L);
         when(gateway.existeInscripcion("alum1", "cat1", "cur1", 2026, 1)).thenReturn(true);
         when(gateway.obtenerInscripcion("alum1", "cat1", "cur1", 2026, 1)).thenReturn(existente);
         when(gateway.guardarInscripcion(any())).thenReturn(reactivada);
@@ -296,21 +279,6 @@ class InscripcionServicioTest {
     }
 
     @Test
-    void inscribir_yaInscritoConTresCursos_recibeElErrorDeDuplicado_noElDeLimite() {
-        Inscripcion fila = filaInscritaVigente();
-        when(cursoGateway.obtenerCurso("cat1", "cur1")).thenReturn(cursoAbierto);
-        when(grupoGateway.obtenerGrupoConLock("cat1", "cur1", 2026, 1)).thenReturn(grupoCon5Cupos);
-        lenient().when(gateway.contarCursosActivosAlumno("alum1")).thenReturn(3L);
-        when(gateway.existeInscripcion("alum1", "cat1", "cur1", 2026, 1)).thenReturn(true);
-        when(gateway.obtenerInscripcion("alum1", "cat1", "cur1", 2026, 1)).thenReturn(fila);
-
-        assertThrows(YaExisteElementoExcepcion.class, () -> servicio.inscribir(datos, COORD, "Coordinador"));
-
-        verify(gateway, never()).contarCursosActivosAlumno(any());
-        verify(gateway, never()).guardarInscripcion(any());
-    }
-
-    @Test
     void inscribir_trasCancelar_filaDesvinculada_sigueReinscribiendoComoInscrito() {
         Timestamp desvinculada = Timestamp.valueOf("2026-04-01 09:00:00");
         Inscripcion cancelada = new Inscripcion("alum1", "cat1", "cur1", 2026, 1,
@@ -318,7 +286,6 @@ class InscripcionServicioTest {
         when(cursoGateway.obtenerCurso("cat1", "cur1")).thenReturn(cursoAbierto);
         when(grupoGateway.obtenerGrupoConLock("cat1", "cur1", 2026, 1)).thenReturn(grupoCon5Cupos);
         when(gateway.contarInscripcionesActivasGrupo("cat1", "cur1", 2026, 1)).thenReturn(2L);
-        when(gateway.contarCursosActivosAlumno("alum1")).thenReturn(1L);
         when(gateway.existeInscripcion("alum1", "cat1", "cur1", 2026, 1)).thenReturn(true);
         when(gateway.obtenerInscripcion("alum1", "cat1", "cur1", 2026, 1)).thenReturn(cancelada);
         when(gateway.guardarInscripcion(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -351,7 +318,6 @@ class InscripcionServicioTest {
 
         assertEquals("Ya estás en la lista de espera de este grupo", ex.getMessage());
         verify(gateway, never()).guardarInscripcion(any());
-        verify(gateway, never()).contarCursosActivosAlumno(any());
         assertEquals("EN_ESPERA", fila.getEstado());
         assertEquals(Timestamp.valueOf("2026-03-01 10:00:00"), fila.getFechaInscripcion());
         assertNull(fila.getFechaDesvinculacion());
@@ -382,7 +348,6 @@ class InscripcionServicioTest {
         when(cursoGateway.obtenerCurso("cat1", "cur1")).thenReturn(cursoAbierto);
         when(grupoGateway.obtenerGrupoConLock("cat1", "cur1", 2026, 1)).thenReturn(grupoCon5Cupos);
         when(gateway.contarInscripcionesActivasGrupo("cat1", "cur1", 2026, 1)).thenReturn(2L);
-        when(gateway.contarCursosActivosAlumno("alum1")).thenReturn(1L);
         when(gateway.existeInscripcion("alum1", "cat1", "cur1", 2026, 1)).thenReturn(true);
         when(gateway.obtenerInscripcion("alum1", "cat1", "cur1", 2026, 1)).thenReturn(salida);
         when(gateway.existeEnEspera("alum1", "cat1", "cur1", 2026, 1)).thenReturn(false);
@@ -409,7 +374,6 @@ class InscripcionServicioTest {
         when(cursoGateway.obtenerCurso("cat1", "cur1")).thenReturn(cursoAbierto);
         when(grupoGateway.obtenerGrupoConLock("cat1", "cur1", 2026, 1)).thenReturn(grupoCon5Cupos);
         when(gateway.contarInscripcionesActivasGrupo("cat1", "cur1", 2026, 1)).thenReturn(2L);
-        when(gateway.contarCursosActivosAlumno("alum1")).thenReturn(1L);
         when(gateway.existeInscripcion("alum1", "cat1", "cur1", 2026, 1)).thenReturn(true);
         when(gateway.obtenerInscripcion("alum1", "cat1", "cur1", 2026, 1)).thenReturn(existente);
         when(gateway.guardarInscripcion(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -455,7 +419,6 @@ class InscripcionServicioTest {
         when(cursoGateway.obtenerCurso("cat1", "cur1")).thenReturn(cursoAbierto);
         when(grupoGateway.obtenerGrupoConLock("cat1", "cur1", 2026, 1)).thenReturn(grupoCon5Cupos);
         when(gateway.contarInscripcionesActivasGrupo("cat1", "cur1", 2026, 1)).thenReturn(2L);
-        when(gateway.contarCursosActivosAlumno("alum1")).thenReturn(1L);
         when(gateway.existeInscripcion("alum1", "cat1", "cur1", 2026, 1)).thenReturn(false);
         when(gateway.guardarInscripcion(any())).thenAnswer(inv -> inv.getArgument(0));
 
@@ -526,7 +489,6 @@ class InscripcionServicioTest {
         when(cursoGateway.obtenerCurso("cat1", "cur1")).thenReturn(cursoAbierto);
         when(grupoGateway.obtenerGrupoConLock("cat1", "cur1", 2026, 1)).thenReturn(grupoCon5Cupos);
         when(gateway.contarInscripcionesActivasGrupo("cat1", "cur1", 2026, 1)).thenReturn(2L);
-        when(gateway.contarCursosActivosAlumno("alum1")).thenReturn(1L);
         when(gateway.existeInscripcion("alum1", "cat1", "cur1", 2026, 1)).thenReturn(false);
         when(gateway.guardarInscripcion(any())).thenReturn(guardada);
 
@@ -542,7 +504,6 @@ class InscripcionServicioTest {
         when(cursoGateway.obtenerCurso("cat1", "cur1")).thenReturn(cursoAbierto);
         when(grupoGateway.obtenerGrupoConLock("cat1", "cur1", 2026, 1)).thenReturn(grupoCon5Cupos);
         when(gateway.contarInscripcionesActivasGrupo("cat1", "cur1", 2026, 1)).thenReturn(2L);
-        when(gateway.contarCursosActivosAlumno("alum1")).thenReturn(1L);
         when(gateway.existeInscripcion("alum1", "cat1", "cur1", 2026, 1)).thenReturn(false);
         when(gateway.guardarInscripcion(any())).thenReturn(guardada);
 
@@ -908,7 +869,6 @@ class InscripcionServicioTest {
         when(cursoGateway.obtenerCurso("cat1", "cur1")).thenReturn(cursoAbierto);
         when(grupoGateway.obtenerGrupoConLock("cat1", "cur1", 2026, 1)).thenReturn(grupoCon5Cupos);
         when(gateway.contarInscripcionesActivasGrupo("cat1", "cur1", 2026, 1)).thenReturn(2L);
-        when(gateway.contarCursosActivosAlumno("alum1")).thenReturn(1L);
         when(gateway.existeInscripcion("alum1", "cat1", "cur1", 2026, 1)).thenReturn(false);
         when(gateway.guardarInscripcion(any())).thenReturn(guardada);
 
@@ -973,7 +933,6 @@ class InscripcionServicioTest {
         when(cursoGateway.obtenerCurso("cat1", "cur1")).thenReturn(cursoAbierto);
         when(grupoGateway.obtenerGrupoConLock("cat1", "cur1", 2026, 1)).thenReturn(grupoCon5Cupos);
         when(gateway.contarInscripcionesActivasGrupo("cat1", "cur1", 2026, 1)).thenReturn(2L);
-        when(gateway.contarCursosActivosAlumno("alum1")).thenReturn(1L);
         when(gateway.existeInscripcion("alum1", "cat1", "cur1", 2026, 1)).thenReturn(false);
         when(gateway.guardarInscripcion(any())).thenAnswer(inv -> inv.getArgument(0));
     }

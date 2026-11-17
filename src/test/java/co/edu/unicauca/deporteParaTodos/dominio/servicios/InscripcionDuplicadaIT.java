@@ -46,7 +46,6 @@ import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosEntrada.IInscr
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IGrupoGateway;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IInscripcionGateway;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IPerfilGateway;
-import co.edu.unicauca.deporteParaTodos.dominio.excepciones.LimiteCursosExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.NoExisteExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.YaExisteElementoExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Categoria;
@@ -193,20 +192,19 @@ class InscripcionDuplicadaIT {
     }
 
     @Test
-    void inscritoConTresCursosActivos_recibeElErrorDeDuplicado_noElDeLimite() {
+    void sinTope_variasInscripciones_yReenviarSigueSiendoDuplicado() {
         String alumnoId = nuevoAlumno();
         int g1 = crearGrupo(5);
         int g2 = crearGrupo(5);
         int g3 = crearGrupo(5);
+        int g4 = crearGrupo(5);
         inscribir(alumnoId, g1);
         inscribir(alumnoId, g2);
-        inscribir(alumnoId, g3); // tres inscripciones activas: el tope (3) esta alcanzado
+        inscribir(alumnoId, g3);
+        // Sin tope de cursos (grupos sin horario, nada se cruza): una cuarta inscripcion es valida.
+        assertEquals("INSCRITO", inscribir(alumnoId, g4).getEstado());
 
-        // Un cuarto grupo sigue siendo rechazado por el tope: la regla no cambia.
-        int g4 = crearGrupo(5);
-        assertThrows(LimiteCursosExcepcion.class, () -> inscribir(alumnoId, g4));
-
-        // Pero reenviar la inscripcion a un grupo donde YA esta inscrito da el error de duplicado, no el de limite.
+        // Reenviar a un grupo donde YA esta inscrito sigue dando el error de duplicado.
         assertThrows(YaExisteElementoExcepcion.class, () -> inscribir(alumnoId, g1));
     }
 

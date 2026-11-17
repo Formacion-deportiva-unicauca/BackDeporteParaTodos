@@ -6,7 +6,6 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,7 +19,6 @@ import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IInstru
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.CuposAgotadosExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.InscripcionFueraDeFechasExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.InscripcionesCerradasExcepcion;
-import co.edu.unicauca.deporteParaTodos.dominio.excepciones.LimiteCursosExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.NoExisteExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.YaExisteElementoExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Curso;
@@ -55,9 +53,6 @@ public class InscripcionServicio implements IInscripcionServicio {
     private final IAlumnoGateway alumnoGateway;
     private final AutorizacionGrupoServicio autorizacionGrupo;
     private final Clock clock;
-
-    @Value("${inscripciones.limite-cursos-alumno:3}")
-    private int limiteCursosAlumno;
 
     public InscripcionServicio(IInscripcionGateway gateway, ICursoGateway cursoGateway, IGrupoGateway grupoGateway,
             IHorarioGateway horarioGateway, IInstructorGateway instructorGateway, IAlumnoGateway alumnoGateway,
@@ -163,11 +158,6 @@ public class InscripcionServicio implements IInscripcionServicio {
 
         if (inscritos < grupo.getCupos()) {
             // Hay cupos — camino INSCRITO
-            long cursosActivos = gateway.contarCursosActivosAlumno(datos.getAlumnoId());
-            if (cursosActivos >= limiteCursosAlumno) {
-                throw new LimiteCursosExcepcion(
-                        "El alumno ya esta inscrito en el maximo de " + limiteCursosAlumno + " cursos activos");
-            }
             if (gateway.existeInscripcion(datos.getAlumnoId(), datos.getCategoria(),
                     datos.getCurso(), datos.getAnio(), datos.getIterable())) {
                 Inscripcion existente = gateway.obtenerInscripcion(

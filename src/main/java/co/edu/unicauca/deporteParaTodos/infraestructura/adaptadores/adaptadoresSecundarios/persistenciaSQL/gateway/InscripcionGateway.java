@@ -75,11 +75,6 @@ public class InscripcionGateway implements IInscripcionGateway {
     }
 
     @Override
-    public long contarCursosActivosAlumno(String alumnoId) {
-        return repoInscrp.contarCursosActivosAlumno(alumnoId);
-    }
-
-    @Override
     public long contarEnEsperaGrupo(String categoria, String curso, int anio, int iterable) {
         return repoInscrp.contarEnEsperaGrupo(categoria, curso, anio, iterable);
     }
