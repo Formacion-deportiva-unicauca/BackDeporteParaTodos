@@ -1,9 +1,11 @@
 package co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida;
 
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.ConteoInscripcionGrupo;
+import co.edu.unicauca.deporteParaTodos.dominio.modelo.HorarioInscrito;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Inscripcion;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.InscripcionEnEspera;
 
+import java.time.LocalDate;
 import java.util.List;
 
 public interface IInscripcionGateway {
@@ -27,11 +29,13 @@ public interface IInscripcionGateway {
 
     long contarInscripcionesActivasGrupo(String categoria, String curso, int anio, int iterable);
 
-    long contarCursosActivosAlumno(String alumnoId);
-
     long contarEnEsperaGrupo(String categoria, String curso, int anio, int iterable);
 
-    void promoverPrimeroEnEspera(String categoria, String curso, int anio, int iterable);
+    /**
+     * Franjas de los grupos donde el alumno esta INSCRITO y vigente, del anio y periodo dados, de grupos no eliminados y no
+     * terminados antes de "hoy". Una sola consulta (sin N+1).
+     */
+    List<HorarioInscrito> listarHorariosInscritosVigentes(String alumnoId, int anio, int periodo, LocalDate hoy);
 
     Inscripcion promoverInscripcion(String alumnoId, String categoria, String curso, int anio, int iterable);
 

@@ -81,11 +81,11 @@ class RestExceptionHandlerTest {
         @GetMapping("/test/inscripcionescerradas")
         void inscripcionesCerradas() { throw new InscripcionesCerradasExcepcion("curso cerrado"); }
 
+        @GetMapping("/test/cruce")
+        void cruceHorario() { throw new CruceHorarioExcepcion("Se cruza con Natación, grupo A, martes 10:00-12:00"); }
+
         @GetMapping("/test/cuposagotados")
         void cuposAgotados() { throw new CuposAgotadosExcepcion("sin cupos"); }
-
-        @GetMapping("/test/limitecursos")
-        void limiteCursos() { throw new LimiteCursosExcepcion("limite alcanzado"); }
 
         // SCRUM-80 (rediseno, bloque 1): sin endpoint real todavia (se conecta en
         // el bloque 2, cuando POST /claseGrupo y POST /atenciones empiecen a
@@ -290,11 +290,12 @@ class RestExceptionHandlerTest {
     }
 
     @Test
-    void limiteCursos_retorna422() throws Exception {
-        mockMvc.perform(get("/test/limitecursos"))
+    void cruceHorario_retorna422ConElMensajeFormateado() throws Exception {
+        mockMvc.perform(get("/test/cruce"))
                 .andExpect(status().isUnprocessableEntity())
-                .andExpect(jsonPath("$.codigoError").value("GC-0014"))
-                .andExpect(jsonPath("$.codigoHttp").value(422));
+                .andExpect(jsonPath("$.codigoError").value("GC-0031"))
+                .andExpect(jsonPath("$.codigoHttp").value(422))
+                .andExpect(jsonPath("$.mensaje").value("Cruce de horario, Se cruza con Natación, grupo A, martes 10:00-12:00"));
     }
 
     @Test

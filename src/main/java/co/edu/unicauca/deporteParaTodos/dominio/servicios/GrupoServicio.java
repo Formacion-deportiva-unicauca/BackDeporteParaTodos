@@ -42,6 +42,9 @@ public class GrupoServicio implements IGrupoServicio {
     private IInscripcionGateway inscripcionGateway;
 
     @Autowired
+    private CruceHorariosServicio cruceHorarios;
+
+    @Autowired
     private ICursoGateway cursoGateway;
 
     @Autowired
@@ -130,12 +133,12 @@ public class GrupoServicio implements IGrupoServicio {
             return;
         }
         // Lock pesimista del grupo ANTES de contar: ninguna inscripcion o promocion concurrente puede colarse entre el conteo y la promocion.
-        grupoGateway.obtenerGrupoConLock(categoria, nombreCurso, anio, iterable);
+        Grupo grupo = grupoGateway.obtenerGrupoConLock(categoria, nombreCurso, anio, iterable);
         long libres = cuposDespues - inscripcionGateway.contarInscripcionesActivasGrupo(categoria, nombreCurso, anio, iterable);
         long enEspera = inscripcionGateway.contarEnEsperaGrupo(categoria, nombreCurso, anio, iterable);
-        for (long i = 0; i < Math.min(libres, enEspera); i++) {
-            inscripcionGateway.promoverPrimeroEnEspera(categoria, nombreCurso, anio, iterable);
-        }
+        // Una sola operacion para todas las promociones: salta a quien tendria un cruce de horario y bloquea a los alumnos
+        // en orden ascendente de id (sin deadlock entre ampliaciones simultaneas de grupos con alumnos en comun).
+        cruceHorarios.promoverSiguientes(grupo, (int) Math.min(libres, enEspera));
     }
 
     // R1: fechaFinalizacion no puede ser anterior a fechaCreacion.

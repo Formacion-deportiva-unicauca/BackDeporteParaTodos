@@ -38,8 +38,8 @@ import co.edu.unicauca.deporteParaTodos.dominio.excepciones.AccesoGrupoDenegadoE
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.CorreoNoModificablePorInstructorExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.AlumnoFueraDeGrupoExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.ConfirmacionSinAsistentesExcepcion;
+import co.edu.unicauca.deporteParaTodos.dominio.excepciones.CruceHorarioExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.InsercionFallidaExepcion;
-import co.edu.unicauca.deporteParaTodos.dominio.excepciones.LimiteCursosExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.ListadoVacioExcepcion;
 import co.edu.unicauca.deporteParaTodos.infraestructura.controladorExcepciones.excepciones.NoConvertibleException;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.NoExisteExcepcion;
@@ -334,16 +334,6 @@ public class RestExceptionHandler {
                                 HttpStatus.CONFLICT);
         }
 
-        @ExceptionHandler(LimiteCursosExcepcion.class)
-        public ResponseEntity<Error> GenericException(final HttpServletRequest req, final LimiteCursosExcepcion ex) {
-                logExcepcion("LimiteCursosExcepcion", req, ex);
-                return buildDomainErrorResponse(req,
-                                ex != null ? ex.getCodigo()       : "",
-                                ex != null ? ex.getLlaveMensaje() : "",
-                                ex != null ? ex.getMessage()      : "",
-                                HttpStatus.UNPROCESSABLE_ENTITY);
-        }
-
         @ExceptionHandler(FechasGrupoInvalidasExcepcion.class)
         public ResponseEntity<Error> GenericException(final HttpServletRequest req, final FechasGrupoInvalidasExcepcion ex) {
                 logExcepcion("FechasGrupoInvalidasExcepcion", req, ex);
@@ -407,6 +397,16 @@ public class RestExceptionHandler {
         @ExceptionHandler(PublicoCursoNoCoincideExcepcion.class)
         public ResponseEntity<Error> GenericException(final HttpServletRequest req, final PublicoCursoNoCoincideExcepcion ex) {
                 logExcepcion("PublicoCursoNoCoincideExcepcion", req, ex);
+                return buildDomainErrorResponse(req,
+                                ex != null ? ex.getCodigo()       : "",
+                                ex != null ? ex.getLlaveMensaje() : "",
+                                ex != null ? ex.getMessage()      : "",
+                                HttpStatus.UNPROCESSABLE_ENTITY);
+        }
+
+        @ExceptionHandler(CruceHorarioExcepcion.class)
+        public ResponseEntity<Error> GenericException(final HttpServletRequest req, final CruceHorarioExcepcion ex) {
+                logExcepcion("CruceHorarioExcepcion", req, ex);
                 return buildDomainErrorResponse(req,
                                 ex != null ? ex.getCodigo()       : "",
                                 ex != null ? ex.getLlaveMensaje() : "",

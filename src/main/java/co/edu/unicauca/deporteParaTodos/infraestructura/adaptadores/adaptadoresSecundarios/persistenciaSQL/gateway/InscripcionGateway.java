@@ -3,6 +3,7 @@ package co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadores
 import java.sql.Timestamp;
 import java.time.Clock;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -13,6 +14,7 @@ import org.springframework.stereotype.Service;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IInscripcionGateway;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.NoExisteExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.ConteoInscripcionGrupo;
+import co.edu.unicauca.deporteParaTodos.dominio.modelo.HorarioInscrito;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Inscripcion;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.InscripcionEnEspera;
 import co.edu.unicauca.deporteParaTodos.infraestructura.adaptadores.adaptadoresSecundarios.persistenciaSQL.entidades.InscripcionEntidad;
@@ -75,11 +77,6 @@ public class InscripcionGateway implements IInscripcionGateway {
     }
 
     @Override
-    public long contarCursosActivosAlumno(String alumnoId) {
-        return repoInscrp.contarCursosActivosAlumno(alumnoId);
-    }
-
-    @Override
     public long contarEnEsperaGrupo(String categoria, String curso, int anio, int iterable) {
         return repoInscrp.contarEnEsperaGrupo(categoria, curso, anio, iterable);
     }
@@ -117,17 +114,8 @@ public class InscripcionGateway implements IInscripcionGateway {
     }
 
     @Override
-    public void promoverPrimeroEnEspera(String categoria, String curso, int anio, int iterable) {
-        List<InscripcionEntidad> enEspera = repoInscrp.findEnEsperaOrdenados(categoria, curso, anio, iterable);
-        if (!enEspera.isEmpty()) {
-            InscripcionEntidad primero = enEspera.get(0);
-            primero.setEstado("INSCRITO");
-            // Clock inyectado (America/Bogota), no Instant.now(): ver comentario en
-            // InscripcionServicio.inscribir() sobre por que esElegibleParaAusencia()
-            // necesita que esta fecha se escriba con la misma zona que fechaClase.
-            primero.setFechaInscripcion(Timestamp.valueOf(LocalDateTime.now(clock)));
-            repoInscrp.save(primero);
-        }
+    public List<HorarioInscrito> listarHorariosInscritosVigentes(String alumnoId, int anio, int periodo, LocalDate hoy) {
+        return repoInscrp.findHorariosInscritosVigentes(alumnoId, anio, periodo, hoy);
     }
 
     @Override

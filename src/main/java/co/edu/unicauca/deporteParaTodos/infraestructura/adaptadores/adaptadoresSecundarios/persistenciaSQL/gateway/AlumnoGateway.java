@@ -31,6 +31,11 @@ public class AlumnoGateway implements IAlumnoGateway {
     private ModelMapper mapper;
 
     @Override
+    public boolean bloquearAlumno(String alumnoId) {
+        return repoAlumno.findByIdWithLock(alumnoId).isPresent();
+    }
+
+    @Override
     public boolean existeAlumno(String alumnoId) {
         return repoAlumno.existsById(alumnoId);
     }

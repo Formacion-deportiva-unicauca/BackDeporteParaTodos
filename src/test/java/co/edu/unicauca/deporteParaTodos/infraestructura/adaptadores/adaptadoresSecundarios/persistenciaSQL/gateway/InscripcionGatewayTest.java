@@ -222,18 +222,6 @@ class InscripcionGatewayTest {
         verify(repoInscrp).contarInscripcionesActivasGrupo(CATEGORIA, CURSO, ANIO, ITERABLE);
     }
 
-    // ── contarCursosActivosAlumno ─────────────────────────────────────────────
-
-    @Test
-    void contarCursosActivosAlumno_delegaAlRepositorio() {
-        when(repoInscrp.contarCursosActivosAlumno(ALUMNO_ID)).thenReturn(2L);
-
-        long resultado = gateway.contarCursosActivosAlumno(ALUMNO_ID);
-
-        assertEquals(2L, resultado);
-        verify(repoInscrp).contarCursosActivosAlumno(ALUMNO_ID);
-    }
-
     // ── contarEnEsperaGrupo ───────────────────────────────────────────────────
 
     @Test
@@ -246,32 +234,18 @@ class InscripcionGatewayTest {
         verify(repoInscrp).contarEnEsperaGrupo(CATEGORIA, CURSO, ANIO, ITERABLE);
     }
 
-    // ── promoverPrimeroEnEspera ───────────────────────────────────────────────
+    // ── listarHorariosInscritosVigentes ───────────────────────────────────────
 
     @Test
-    void promoverPrimeroEnEspera_hayEnEspera_promueveYGuarda() {
-        InscripcionEntidad enEspera = entidadEnEspera();
-        when(repoInscrp.findEnEsperaOrdenados(CATEGORIA, CURSO, ANIO, ITERABLE))
-                .thenReturn(List.of(enEspera));
-        when(repoInscrp.save(any(InscripcionEntidad.class))).thenAnswer(inv -> inv.getArgument(0));
-        when(clock.instant()).thenReturn(Instant.now());
-        when(clock.getZone()).thenReturn(ZoneId.systemDefault());
+    void listarHorariosInscritosVigentes_delegaAlRepositorio() {
+        java.time.LocalDate hoy = java.time.LocalDate.of(2026, 6, 15);
+        java.util.List<co.edu.unicauca.deporteParaTodos.dominio.modelo.HorarioInscrito> filas = java.util.List.of(
+                new co.edu.unicauca.deporteParaTodos.dominio.modelo.HorarioInscrito(
+                        CATEGORIA, CURSO, ANIO, ITERABLE, 1, 7, "MARTES", "10:00", "12:00"));
+        when(repoInscrp.findHorariosInscritosVigentes(ALUMNO_ID, ANIO, 1, hoy)).thenReturn(filas);
 
-        gateway.promoverPrimeroEnEspera(CATEGORIA, CURSO, ANIO, ITERABLE);
-
-        assertEquals("INSCRITO", enEspera.getEstado());
-        assertNotNull(enEspera.getFechaInscripcion());
-        verify(repoInscrp).save(enEspera);
-    }
-
-    @Test
-    void promoverPrimeroEnEspera_listaVacia_noGuarda() {
-        when(repoInscrp.findEnEsperaOrdenados(CATEGORIA, CURSO, ANIO, ITERABLE))
-                .thenReturn(List.of());
-
-        gateway.promoverPrimeroEnEspera(CATEGORIA, CURSO, ANIO, ITERABLE);
-
-        verify(repoInscrp, never()).save(any());
+        assertEquals(filas, gateway.listarHorariosInscritosVigentes(ALUMNO_ID, ANIO, 1, hoy));
+        verify(repoInscrp).findHorariosInscritosVigentes(ALUMNO_ID, ANIO, 1, hoy);
     }
 
     // ── promoverInscripcion ───────────────────────────────────────────────────
