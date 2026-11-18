@@ -5,6 +5,8 @@ import com.nimbusds.jose.jwk.OctetSequenceKey;
 import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
+import org.springframework.boot.actuate.health.HealthEndpoint;
+import org.springframework.boot.actuate.autoconfigure.security.servlet.EndpointRequest;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -124,6 +126,11 @@ public class SecurityConfig {
             .sessionManagement(session ->
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
+                // Salud para el HEALTHCHECK de la imagen: SOLO el endpoint "health", y solo en el puerto de gestion (8083, loopback,
+                // sin publicar). EndpointRequest no coincide con el puerto de la API (8082), que sigue exigiendo JWT. Cualquier otro
+                // endpoint de Actuator se niega aunque alguien lo exponga por error en application.properties.
+                .requestMatchers(EndpointRequest.to(HealthEndpoint.class)).permitAll()
+                .requestMatchers(EndpointRequest.toAnyEndpoint()).denyAll()
                 .requestMatchers(HttpMethod.POST, "/api/v2/RegistroPerfilAlumno").permitAll()
                 // Catalogo de facultades y programas: lo necesita el formulario de registro, antes del dpt_token.
                 .requestMatchers(HttpMethod.GET, "/api/v2/facultades", "/api/v2/programas").permitAll()
