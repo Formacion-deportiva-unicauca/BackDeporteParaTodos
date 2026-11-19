@@ -25,12 +25,17 @@ import jakarta.persistence.Query;
 @Service
 public class ReporteGateway implements IReporteGateway {
 
-    /** Categorias que no son modalidades reales (en minuscula y sin espacios sobrantes). */
-    private static final String CATEGORIAS_IGNORADAS = "('representativa institucional')";
 
-    private static final String UNIONES_GRUPO = """
-            JOIN tbl_grupo g ON g.CAT_TITULO = %1$s.CAT_TITULO AND g.CUR_NOMBRE = %1$s.CUR_NOMBRE
-                            AND g.GRP_ANIO = %1$s.GRP_ANIO AND g.GRP_ITERABLE = %1$s.GRP_ITERABLE
+    private static final String UNIONES_GRUPO_INSCRIPCION = """
+            JOIN tbl_grupo g ON g.CAT_TITULO = i.CAT_TITULO AND g.CUR_NOMBRE = i.CUR_NOMBRE
+                            AND g.GRP_ANIO = i.GRP_ANIO AND g.GRP_ITERABLE = i.GRP_ITERABLE
+            JOIN tbl_curso c ON c.CAT_TITULO = g.CAT_TITULO AND c.CUR_NOMBRE = g.CUR_NOMBRE
+            JOIN tbl_categoria_curso cc ON cc.CAT_TITULO = c.CAT_TITULO
+            """;
+
+    private static final String UNIONES_GRUPO_CLASE = """
+            JOIN tbl_grupo g ON g.CAT_TITULO = cl.CAT_TITULO AND g.CUR_NOMBRE = cl.CUR_NOMBRE
+                            AND g.GRP_ANIO = cl.GRP_ANIO AND g.GRP_ITERABLE = cl.GRP_ITERABLE
             JOIN tbl_curso c ON c.CAT_TITULO = g.CAT_TITULO AND c.CUR_NOMBRE = g.CUR_NOMBRE
             JOIN tbl_categoria_curso cc ON cc.CAT_TITULO = c.CAT_TITULO
             """;
@@ -39,11 +44,11 @@ public class ReporteGateway implements IReporteGateway {
               AND COALESCE(g.META_ELIMINADO, 0) = 0
               AND c.META_ELIMINADO = 0
               AND cc.META_ELIMINADO = 0
-              AND LOWER(TRIM(cc.CAT_TITULO)) NOT IN %s
+              AND LOWER(TRIM(cc.CAT_TITULO)) NOT IN ('representativa institucional')
               AND (:disciplina IS NULL OR c.DEPT_NOMBRE = :disciplina)
               AND (:modalidad IS NULL OR LOWER(TRIM(cc.CAT_TITULO)) = :modalidad)
               AND (:publico IS NULL OR c.CUR_PUBLICO = :publico)
-            """.formatted(CATEGORIAS_IGNORADAS);
+            """;
 
     private static final String FILTRO_PERSONA = """
               AND al.ALM_TIPO IN (:vinculos)
@@ -58,7 +63,7 @@ public class ReporteGateway implements IReporteGateway {
             FROM tbl_inscripcion i
             JOIN tbl_alumno al ON al.PERF_ID = i.PERF_ID
             JOIN tbl_perfil p ON p.PERF_ID = i.PERF_ID
-            """ + UNIONES_GRUPO.formatted("i") + """
+            """ + UNIONES_GRUPO_INSCRIPCION + """
             WHERE i.META_ELIMINADO = 0 AND i.INSCR_ESTADO = 'INSCRITO'
               AND i.INSCR_FECHAINSCRIPCION < :finExclusivo
               AND (i.INSCR_FECHADESVINCULACION IS NULL OR i.INSCR_FECHADESVINCULACION >= :inicio)
@@ -69,7 +74,7 @@ public class ReporteGateway implements IReporteGateway {
             JOIN tbl_asistencia a ON a.CLS_CODIGO = cl.CLS_CODIGO
             JOIN tbl_alumno al ON al.PERF_ID = a.PERF_ID
             JOIN tbl_perfil p ON p.PERF_ID = a.PERF_ID
-            """ + UNIONES_GRUPO.formatted("cl") + """
+            """ + UNIONES_GRUPO_CLASE + """
             WHERE cl.CLS_FECHA >= :inicio AND cl.CLS_FECHA < :finExclusivo AND cl.META_ELIMINADO = 0
               AND a.META_ELIMINADO = 0 AND a.ASI_ESTADO = 'PRESENTE'
             """ + FILTRO_CURSO + FILTRO_PERSONA;
@@ -92,7 +97,7 @@ public class ReporteGateway implements IReporteGateway {
 
     private static final String CLASES_SIN_CONFIRMAR = """
             SELECT COUNT(*) FROM tbl_clase cl
-            """ + UNIONES_GRUPO.formatted("cl") + """
+            """ + UNIONES_GRUPO_CLASE + """
             WHERE cl.CLS_FECHA >= :inicio AND cl.CLS_FECHA < :finExclusivo AND cl.CLS_FECHA <= :hoy
               AND cl.META_ELIMINADO = 0 AND cl.CLS_ASISTENCIA_CONFIRMADA_EN IS NULL
               AND NOT EXISTS (
@@ -101,13 +106,32 @@ public class ReporteGateway implements IReporteGateway {
                       AND nov.GRP_ITERABLE = cl.GRP_ITERABLE AND nov.NOV_FECHA = cl.CLS_FECHA AND nov.META_ELIMINADO = 0)
             """ + FILTRO_CURSO;
 
+    private static final String FECHAS_ATENCION_MIN = """
+            SELECT MIN(cl.CLS_FECHA) FROM tbl_clase cl JOIN tbl_asistencia a ON a.CLS_CODIGO = cl.CLS_CODIGO
+            WHERE cl.META_ELIMINADO = 0 AND a.META_ELIMINADO = 0 AND a.ASI_ESTADO = 'PRESENTE'""";
+    private static final String FECHAS_ATENCION_MAX = """
+            SELECT MAX(cl.CLS_FECHA) FROM tbl_clase cl JOIN tbl_asistencia a ON a.CLS_CODIGO = cl.CLS_CODIGO
+            WHERE cl.META_ELIMINADO = 0 AND a.META_ELIMINADO = 0 AND a.ASI_ESTADO = 'PRESENTE'""";
+
+    /** Consultas completas: constantes de compilacion, sin ningun texto que venga de la peticion. */
+    private static final String SQL_INSCRITOS = COLUMNAS + ", 0 AS sin_inscripcion " + DESDE_INSCRIPCIONES + AGRUPAR;
+    private static final String SQL_ATENCIONES = COLUMNAS + SIN_INSCRIPCION + DESDE_ATENCIONES + AGRUPAR;
+    private static final String SQL_PERSONAS_INSCRITAS = "SELECT COUNT(DISTINCT i.PERF_ID) " + DESDE_INSCRIPCIONES;
+    private static final String SQL_PERSONAS_ATENDIDAS = "SELECT COUNT(DISTINCT a.PERF_ID) " + DESDE_ATENCIONES;
+    private static final String SQL_PRIMERA_INSCRIPCION =
+            "SELECT MIN(INSCR_FECHAINSCRIPCION) FROM tbl_inscripcion WHERE META_ELIMINADO = 0 AND INSCR_ESTADO = 'INSCRITO'";
+    private static final String SQL_PRIMERA_ATENCION = FECHAS_ATENCION_MIN;
+    private static final String SQL_ULTIMA_ATENCION = FECHAS_ATENCION_MAX;
+    private static final String SQL_MODALIDADES = "SELECT CAT_TITULO FROM tbl_categoria_curso WHERE META_ELIMINADO = 0 "
+            + "AND LOWER(TRIM(CAT_TITULO)) NOT IN ('representativa institucional')";
+
     @PersistenceContext
     private EntityManager em;
 
     @Override
     @Transactional(readOnly = true)
     public List<FilaCrudaReporte> inscritos(ConsultaReporte q) {
-        Query query = em.createNativeQuery(COLUMNAS + ", 0 AS sin_inscripcion " + DESDE_INSCRIPCIONES + AGRUPAR);
+        Query query = em.createNativeQuery(SQL_INSCRITOS);
         enlazarInscripciones(query, q);
         return filas(query);
     }
@@ -115,7 +139,7 @@ public class ReporteGateway implements IReporteGateway {
     @Override
     @Transactional(readOnly = true)
     public List<FilaCrudaReporte> atenciones(ConsultaReporte q) {
-        Query query = em.createNativeQuery(COLUMNAS + SIN_INSCRIPCION + DESDE_ATENCIONES + AGRUPAR);
+        Query query = em.createNativeQuery(SQL_ATENCIONES);
         enlazarAtenciones(query, q);
         return filas(query);
     }
@@ -123,7 +147,7 @@ public class ReporteGateway implements IReporteGateway {
     @Override
     @Transactional(readOnly = true)
     public long personasDistintasInscritas(ConsultaReporte q) {
-        Query query = em.createNativeQuery("SELECT COUNT(DISTINCT i.PERF_ID) " + DESDE_INSCRIPCIONES);
+        Query query = em.createNativeQuery(SQL_PERSONAS_INSCRITAS);
         enlazarInscripciones(query, q);
         return numero(query.getSingleResult());
     }
@@ -131,7 +155,7 @@ public class ReporteGateway implements IReporteGateway {
     @Override
     @Transactional(readOnly = true)
     public long personasDistintasAtendidas(ConsultaReporte q) {
-        Query query = em.createNativeQuery("SELECT COUNT(DISTINCT a.PERF_ID) " + DESDE_ATENCIONES);
+        Query query = em.createNativeQuery(SQL_PERSONAS_ATENDIDAS);
         enlazarAtenciones(query, q);
         return numero(query.getSingleResult());
     }
@@ -150,10 +174,8 @@ public class ReporteGateway implements IReporteGateway {
     @Override
     @Transactional(readOnly = true)
     public LocalDate primeraFechaConDatos() {
-        LocalDate asistencia = fecha(em.createNativeQuery(FECHAS_ATENCION.formatted("MIN")).getSingleResult());
-        LocalDate inscripcion = fecha(em.createNativeQuery(
-                "SELECT MIN(INSCR_FECHAINSCRIPCION) FROM tbl_inscripcion WHERE META_ELIMINADO = 0 AND INSCR_ESTADO = 'INSCRITO'")
-                .getSingleResult());
+        LocalDate asistencia = fecha(em.createNativeQuery(SQL_PRIMERA_ATENCION).getSingleResult());
+        LocalDate inscripcion = fecha(em.createNativeQuery(SQL_PRIMERA_INSCRIPCION).getSingleResult());
         if (asistencia == null) {
             return inscripcion;
         }
@@ -163,12 +185,8 @@ public class ReporteGateway implements IReporteGateway {
     @Override
     @Transactional(readOnly = true)
     public LocalDate ultimaFechaConDatos() {
-        return fecha(em.createNativeQuery(FECHAS_ATENCION.formatted("MAX")).getSingleResult());
+        return fecha(em.createNativeQuery(SQL_ULTIMA_ATENCION).getSingleResult());
     }
-
-    private static final String FECHAS_ATENCION = """
-            SELECT %s(cl.CLS_FECHA) FROM tbl_clase cl JOIN tbl_asistencia a ON a.CLS_CODIGO = cl.CLS_CODIGO
-            WHERE cl.META_ELIMINADO = 0 AND a.META_ELIMINADO = 0 AND a.ASI_ESTADO = 'PRESENTE'""";
 
     @Override
     @Transactional(readOnly = true)
@@ -181,8 +199,7 @@ public class ReporteGateway implements IReporteGateway {
     @Transactional(readOnly = true)
     @SuppressWarnings("unchecked")
     public List<String> modalidades() {
-        return em.createNativeQuery("SELECT CAT_TITULO FROM tbl_categoria_curso WHERE META_ELIMINADO = 0 "
-                + "AND LOWER(TRIM(CAT_TITULO)) NOT IN " + CATEGORIAS_IGNORADAS).getResultList();
+        return em.createNativeQuery(SQL_MODALIDADES).getResultList();
     }
 
     @Override

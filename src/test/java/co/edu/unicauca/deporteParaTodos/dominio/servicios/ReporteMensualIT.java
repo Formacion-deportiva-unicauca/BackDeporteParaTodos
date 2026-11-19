@@ -326,6 +326,26 @@ class ReporteMensualIT {
         assertTrue(json.contains("\"Estudiante\"") && json.contains("\"MIXTO\""));
     }
 
+    // ── Inyeccion SQL: el texto del usuario es un valor, nunca parte de la consulta ────────────────────────
+
+    @Test
+    void inyeccionEnLosFiltrosDeTexto_noAlteraElResultado() throws Exception {
+        for (String nombre : new String[] {"facultad", "disciplina", "modalidad"}) {
+            for (String carga : new String[] {"x' OR '1'='1", "x' OR 1=1 -- ", "x'; DROP TABLE tbl_clase; -- ", "%' OR '%'='"}) {
+                conParametro(nombre, carga).andExpect(status().isOk())
+                        .andExpect(jsonPath("$.filas.length()").value(0))
+                        .andExpect(jsonPath("$.totales.atencionesTotal").value(0))
+                        .andExpect(jsonPath("$.totales.inscritosTotal").value(0));
+            }
+        }
+        // Valores con formato cerrado (genero, publico, vinculo) se rechazan antes de llegar a la base.
+        for (String nombre : new String[] {"genero", "publico", "vinculo"}) {
+            conParametro(nombre, "x' OR '1'='1").andExpect(status().isUnprocessableEntity());
+        }
+        // Y la base sigue intacta: el reporte normal da las mismas cifras de siempre.
+        consultar("").andExpect(status().isOk()).andExpect(jsonPath("$.totales.atencionesTotal").value(10));
+    }
+
     // ── Seguridad por HTTP ────────────────────────────────────────────────────
 
     @Test
