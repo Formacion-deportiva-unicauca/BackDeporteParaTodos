@@ -345,14 +345,11 @@ class FaltasAlumnosGrupoIT {
         int clase2 = crearClase(grupo, hoy.minusDays(1));
         confirmarConAusente(clase2, null);
 
-        String novedad = "{\"categoria\":\"" + grupo.getCategoria() + "\",\"curso\":\"" + grupo.getCurso()
-                + "\",\"anio\":" + grupo.getAnio() + ",\"iterable\":" + grupo.getIterable()
-                + ",\"fecha\":\"" + fechaConNovedad + "\",\"motivo\":\"CLIMA\"}";
-        mockMvc.perform(post("/api/v2/novedades-clase")
-                        .contentType("application/json")
-                        .content(novedad)
-                        .header("Authorization", "Bearer " + buildJwt("Coordinador", COORD)))
-                .andExpect(status().isCreated());
+        // Dato heredado: una fecha con asistencia confirmada Y una novedad activa. Por la API ya no se puede crear (409: una clase
+        // no realizada no admite asistencia), pero existen datos asi de antes -- se siembra directo para seguir cubriendo la regla.
+        jdbc.update("INSERT INTO tbl_novedad_clase (CAT_TITULO, CUR_NOMBRE, GRP_ANIO, GRP_ITERABLE, NOV_FECHA, NOV_MOTIVO, "
+                + "NOV_USUARIO_CREADOR, NOV_FECHA_CREACION, META_ELIMINADO) VALUES (?, ?, ?, ?, ?, 'CLIMA', ?, NOW(), 0)",
+                grupo.getCategoria(), grupo.getCurso(), grupo.getAnio(), grupo.getIterable(), java.sql.Date.valueOf(fechaConNovedad), COORD);
 
         // Solo cuenta la falta de clase2 -- la de clase1 (fechaConNovedad) se excluye.
         assertEquals(1, leerFaltas(grupo, alumno, "Coordinador", COORD));

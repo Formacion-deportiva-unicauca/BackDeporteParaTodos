@@ -1,5 +1,7 @@
 package co.edu.unicauca.deporteParaTodos.dominio.servicios;
 
+import co.edu.unicauca.deporteParaTodos.dominio.modelo.NovedadClase;
+import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.INovedadClaseGateway;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.ICursoGateway;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IGrupoGateway;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IHorarioGateway;
@@ -54,6 +56,9 @@ class GrupoServicioTest {
 
     @Mock
     private Clock clock;
+
+    @Mock
+    private INovedadClaseGateway novedadGateway;
 
     @InjectMocks
     private GrupoServicio grupoServicio;
@@ -624,6 +629,32 @@ class GrupoServicioTest {
 
         // Un solo query de conteos para TODOS los grupos, no uno por grupo.
         verify(inscripcionGateway, times(1)).contarInscripcionesPorInstructor("INS001");
+    }
+
+    @Test
+    void obtenerMisGrupos_conNovedadActivaHoy_laTraeEnElResumen_yElOtroGrupoQuedaSinNovedad() {
+        Grupo conNovedad = grupoModelo();
+        Grupo sinNovedad = grupoModelo();
+        sinNovedad.setCurso("Futbol");
+        Curso curso = new Curso();
+        curso.setEstadoCurso(EstadoCurso.ACTIVO);
+        NovedadClase novedad = new NovedadClase();
+        novedad.setCodigo(9L);
+        novedad.setFecha(HOY_FIJO);
+        novedad.setMotivo("CLIMA");
+
+        when(grupoGateway.obtenerGruposInstructor("INS001")).thenReturn(List.of(conNovedad, sinNovedad));
+        when(inscripcionGateway.contarInscripcionesPorInstructor("INS001")).thenReturn(List.of());
+        when(cursoGateway.obtenerCurso(eq(CATEGORIA), anyString())).thenReturn(curso);
+        when(horarioGateway.listarHorariosPorGrupo(any(), any(), anyInt(), anyInt())).thenReturn(List.of());
+        when(novedadGateway.obtenerNovedadesPorGrupoFecha(CATEGORIA, CURSO, ANIO, ITERABLE, HOY_FIJO)).thenReturn(List.of(novedad));
+        when(novedadGateway.obtenerNovedadesPorGrupoFecha(CATEGORIA, "Futbol", ANIO, ITERABLE, HOY_FIJO)).thenReturn(List.of());
+
+        List<InstructorGrupoResumen> resultado = grupoServicio.obtenerMisGrupos("INS001");
+
+        assertEquals(9L, resultado.get(0).getNovedadHoy().getCodigo());
+        assertEquals("CLIMA", resultado.get(0).getNovedadHoy().getMotivo());
+        assertNull(resultado.get(1).getNovedadHoy());
     }
 
     @Test

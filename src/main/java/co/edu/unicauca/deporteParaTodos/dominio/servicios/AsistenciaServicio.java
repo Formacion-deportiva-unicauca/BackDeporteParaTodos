@@ -12,6 +12,7 @@ import java.util.Optional;
 import java.util.Set;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosEntrada.IAsistenciaServicio;
@@ -51,12 +52,14 @@ public class AsistenciaServicio implements IAsistenciaServicio {
     private final IProrrogaRegistroAsistenciaGateway prorrogaGateway;
     private final IHorarioGateway horarioGateway;
     private final AutorizacionGrupoServicio autorizacionGrupo;
+    private final ExclusionNovedadAsistenciaServicio exclusionNovedad;
     private final Clock clock;
 
     public AsistenciaServicio(IAsistenciaGateway asistenciaGateway, IAlumnoGateway alumnoGateway,
             IClaseGateway claseGateway, IInscripcionGateway inscripcionGateway,
             IProrrogaRegistroAsistenciaGateway prorrogaGateway,
-            IHorarioGateway horarioGateway, AutorizacionGrupoServicio autorizacionGrupo, Clock clock) {
+            IHorarioGateway horarioGateway, AutorizacionGrupoServicio autorizacionGrupo,
+            ExclusionNovedadAsistenciaServicio exclusionNovedad, Clock clock) {
         this.asistenciaGateway = asistenciaGateway;
         this.alumnoGateway = alumnoGateway;
         this.claseGateway = claseGateway;
@@ -64,6 +67,7 @@ public class AsistenciaServicio implements IAsistenciaServicio {
         this.prorrogaGateway = prorrogaGateway;
         this.horarioGateway = horarioGateway;
         this.autorizacionGrupo = autorizacionGrupo;
+        this.exclusionNovedad = exclusionNovedad;
         this.clock = clock;
     }
 
@@ -140,6 +144,8 @@ public class AsistenciaServicio implements IAsistenciaServicio {
                     clase.getCategoria(), clase.getCurso(), clase.getAnio(), clase.getIterable());
             CalculadoraDuracionClase.validarDiaConHorario(franjasDelGrupo, clase.getFecha());
         }
+        // Una clase marcada como no realizada no admite asistencia (tampoco la correccion hacia atras del Coordinador/Administrador).
+        exclusionNovedad.exigirSinNovedad(clase.getCategoria(), clase.getCurso(), clase.getAnio(), clase.getIterable(), clase.getFecha());
         return clase;
     }
 
@@ -185,7 +191,8 @@ public class AsistenciaServicio implements IAsistenciaServicio {
         return existente.orElse(null);
     }
 
-    @Transactional
+    // READ_COMMITTED: ver ExclusionNovedadAsistenciaServicio (la lectura posterior al bloqueo del grupo debe ver lo ultimo confirmado).
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     @Override
     public void registrarAtencionesPorClase(List<AtencionDto> atenciones, Integer claseId,
             String perfIdLlamador, String rolLlamador) {
@@ -249,7 +256,7 @@ public class AsistenciaServicio implements IAsistenciaServicio {
     // Faltas acumuladas (etapa 4 de 5): PUT /clase/{codigo}/asistencia.
     // UNA transaccion -- reutiliza validarYAutorizarRegistro() (propietario +
     // ventana/plazo + dia-en-horario solo Instructor) sin duplicarla.
-    @Transactional
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     @Override
     public ResultadoConfirmacionAsistencia confirmarAsistencias(Integer claseId,
             List<ItemConfirmacionAsistenciaDto> asistencias, boolean confirmaTodosAusentes,

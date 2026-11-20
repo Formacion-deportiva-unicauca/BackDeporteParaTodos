@@ -43,6 +43,8 @@ import co.edu.unicauca.deporteParaTodos.dominio.excepciones.InsercionFallidaExep
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.ListadoVacioExcepcion;
 import co.edu.unicauca.deporteParaTodos.infraestructura.controladorExcepciones.excepciones.NoConvertibleException;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.NoExisteExcepcion;
+import co.edu.unicauca.deporteParaTodos.dominio.excepciones.NovedadAsistenciaConflictoExcepcion;
+import co.edu.unicauca.deporteParaTodos.dominio.excepciones.NovedadDuplicadaExcepcion;
 import co.edu.unicauca.deporteParaTodos.infraestructura.controladorExcepciones.excepciones.NoImplementadoException;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.NoProcesableEntidadException;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.YaExisteElementoExcepcion;
@@ -322,6 +324,24 @@ public class RestExceptionHandler {
                                 ex != null ? ex.getLlaveMensaje() : "",
                                 ex != null ? ex.getMessage()      : "",
                                 HttpStatus.UNPROCESSABLE_ENTITY);
+        }
+
+        /** Conflictos esperados de negocio: una linea de WARN, sin traza (no son errores del servidor). */
+        private void logAdvertencia(String tipo, HttpServletRequest req, Exception ex) {
+                LOGGER.warn("{} en {} {}: {}", tipo, req != null ? req.getMethod() : "N/A",
+                                req != null ? req.getRequestURI() : "N/A", ex != null ? ex.getMessage() : "Sin detalle");
+        }
+
+        @ExceptionHandler(NovedadDuplicadaExcepcion.class)
+        public ResponseEntity<Error> GenericException(final HttpServletRequest req, final NovedadDuplicadaExcepcion ex) {
+                logAdvertencia("NovedadDuplicadaExcepcion", req, ex);
+                return buildDomainErrorResponse(req, ex.getCodigo(), ex.getLlaveMensaje(), ex.getMessage(), HttpStatus.CONFLICT);
+        }
+
+        @ExceptionHandler(NovedadAsistenciaConflictoExcepcion.class)
+        public ResponseEntity<Error> GenericException(final HttpServletRequest req, final NovedadAsistenciaConflictoExcepcion ex) {
+                logAdvertencia("NovedadAsistenciaConflictoExcepcion", req, ex);
+                return buildDomainErrorResponse(req, ex.getCodigo(), ex.getLlaveMensaje(), ex.getMessage(), HttpStatus.CONFLICT);
         }
 
         @ExceptionHandler(CuposAgotadosExcepcion.class)

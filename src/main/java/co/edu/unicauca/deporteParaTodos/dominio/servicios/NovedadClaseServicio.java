@@ -7,6 +7,8 @@ import java.util.List;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
+import org.springframework.transaction.annotation.Transactional;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosEntrada.INovedadClaseServicio;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IGrupoGateway;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.INovedadClaseGateway;
@@ -51,9 +53,14 @@ public class NovedadClaseServicio implements INovedadClaseServicio {
     private AutorizacionGrupoServicio autorizacionGrupo;
 
     @Autowired
+    private ExclusionNovedadAsistenciaServicio exclusionAsistencia;
+
+    @Autowired
     private Clock clock;
 
+    // READ_COMMITTED: ver ExclusionNovedadAsistenciaServicio.
     @Override
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public NovedadClase registrarNovedad(NovedadClase datos, String perfIdLlamador, String rolLlamador) {
         validarDatosEntrada(datos);
 
@@ -93,7 +100,11 @@ public class NovedadClaseServicio implements INovedadClaseServicio {
         // 6. Descripci\u00f3n obligatoria si el motivo es OTRO
         validarDescripcionCondicional(datos.getMotivo(), datos.getDescripcion());
 
-        // 7. Unicidad: s\u00f3lo una novedad activa por grupo y fecha
+        // 7. Una fecha con asistencia registrada no puede marcarse como no realizada (toma el bloqueo del grupo)
+        exclusionAsistencia.exigirSinAsistencia(
+                datos.getCategoria(), datos.getCurso(), datos.getAnio(), datos.getIterable(), datos.getFecha());
+
+        // 8. Unicidad: una sola novedad activa por grupo y fecha
         if (novedadGateway.existeNovedadActiva(
                 datos.getCategoria(), datos.getCurso(), datos.getAnio(), datos.getIterable(), datos.getFecha())) {
             throw new NovedadDuplicadaExcepcion("Ya existe una novedad activa para este grupo y fecha");

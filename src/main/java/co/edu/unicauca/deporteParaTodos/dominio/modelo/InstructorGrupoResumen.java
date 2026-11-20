@@ -24,4 +24,6 @@ public class InstructorGrupoResumen {
     private int inscritos;
     private int enEspera;
     private List<Horario> horarios;
+    /** Novedad de clase no realizada activa para HOY (zona del servidor); null si la clase de hoy no esta cancelada. */
+    private NovedadClase novedadHoy;
 }

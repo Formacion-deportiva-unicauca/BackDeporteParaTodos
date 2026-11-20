@@ -20,6 +20,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import co.edu.unicauca.deporteParaTodos.dominio.excepciones.NovedadAsistenciaConflictoExcepcion;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IAlumnoGateway;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IAsistenciaGateway;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IClaseGateway;
@@ -73,6 +74,9 @@ class AsistenciaServicioTest {
 
     @Mock
     private Clock clock;
+
+    @Mock
+    private ExclusionNovedadAsistenciaServicio exclusion;
 
     @InjectMocks
     private AsistenciaServicio servicio;
@@ -1073,5 +1077,42 @@ class AsistenciaServicioTest {
         assertEquals(1, resultado.getEliminado());
         verify(asistenciaGateway).eliminarAsistencia("alum1", (long) CLASE_ID);
         verify(asistenciaGateway, never()).marcarAusente(any(), anyInt());
+    }
+
+    // -- Exclusion novedad / asistencia (clase no realizada) --
+
+    private static final String MSG_NO_REALIZADA = "Esta clase fue marcada como no realizada";
+
+    @Test
+    void registrarAtencionesPorClase_conNovedadActiva_lanzaConflictoYNoEscribeNada() {
+        Clase clase = claseConFecha(HOY_FIJO);
+        when(claseGateway.existeClase(CLASE_ID)).thenReturn(true);
+        when(claseGateway.obtenerClase(CLASE_ID)).thenReturn(clase);
+        sinProrroga();
+        doThrow(new NovedadAsistenciaConflictoExcepcion(MSG_NO_REALIZADA)).when(exclusion)
+                .exigirSinNovedad("Recreativo", "Natacion", 2026, 1, HOY_FIJO);
+
+        AtencionDto dto = new AtencionDto();
+        dto.setIdPerfil("alu-1");
+        dto.setEstaAtendido(true);
+        assertThrows(NovedadAsistenciaConflictoExcepcion.class,
+                () -> servicio.registrarAtencionesPorClase(List.of(dto), CLASE_ID, INS, "Instructor"));
+
+        verifyNoInteractions(asistenciaGateway);
+    }
+
+    @Test
+    void confirmarAsistencias_conNovedadActiva_tambienParaCoordinador_lanzaConflictoYNoConfirma() {
+        Clase clase = claseConFecha(HOY_FIJO.minusDays(40)); // correccion hacia atras: sin limite de plazo
+        when(claseGateway.existeClase(CLASE_ID)).thenReturn(true);
+        when(claseGateway.obtenerClase(CLASE_ID)).thenReturn(clase);
+        doThrow(new NovedadAsistenciaConflictoExcepcion(MSG_NO_REALIZADA)).when(exclusion)
+                .exigirSinNovedad("Recreativo", "Natacion", 2026, 1, clase.getFecha());
+
+        assertThrows(NovedadAsistenciaConflictoExcepcion.class,
+                () -> servicio.confirmarAsistencias(CLASE_ID, List.of(), true, COORD, "Coordinador"));
+
+        verify(claseGateway, never()).confirmarAsistencia(any(), any(), any());
+        verifyNoInteractions(asistenciaGateway);
     }
 }

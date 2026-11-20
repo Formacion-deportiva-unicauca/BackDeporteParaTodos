@@ -87,6 +87,12 @@ class RestExceptionHandlerTest {
         @GetMapping("/test/cuposagotados")
         void cuposAgotados() { throw new CuposAgotadosExcepcion("sin cupos"); }
 
+        @GetMapping("/test/novedadduplicada")
+        void novedadDuplicada() { throw new NovedadDuplicadaExcepcion("Ya existe una novedad activa para este grupo y fecha"); }
+
+        @GetMapping("/test/novedadasistencia")
+        void novedadAsistencia() { throw new NovedadAsistenciaConflictoExcepcion("Esta clase fue marcada como no realizada"); }
+
         // SCRUM-80 (rediseno, bloque 1): sin endpoint real todavia (se conecta en
         // el bloque 2, cuando POST /claseGrupo y POST /atenciones empiecen a
         // llamar a VentanaRegistroAsistencia) -- se cubre el handler aqui.
@@ -287,6 +293,52 @@ class RestExceptionHandlerTest {
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.codigoError").value("GC-0013"))
                 .andExpect(jsonPath("$.codigoHttp").value(409));
+    }
+
+    // Conflictos esperados de negocio: 409, mensaje claro y UNA linea de WARN (sin traza de ERROR).
+
+    private ch.qos.logback.core.read.ListAppender<ch.qos.logback.classic.spi.ILoggingEvent> capturarLog() {
+        ch.qos.logback.classic.Logger logger = (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger(RestExceptionHandler.class);
+        ch.qos.logback.core.read.ListAppender<ch.qos.logback.classic.spi.ILoggingEvent> appender = new ch.qos.logback.core.read.ListAppender<>();
+        appender.start();
+        logger.addAppender(appender);
+        return appender;
+    }
+
+    private void quitarLog(ch.qos.logback.core.read.ListAppender<ch.qos.logback.classic.spi.ILoggingEvent> appender) {
+        ((ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger(RestExceptionHandler.class)).detachAppender(appender);
+    }
+
+    @Test
+    void novedadDuplicada_retorna409ConMensajeClaro_yLogueaSoloUnWarnSinTraza() throws Exception {
+        var log = capturarLog();
+        try {
+            mockMvc.perform(get("/test/novedadduplicada"))
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.codigoHttp").value(409))
+                    .andExpect(content().string(org.hamcrest.Matchers.containsString("Ya existe una novedad activa para este grupo y fecha")));
+            org.junit.jupiter.api.Assertions.assertEquals(1, log.list.size());
+            org.junit.jupiter.api.Assertions.assertEquals(ch.qos.logback.classic.Level.WARN, log.list.get(0).getLevel());
+            org.junit.jupiter.api.Assertions.assertNull(log.list.get(0).getThrowableProxy());
+        } finally {
+            quitarLog(log);
+        }
+    }
+
+    @Test
+    void novedadYAsistencia_retorna409_yLogueaSoloUnWarnSinTraza() throws Exception {
+        var log = capturarLog();
+        try {
+            mockMvc.perform(get("/test/novedadasistencia"))
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.codigoError").value("GC-0032"))
+                    .andExpect(content().string(org.hamcrest.Matchers.containsString("Esta clase fue marcada como no realizada")));
+            org.junit.jupiter.api.Assertions.assertEquals(1, log.list.size());
+            org.junit.jupiter.api.Assertions.assertEquals(ch.qos.logback.classic.Level.WARN, log.list.get(0).getLevel());
+            org.junit.jupiter.api.Assertions.assertNull(log.list.get(0).getThrowableProxy());
+        } finally {
+            quitarLog(log);
+        }
     }
 
     @Test

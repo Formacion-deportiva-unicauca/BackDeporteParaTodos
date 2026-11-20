@@ -28,6 +28,8 @@ import co.edu.unicauca.deporteParaTodos.dominio.modelo.EstadoVentanaInscripcion;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Grupo;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.Horario;
 import co.edu.unicauca.deporteParaTodos.dominio.modelo.InstructorGrupoResumen;
+import co.edu.unicauca.deporteParaTodos.dominio.modelo.NovedadClase;
+import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.INovedadClaseGateway;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.FechasGrupoInvalidasExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.NoExisteExcepcion;
 import co.edu.unicauca.deporteParaTodos.dominio.excepciones.YaExisteElementoExcepcion;
@@ -52,6 +54,9 @@ public class GrupoServicio implements IGrupoServicio {
 
     @Autowired
     private IInstructorGateway instructorGateway;
+
+    @Autowired
+    private INovedadClaseGateway novedadGateway;
 
     @Autowired
     private Clock clock;
@@ -235,9 +240,16 @@ public class GrupoServicio implements IGrupoServicio {
                     // Fase 3: el estado es el del GRUPO (fechas + cierre manual), no el del curso.
                     grupo.estadoInscripcion(hoy) == EstadoVentanaInscripcion.ABIERTAS
                             ? EstadoInscripciones.ABIERTO : EstadoInscripciones.CERRADO,
-                    inscritos, enEspera, horarios));
+                    inscritos, enEspera, horarios, novedadDeHoy(grupo, hoy)));
         }
         return resultado;
+    }
+
+    /** La novedad activa del grupo para hoy, o null (la clase de hoy se dicta normalmente). */
+    private NovedadClase novedadDeHoy(Grupo grupo, LocalDate hoy) {
+        List<NovedadClase> novedades = novedadGateway.obtenerNovedadesPorGrupoFecha(
+                grupo.getCategoria(), grupo.getCurso(), grupo.getAnio(), grupo.getIterable(), hoy);
+        return novedades == null || novedades.isEmpty() ? null : novedades.get(0);
     }
 
     private String claveGrupo(String categoria, String curso, int anio, int iterable) {
