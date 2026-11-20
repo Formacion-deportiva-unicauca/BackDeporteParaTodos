@@ -24,7 +24,7 @@ public class ExclusionNovedadAsistenciaServicio {
     static final String MENSAJE_CLASE_NO_REALIZADA =
             "Esta clase fue marcada como no realizada. No se puede registrar asistencia para esa fecha";
     static final String MENSAJE_YA_HAY_ASISTENCIA =
-            "Ya hay asistencia registrada para esta fecha. Corrige primero la asistencia antes de marcar la clase como no realizada";
+            "No se puede marcar como no realizada: ya hay personas con asistencia en esta fecha";
 
     private final IGrupoGateway grupoGateway;
     private final INovedadClaseGateway novedadGateway;
@@ -47,17 +47,17 @@ public class ExclusionNovedadAsistenciaServicio {
         }
     }
 
-    /** Antes de registrar una novedad: falla si la fecha ya tiene asistencia confirmada o alguna fila de asistencia activa. */
+    /** Antes de registrar una novedad: falla si la fecha ya tiene alguna persona PRESENTE (confirmada o no). */
     public void exigirSinAsistencia(String categoria, String curso, Integer anio, Integer iterable, LocalDate fecha) {
         grupoGateway.obtenerGrupoConLock(categoria, curso, anio, iterable);
         if (!claseGateway.existeClaseEnFecha(categoria, curso, anio, iterable, fecha)) {
             return;
         }
         Clase clase = claseGateway.obtenerClaseEnFecha(categoria, curso, anio, iterable, fecha);
-        boolean hayAsistencia = clase.getAsistenciaConfirmadaEn() != null
-                || asistenciaGateway.obtenerAtencionesPorClase(clase.getCodigo()).stream()
-                        .anyMatch(a -> !Integer.valueOf(1).equals(a.getEliminado()));
-        if (hayAsistencia) {
+        // Una confirmacion con todos AUSENTES no impide la novedad (la falta se excusa); cualquier PRESENTE activo si.
+        boolean hayAsistentes = asistenciaGateway.obtenerAtencionesPorClase(clase.getCodigo()).stream()
+                .anyMatch(a -> !Integer.valueOf(1).equals(a.getEliminado()) && !"AUSENTE".equals(a.getEstado()));
+        if (hayAsistentes) {
             throw new NovedadAsistenciaConflictoExcepcion(MENSAJE_YA_HAY_ASISTENCIA);
         }
     }

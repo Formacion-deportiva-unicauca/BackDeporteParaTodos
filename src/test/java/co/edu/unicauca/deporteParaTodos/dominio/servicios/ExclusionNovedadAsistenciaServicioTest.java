@@ -80,16 +80,36 @@ class ExclusionNovedadAsistenciaServicioTest {
     }
 
     @Test
-    void exigirSinAsistencia_claseConfirmada_lanzaConflicto_aunqueTodosEstenAusentes() {
+    void exigirSinAsistencia_claseConfirmadaConUnPresente_lanzaConflictoConMensajeClaro() {
         when(claseGateway.existeClaseEnFecha("Rec", "Ajedrez", 2026, 1, FECHA)).thenReturn(true);
         when(claseGateway.obtenerClaseEnFecha("Rec", "Ajedrez", 2026, 1, FECHA))
                 .thenReturn(clase(LocalDateTime.of(2026, 11, 20, 20, 0)));
+        when(asistenciaGateway.obtenerAtencionesPorClase(7)).thenReturn(List.of(
+                new Asistencia("alu-1", 7, 0, "AUSENTE"), new Asistencia("alu-2", 7, 0, "PRESENTE")));
 
         NovedadAsistenciaConflictoExcepcion ex = assertThrows(NovedadAsistenciaConflictoExcepcion.class,
                 () -> servicio().exigirSinAsistencia("Rec", "Ajedrez", 2026, 1, FECHA));
 
-        assertEquals("Ya hay asistencia registrada para esta fecha. Corrige primero la asistencia antes de marcar la clase como no realizada",
-                ex.getMessage());
+        assertEquals("No se puede marcar como no realizada: ya hay personas con asistencia en esta fecha", ex.getMessage());
+    }
+
+    @Test
+    void exigirSinAsistencia_claseConfirmadaConTodosAusentes_permite() {
+        when(claseGateway.existeClaseEnFecha("Rec", "Ajedrez", 2026, 1, FECHA)).thenReturn(true);
+        when(claseGateway.obtenerClaseEnFecha("Rec", "Ajedrez", 2026, 1, FECHA))
+                .thenReturn(clase(LocalDateTime.of(2026, 11, 20, 20, 0)));
+        when(asistenciaGateway.obtenerAtencionesPorClase(7)).thenReturn(List.of(
+                new Asistencia("alu-1", 7, 0, "AUSENTE"), new Asistencia("alu-2", 7, 0, "AUSENTE")));
+
+        assertDoesNotThrow(() -> servicio().exigirSinAsistencia("Rec", "Ajedrez", 2026, 1, FECHA));
+    }
+
+    @Test
+    void exigirSinAsistencia_presenteEliminadoNoCuenta() {
+        when(claseGateway.existeClaseEnFecha("Rec", "Ajedrez", 2026, 1, FECHA)).thenReturn(true);
+        when(claseGateway.obtenerClaseEnFecha("Rec", "Ajedrez", 2026, 1, FECHA)).thenReturn(clase(LocalDateTime.of(2026, 11, 20, 20, 0)));
+        when(asistenciaGateway.obtenerAtencionesPorClase(7)).thenReturn(List.of(new Asistencia("alu-1", 7, 1, "PRESENTE")));
+        assertDoesNotThrow(() -> servicio().exigirSinAsistencia("Rec", "Ajedrez", 2026, 1, FECHA));
     }
 
     @Test

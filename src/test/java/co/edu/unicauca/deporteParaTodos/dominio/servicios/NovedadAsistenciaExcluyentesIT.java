@@ -54,7 +54,7 @@ class NovedadAsistenciaExcluyentesIT {
     private static final String SECRETO = "dGVzdFNlY3JldEtleUZvckNJMTIzNDU2Nzg5MDEyMzQ1Njc4OTA=";
     private static final int ANIO = 2020;
     private static final String MSG_NO_REALIZADA = "Esta clase fue marcada como no realizada";
-    private static final String MSG_YA_HAY_ASISTENCIA = "Ya hay asistencia registrada para esta fecha";
+    private static final String MSG_YA_HAY_ASISTENCIA = "ya hay personas con asistencia en esta fecha";
 
     @Autowired private JdbcTemplate jdbc;
     @Autowired private MockMvc mockMvc;
@@ -64,6 +64,7 @@ class NovedadAsistenciaExcluyentesIT {
     private String categoria;
     private String curso;
     private String alumno;
+    private String alumno2;
 
     @BeforeAll
     void sembrar() {
@@ -71,6 +72,7 @@ class NovedadAsistenciaExcluyentesIT {
         categoria = "ITNov" + s;
         curso = "NovIT-" + s;
         alumno = "nov-it-" + s;
+        alumno2 = "nov-it2-" + s;
         jdbc.update("INSERT INTO tbl_categoria_curso (META_ELIMINADO, CAT_TITULO, CAT_DESCRIPCION) VALUES (0, ?, 'IT')", categoria);
         jdbc.update("INSERT INTO tbl_curso (META_ELIMINADO, CUR_NOMBRE, DEPT_NOMBRE, CAT_TITULO, CUR_DESCRIPCION, CUR_PUBLICO) "
                 + "VALUES (0, ?, 'Futbol', ?, 'IT', 'MIXTO')", curso, categoria);
@@ -79,6 +81,9 @@ class NovedadAsistenciaExcluyentesIT {
         jdbc.update("INSERT INTO tbl_perfil (META_ELIMINADO, PERF_ID, PERF_NOMBRE, PERF_CORREO, PERF_TIPOID, PERF_SEXO) VALUES (0, ?, 'Alumno IT', ?, 'CC', 'M')",
                 alumno, alumno + "@it.unicauca.edu.co");
         jdbc.update("INSERT INTO tbl_alumno (META_ELIMINADO, PERF_ID, ALM_TIPO) VALUES (0, ?, 'Estudiante')", alumno);
+        jdbc.update("INSERT INTO tbl_perfil (META_ELIMINADO, PERF_ID, PERF_NOMBRE, PERF_CORREO, PERF_TIPOID, PERF_SEXO) VALUES (0, ?, 'Alumno IT 2', ?, 'CC', 'F')",
+                alumno2, alumno2 + "@it.unicauca.edu.co");
+        jdbc.update("INSERT INTO tbl_alumno (META_ELIMINADO, PERF_ID, ALM_TIPO) VALUES (0, ?, 'Estudiante')", alumno2);
         jdbc.update("INSERT INTO tbl_inscripcion (META_ELIMINADO, INSCR_FECHAINSCRIPCION, INSCR_ESTADO, GRP_ANIO, GRP_ITERABLE, CUR_NOMBRE, CAT_TITULO, PERF_ID) "
                 + "VALUES (0, '2020-01-02 08:00:00', 'INSCRITO', ?, 1, ?, ?, ?)", ANIO, curso, categoria, alumno);
     }
@@ -126,14 +131,28 @@ class NovedadAsistenciaExcluyentesIT {
     }
 
     @Test
-    void conAsistenciaConfirmada_noSePuedeMarcarNoRealizada_aunqueTodosEstenAusentes() throws Exception {
+    void conAsistenciaConfirmadaConUnPresente_noSePuedeMarcarNoRealizada() throws Exception {
         String fecha = "2020-05-06";
         long clase = clase(fecha, true);
         asistencia(clase, "AUSENTE");
+        asistenciaDe(alumno2, clase, "PRESENTE");
 
-        novedad(fecha, "OTRO").andExpect(status().isConflict());
+        novedad(fecha, "OTRO").andExpect(status().isConflict())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString(MSG_YA_HAY_ASISTENCIA)));
 
         assertEquals(0, novedadesActivas(fecha));
+    }
+
+    @Test
+    void conAsistenciaConfirmadaTodosAusentes_sePuedeMarcarNoRealizada() throws Exception {
+        String fecha = "2020-05-12";
+        long clase = clase(fecha, true);
+        asistencia(clase, "AUSENTE");
+        asistenciaDe(alumno2, clase, "AUSENTE");
+
+        novedad(fecha, "CLIMA").andExpect(status().isCreated());
+
+        assertEquals(1, novedadesActivas(fecha));
     }
 
     @Test
@@ -237,6 +256,41 @@ class NovedadAsistenciaExcluyentesIT {
         }
     }
 
+    @Test
+    void carrera_novedadContraPresente_enClaseConfirmadaTodosAusentes_gananUnaSolaVez() throws Exception {
+        ExecutorService pool = Executors.newFixedThreadPool(2);
+        try {
+            for (int ronda = 0; ronda < 12; ronda++) {
+                String fecha = String.format("2020-07-%02d", ronda + 1);
+                long clase = clase(fecha, true);
+                asistencia(clase, "AUSENTE");
+                CountDownLatch salida = new CountDownLatch(1);
+                Callable<Integer> conNovedad = () -> {
+                    salida.await();
+                    return novedad(fecha, "CLIMA").andReturn().getResponse().getStatus();
+                };
+                Callable<Integer> conPresente = () -> {
+                    salida.await();
+                    return mockMvc.perform(post("/api/v2/atenciones").param("idClase", String.valueOf(clase)).contentType("application/json")
+                            .content(atencion(clase)).header("Authorization", "Bearer " + jwt())).andReturn().getResponse().getStatus();
+                };
+                Future<Integer> a = pool.submit(conNovedad);
+                Future<Integer> b = pool.submit(conPresente);
+                salida.countDown();
+                int estadoNovedad = a.get();
+                int estadoAsistencia = b.get();
+                boolean novedadGano = estadoNovedad == 201 && estadoAsistencia == 409;
+                boolean presenteGano = estadoNovedad == 409 && estadoAsistencia == 200;
+                assertTrue(novedadGano || presenteGano, "ronda " + ronda + ": novedad=" + estadoNovedad + " asistencia=" + estadoAsistencia);
+                int presentes = jdbc.queryForObject("SELECT COUNT(*) FROM tbl_asistencia WHERE CLS_CODIGO = ? AND PERF_ID = ? AND ASI_ESTADO = 'PRESENTE' AND META_ELIMINADO = 0",
+                        Integer.class, clase, alumno);
+                assertTrue(novedadesActivas(fecha) + presentes == 1, "ronda " + ronda + ": novedad y presente a la vez, o ninguno");
+            }
+        } finally {
+            pool.shutdownNow();
+        }
+    }
+
     // ── Ayudas ────────────────────────────────────────────────────────────────
 
     private ResultActions novedadEn(String fecha) throws Exception {
@@ -277,7 +331,11 @@ class NovedadAsistenciaExcluyentesIT {
     }
 
     private void asistencia(long clase, String estado) {
-        jdbc.update("INSERT INTO tbl_asistencia (META_ELIMINADO, PERF_ID, CLS_CODIGO, ASI_ESTADO) VALUES (0, ?, ?, ?)", alumno, clase, estado);
+        asistenciaDe(alumno, clase, estado);
+    }
+
+    private void asistenciaDe(String persona, long clase, String estado) {
+        jdbc.update("INSERT INTO tbl_asistencia (META_ELIMINADO, PERF_ID, CLS_CODIGO, ASI_ESTADO) VALUES (0, ?, ?, ?)", persona, clase, estado);
     }
 
     private int clasesEnFecha(String fecha) {

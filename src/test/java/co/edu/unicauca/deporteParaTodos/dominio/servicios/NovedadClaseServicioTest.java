@@ -435,7 +435,7 @@ class NovedadClaseServicioTest {
         NovedadClase datos = datosValidos();
         when(grupoGateway.obtenerGrupo("Futbol", "Avanzado", 2026, 1)).thenReturn(grupoConInstructor(INS));
         when(horarioGateway.listarHorariosPorGrupo("Futbol", "Avanzado", 2026, 1)).thenReturn(List.of(franjaJueves()));
-        doThrow(new NovedadAsistenciaConflictoExcepcion("Ya hay asistencia registrada para esta fecha")).when(exclusion)
+        doThrow(new NovedadAsistenciaConflictoExcepcion("No se puede marcar como no realizada: ya hay personas con asistencia en esta fecha")).when(exclusion)
                 .exigirSinAsistencia("Futbol", "Avanzado", 2026, 1, HOY_FIJO);
 
         assertThrows(NovedadAsistenciaConflictoExcepcion.class, () -> servicio.registrarNovedad(datos, INS, "Instructor"));
