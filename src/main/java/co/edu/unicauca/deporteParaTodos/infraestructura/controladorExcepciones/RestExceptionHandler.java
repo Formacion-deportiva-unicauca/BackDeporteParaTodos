@@ -335,13 +335,21 @@ public class RestExceptionHandler {
         @ExceptionHandler(NovedadDuplicadaExcepcion.class)
         public ResponseEntity<Error> GenericException(final HttpServletRequest req, final NovedadDuplicadaExcepcion ex) {
                 logAdvertencia("NovedadDuplicadaExcepcion", req, ex);
-                return buildDomainErrorResponse(req, ex.getCodigo(), ex.getLlaveMensaje(), ex.getMessage(), HttpStatus.CONFLICT);
+                return buildDomainErrorResponse(req,
+                                ex != null ? ex.getCodigo()       : "",
+                                ex != null ? ex.getLlaveMensaje() : "",
+                                ex != null ? ex.getMessage()      : "",
+                                HttpStatus.CONFLICT);
         }
 
         @ExceptionHandler(NovedadAsistenciaConflictoExcepcion.class)
         public ResponseEntity<Error> GenericException(final HttpServletRequest req, final NovedadAsistenciaConflictoExcepcion ex) {
                 logAdvertencia("NovedadAsistenciaConflictoExcepcion", req, ex);
-                return buildDomainErrorResponse(req, ex.getCodigo(), ex.getLlaveMensaje(), ex.getMessage(), HttpStatus.CONFLICT);
+                return buildDomainErrorResponse(req,
+                                ex != null ? ex.getCodigo()       : "",
+                                ex != null ? ex.getLlaveMensaje() : "",
+                                ex != null ? ex.getMessage()      : "",
+                                HttpStatus.CONFLICT);
         }
 
         @ExceptionHandler(CuposAgotadosExcepcion.class)
