@@ -90,6 +90,12 @@ class RestExceptionHandlerTest {
         @GetMapping("/test/novedadduplicada")
         void novedadDuplicada() { throw new NovedadDuplicadaExcepcion("Ya existe una novedad activa para este grupo y fecha"); }
 
+        @GetMapping("/test/novedadduplicada-sinmensaje")
+        void novedadDuplicadaSinMensaje() { throw new NovedadDuplicadaExcepcion(null); }
+
+        @GetMapping("/test/novedadasistencia-sinmensaje")
+        void novedadAsistenciaSinMensaje() { throw new NovedadAsistenciaConflictoExcepcion(null); }
+
         @GetMapping("/test/novedadasistencia")
         void novedadAsistencia() { throw new NovedadAsistenciaConflictoExcepcion("Esta clase fue marcada como no realizada"); }
 
@@ -307,6 +313,24 @@ class RestExceptionHandlerTest {
 
     private void quitarLog(ch.qos.logback.core.read.ListAppender<ch.qos.logback.classic.spi.ILoggingEvent> appender) {
         ((ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger(RestExceptionHandler.class)).detachAppender(appender);
+    }
+
+    @Test
+    void conflictosDeNovedad_conMensajeNulo_siguenRespondiendo409SinExcepcion() throws Exception {
+        mockMvc.perform(get("/test/novedadduplicada-sinmensaje"))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.codigoError").value("GC-0007"));
+        mockMvc.perform(get("/test/novedadasistencia-sinmensaje"))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.codigoError").value("GC-0032"));
+    }
+
+    @Test
+    void conflictosDeNovedad_invocadosSinExcepcionNiPeticion_noLanzanNullPointer() {
+        RestExceptionHandler manejador = new RestExceptionHandler();
+        var duplicada = manejador.GenericException(null, (NovedadDuplicadaExcepcion) null);
+        var asistencia = manejador.GenericException(null, (NovedadAsistenciaConflictoExcepcion) null);
+        org.junit.jupiter.api.Assertions.assertEquals(409, duplicada.getStatusCode().value());
+        org.junit.jupiter.api.Assertions.assertEquals(409, asistencia.getStatusCode().value());
+        org.junit.jupiter.api.Assertions.assertEquals("", duplicada.getBody().getUrl());
     }
 
     @Test
