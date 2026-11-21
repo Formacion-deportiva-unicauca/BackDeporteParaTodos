@@ -37,6 +37,7 @@ public enum CodigoError {
         DATOS_INVALIDOS("GC-0029", "Los datos enviados no son validos"),
         PUBLICO_CURSO_NO_COINCIDE("GC-0030", "El curso no esta dirigido al tipo de vinculo del alumno"),
         CRUCE_HORARIO("GC-0031", "Cruce de horario"),
+        CONFLICTO_NOVEDAD_ASISTENCIA("GC-0032", "La clase no puede tener a la vez una novedad y asistencia"),
         ;
 
         private final String codigo;

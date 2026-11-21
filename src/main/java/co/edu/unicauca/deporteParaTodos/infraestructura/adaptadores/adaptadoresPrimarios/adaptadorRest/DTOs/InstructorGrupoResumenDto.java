@@ -29,6 +29,8 @@ public class InstructorGrupoResumenDto {
     private int inscritos;
     private int enEspera;
     private List<HorarioDto> horarios;
+    /** Campo adicional (no rompe el contrato): la clase de hoy fue marcada como no realizada. null si no. */
+    private NovedadHoyDto novedadHoy;
 
     public static InstructorGrupoResumenDto fabricarDeModelo(InstructorGrupoResumen modelo) {
         InstructorGrupoResumenDto dto = new InstructorGrupoResumenDto();
@@ -45,6 +47,21 @@ public class InstructorGrupoResumenDto {
         dto.setHorarios(modelo.getHorarios().stream()
                 .map(HorarioMapper::toDto)
                 .collect(Collectors.toList()));
+        if (modelo.getNovedadHoy() != null) {
+            dto.setNovedadHoy(new NovedadHoyDto(modelo.getNovedadHoy().getCodigo(), modelo.getNovedadHoy().getFecha(),
+                    modelo.getNovedadHoy().getMotivo(), modelo.getNovedadHoy().getDescripcion()));
+        }
         return dto;
+    }
+
+    @AllArgsConstructor
+    @NoArgsConstructor
+    @Getter
+    @Setter
+    public static class NovedadHoyDto {
+        private Long codigo;
+        private java.time.LocalDate fecha;
+        private String motivo;
+        private String descripcion;
     }
 }

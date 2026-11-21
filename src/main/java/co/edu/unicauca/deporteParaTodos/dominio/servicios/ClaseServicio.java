@@ -6,6 +6,8 @@ import java.util.List;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
+import org.springframework.transaction.annotation.Transactional;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosEntrada.IClaseServicio;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IClaseGateway;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IHorarioGateway;
@@ -43,6 +45,9 @@ public class ClaseServicio implements IClaseServicio {
 
     @Autowired
     private AutorizacionGrupoServicio autorizacionGrupo;
+
+    @Autowired
+    private ExclusionNovedadAsistenciaServicio exclusionNovedad;
 
     @Autowired
     private Clock clock;
@@ -86,7 +91,9 @@ public class ClaseServicio implements IClaseServicio {
         return limiteProrrogaDe(perfIdLlamador, fecha);
     }
 
+    // READ_COMMITTED: ver ExclusionNovedadAsistenciaServicio.
     @Override
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public Clase insertarClase(Clase datoClase, String perfIdLlamador, String rolLlamador) {
         // Autorizacion por grupo: se valida ANTES que cualquier regla de
         // fecha/plazo/horario -- un Instructor sin el grupo a cargo no debe
@@ -113,6 +120,10 @@ public class ClaseServicio implements IClaseServicio {
                     datoClase.getCategoria(), datoClase.getCurso(), datoClase.getAnio(), datoClase.getIterable());
             CalculadoraDuracionClase.validarDiaConHorario(franjasDelGrupo, datoClase.getFecha());
         }
+
+        // Con una novedad activa para el grupo y la fecha no se crea ni se reutiliza la clase: esa fecha no tuvo clase.
+        exclusionNovedad.exigirSinNovedad(datoClase.getCategoria(), datoClase.getCurso(), datoClase.getAnio(),
+                datoClase.getIterable(), datoClase.getFecha());
 
         // El Instructor registra asistencia alumno por alumno, con un click por alumno
         // en momentos distintos durante la misma clase -- cada click repite el flujo

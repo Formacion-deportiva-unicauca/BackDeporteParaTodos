@@ -1,5 +1,6 @@
 package co.edu.unicauca.deporteParaTodos.dominio.servicios;
 
+import co.edu.unicauca.deporteParaTodos.dominio.excepciones.NovedadAsistenciaConflictoExcepcion;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IClaseGateway;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IHorarioGateway;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IProrrogaRegistroAsistenciaGateway;
@@ -49,6 +50,9 @@ class ClaseServicioTest {
 
     @Mock
     private Clock clock;
+
+    @Mock
+    private ExclusionNovedadAsistenciaServicio exclusion;
 
     @InjectMocks
     private ClaseServicio claseServicio;
@@ -653,5 +657,20 @@ class ClaseServicioTest {
         claseServicio.eliminarClase(1, INS, "Instructor");
 
         verify(autorizacionGrupo).verificarPropietario(CATEGORIA, CURSO, ANIO, ITERABLE, INS, "Instructor");
+    }
+
+    // -- Exclusion novedad / asistencia: con novedad activa la fecha no tiene clase --
+
+    @Test
+    void insertarClase_conNovedadActiva_lanzaConflictoYNoCreaNiReutilizaLaClase() {
+        sinFranjasNiProrroga();
+        doThrow(new NovedadAsistenciaConflictoExcepcion("Esta clase fue marcada como no realizada")).when(exclusion)
+                .exigirSinNovedad(CATEGORIA, CURSO, ANIO, ITERABLE, HOY_FIJO);
+
+        assertThrows(NovedadAsistenciaConflictoExcepcion.class,
+                () -> claseServicio.insertarClase(claseBase(), COORD, "Coordinador"));
+
+        verify(claseGateway, never()).insertarClase(any());
+        verify(claseGateway, never()).obtenerClaseEnFecha(any(), any(), any(), any(), any());
     }
 }

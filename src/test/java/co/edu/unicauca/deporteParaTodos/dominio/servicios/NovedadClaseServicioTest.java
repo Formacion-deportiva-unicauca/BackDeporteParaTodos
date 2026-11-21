@@ -18,6 +18,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import co.edu.unicauca.deporteParaTodos.dominio.excepciones.NovedadAsistenciaConflictoExcepcion;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IGrupoGateway;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.INovedadClaseGateway;
 import co.edu.unicauca.deporteParaTodos.aplicacion.puertos.puertosSalida.IHorarioGateway;
@@ -52,6 +53,9 @@ class NovedadClaseServicioTest {
 
     @Mock
     private Clock clock;
+
+    @Mock
+    private ExclusionNovedadAsistenciaServicio exclusion;
 
     @InjectMocks
     private NovedadClaseServicio servicio;
@@ -422,5 +426,20 @@ class NovedadClaseServicioTest {
         // no puede modificar tbl_asistencia. Solo verifica que se insertó la novedad.
         verify(novedadGateway).insertarNovedad(any(NovedadClase.class));
         verify(horarioGateway).listarHorariosPorGrupo("Futbol", "Avanzado", 2026, 1);
+    }
+
+    // -- Exclusion novedad / asistencia --
+
+    @Test
+    void registrarNovedad_conAsistenciaYaRegistrada_lanzaConflictoYNoInserta() {
+        NovedadClase datos = datosValidos();
+        when(grupoGateway.obtenerGrupo("Futbol", "Avanzado", 2026, 1)).thenReturn(grupoConInstructor(INS));
+        when(horarioGateway.listarHorariosPorGrupo("Futbol", "Avanzado", 2026, 1)).thenReturn(List.of(franjaJueves()));
+        doThrow(new NovedadAsistenciaConflictoExcepcion("No se puede marcar como no realizada: ya hay personas con asistencia en esta fecha")).when(exclusion)
+                .exigirSinAsistencia("Futbol", "Avanzado", 2026, 1, HOY_FIJO);
+
+        assertThrows(NovedadAsistenciaConflictoExcepcion.class, () -> servicio.registrarNovedad(datos, INS, "Instructor"));
+
+        verify(novedadGateway, never()).insertarNovedad(any());
     }
 }
